@@ -33,6 +33,7 @@ approximating it.
 @.claude/rules/10-architecture.md
 @.claude/rules/20-design-fidelity.md
 @.claude/rules/30-nextjs-16.md
+@.claude/rules/40-prisma-7.md
 
 ## Lessons
 
