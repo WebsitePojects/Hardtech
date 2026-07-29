@@ -1,26 +1,347 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------------------
+   HardTech design tokens.
+
+   Values transcribed from the shipped Figma Make stylesheet
+   (3c0a296c19f27f53200fafb104bec7ce6197f00a.css). Do not adjust by eye — see
+   docs/research/01-design-source.md for provenance and .claude/rules/
+   20-design-fidelity.md for the rule. Dark is the primary theme; every
+   screenshot in docs/screens/ is dark.
+
+   Two surface systems coexist on purpose:
+     --background / --card ...  shadcn component surfaces
+     --bg-main / --bg-secondary / --bg-card ...  page and app chrome surfaces
+   The page background is #080d12 (near-black, blue-tinted), which is darker
+   than shadcn's neutral --background. Both are from the source.
+   --------------------------------------------------------------------------- */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-title);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* HardTech brand ramp */
+  --color-neon: var(--neon);
+  --color-neon-light: var(--neon-light);
+  --color-neon-dark: var(--neon-dark);
+  --color-primary-light: var(--primary-light);
+  --color-primary-dark: var(--primary-dark);
+
+  /* HardTech secondary accents — community cards, category badges */
+  --color-brand-blue: var(--accent-blue);
+  --color-brand-blue-light: var(--accent-blue-light);
+  --color-brand-purple: var(--accent-purple);
+  --color-brand-purple-light: var(--accent-purple-light);
+  --color-brand-orange: var(--accent-orange);
+  --color-brand-orange-light: var(--accent-orange-light);
+
+  /* HardTech page surfaces */
+  --color-surface: var(--bg-main);
+  --color-surface-secondary: var(--bg-secondary);
+  --color-surface-card: var(--bg-card);
+  --color-glass: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+  --color-text-muted: var(--text-muted);
+
+  --shadow-glow-sm: var(--glow-sm);
+  --shadow-glow-md: var(--glow-md);
+  --shadow-glow-lg: var(--glow-lg);
+
+  --font-title: var(--font-title);
+  --font-sub: var(--font-sub);
+  --font-body: var(--font-body);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.625rem;
+
+  /* shadcn surfaces — light */
+  --background: #ffffff;
+  --foreground: oklch(0.145 0 0);
+  --card: #ffffff;
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --secondary: oklch(0.95 0.0058 264.53);
+  --secondary-foreground: #030213;
+  --muted: #ececf0;
+  --muted-foreground: #717182;
+  --accent: #e9ebef;
+  --accent-foreground: #030213;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: transparent;
+  --input-background: #f3f3f5;
+  --switch-background: #cbced4;
+  --ring: oklch(0.439 0 0);
+
+  /* brand — neon green ramp */
+  --neon: #16a34a;
+  --neon-light: #22c55e;
+  --neon-dark: #15803d;
+  --neon-glow: #16a34a1f;
+  --neon-glow-soft: #16a34a0d;
+
+  /* brand drives primary */
+  --primary: var(--neon);
+  --primary-light: var(--neon-light);
+  --primary-dark: var(--neon-dark);
+  --primary-foreground: oklch(1 0 0);
+
+  /* secondary accents */
+  --accent-blue: #3b82f6;
+  --accent-blue-light: #60a5fa;
+  --accent-blue-glow: #3b82f60f;
+  --accent-purple: #8b5cf6;
+  --accent-purple-light: #a78bfa;
+  --accent-purple-glow: #8b5cf60f;
+  --accent-orange: #f59e0b;
+  --accent-orange-light: #fbbf24;
+  --accent-orange-glow: #f59e0b0f;
+
+  /* page surfaces */
+  --bg-main: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-card: #ffffffe6;
+
+  /* text */
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a5568;
+  --text-muted: #718096;
+
+  /* glass */
+  --glass-bg: #fffc;
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-strong: rgba(0, 0, 0, 0.08);
+  --glass-hover: #ffffff;
+
+  /* elevation */
+  --shadow-sm: 0 1px 3px #0000000f, 0 1px 2px #0000000a;
+  --shadow-md: 0 4px 12px #00000014, 0 2px 4px #0000000a;
+  --shadow-lg: 0 12px 32px #0000001a, 0 4px 8px #0000000f;
+
+  /* glow */
+  --glow-sm: 0 0 0 3px #16a34a1f;
+  --glow-md: 0 0 20px #16a34a26;
+  --glow-lg: 0 0 40px #16a34a33;
+  --hero-glow-core: #16a34a29;
+  --hero-glow-primary: #16a34a42;
+  --hero-glow-secondary: #16a34a14;
+  --dashboard-glow: radial-gradient(ellipse, #16a34a24 0%, transparent 70%);
+  --code-bg-color: #16a34a1c;
+
+  /* charts */
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+
+  /* sidebar */
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: #030213;
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+
+  /* type — Teachers / Manrope / Inter, wired in layout.tsx */
+  --font-title: var(--font-teachers), serif;
+  --font-sub: var(--font-manrope), sans-serif;
+  --font-body: var(--font-inter), sans-serif;
+}
+
+.dark {
+  /* shadcn surfaces — dark. Card matches background at oklch(0.145) per the
+     source, which is darker than shadcn's stock oklch(0.205). */
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+
+  /* brand — the ramp lifts in dark so green stays legible on near-black */
+  --neon: #4ade80;
+  --neon-light: #86efac;
+  --neon-dark: #22c55e;
+  --neon-glow: #4ade801f;
+  --neon-glow-soft: #4ade800a;
+
+  --primary: var(--neon);
+  --primary-light: var(--neon-light);
+  --primary-dark: var(--neon-dark);
+  --primary-foreground: oklch(0.205 0 0);
+
+  /* secondary accents */
+  --accent-blue: #60a5fa;
+  --accent-blue-light: #93c5fd;
+  --accent-blue-glow: #60a5fa14;
+  --accent-purple: #a78bfa;
+  --accent-purple-light: #c4b5fd;
+  --accent-purple-glow: #a78bfa14;
+  --accent-orange: #fbbf24;
+  --accent-orange-light: #fcd34d;
+  --accent-orange-glow: #fbbf2414;
+
+  /* page surfaces — the #080d12 / #0f1419 / #141a22 ramp */
+  --bg-main: #080d12;
+  --bg-secondary: #0f1419;
+  --bg-card: #141a22b3;
+
+  --text-muted: #8a95a3;
+
+  /* glass — floating navbar, forum rails, community cards */
+  --glass-bg: #141a228c;
+  --glass-border: rgba(255, 255, 255, 0.07);
+  --glass-border-strong: rgba(255, 255, 255, 0.22);
+  --glass-hover: rgba(255, 255, 255, 0.04);
+
+  /* elevation */
+  --shadow-sm: 0 1px 3px #00000080;
+  --shadow-md: 0 4px 20px #0009;
+  --shadow-lg: 0 16px 52px #000000b3;
+
+  /* glow */
+  --glow-sm: 0 0 0 3px #4ade801a;
+  --glow-md: 0 0 24px #4ade801f;
+  --glow-lg: 0 0 48px #4ade8026;
+  --hero-glow-core: #4ade801f;
+  --hero-glow-primary: #4ade802e;
+  --hero-glow-secondary: #60a5fa1a;
+  --dashboard-glow: radial-gradient(
+    ellipse,
+    #a78bfa38 0%,
+    #60a5fa1f 50%,
+    transparent 70%
+  );
+  --code-bg-color: #4ade8024;
+
+  /* charts */
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+
+  /* sidebar */
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--foreground);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  html {
+    @apply font-sans;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-title);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* The floating translucent shell: navbar, forum rails, community cards. */
+  .glass {
+    background-color: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .glass-hover:hover {
+    background-color: var(--glass-hover);
+    border-color: var(--glass-border-strong);
+  }
+
+  /* Radial bloom behind hero headings and dashboard stat rows. */
+  .hero-glow {
+    background: radial-gradient(
+      ellipse at center,
+      var(--hero-glow-primary) 0%,
+      var(--hero-glow-secondary) 45%,
+      transparent 70%
+    );
+  }
+
+  .dashboard-glow {
+    background: var(--dashboard-glow);
+  }
 }
