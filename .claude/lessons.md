@@ -15,6 +15,61 @@ Format:
 
 ---
 
+## 2026-07-29 — A migration that "reconciles" can still be unrunnable
+
+**Symptom:** The generated baseline migration matched the schema perfectly —
+29 CREATE TABLE for 29 models, 23 CREATE TYPE for 23 enums, 57 CREATE INDEX for
+57 `@@index`. Every count reconciled. Applying it to a real Postgres failed
+immediately: `syntax error at or near "﻿"`, error code 42601, position 1.
+
+**Cause:** The file was written with PowerShell's `Out-File -Encoding utf8`,
+which in Windows PowerShell 5.1 always emits a UTF-8 BOM (`EF BB BF`). Postgres
+does not accept a BOM and chokes on the very first byte. The agent-authored
+migration alongside it was BOM-free, because it was written through a file tool
+rather than a shell redirect.
+
+**Rule:** Counting artifacts is not verification — executing them is. Any SQL,
+config, or script destined for a non-Windows consumer must be written BOM-free:
+use the Write tool, or `[System.IO.File]::WriteAllText($path, $text,
+(New-Object System.Text.UTF8Encoding($false)))`. Never `Out-File -Encoding utf8`
+or `>` for those files. Check with the first three bytes before trusting a
+generated file.
+
+---
+
+## 2026-07-29 — Constraints in a .sql file are not constraints in a database
+
+**Symptom:** A migration declared 24 CHECK constraints. It would have been easy
+to call that done — the SQL was well-formed and `prisma validate` passed.
+
+**Cause:** `prisma validate` checks the Prisma schema, not hand-written
+migration SQL. Nothing in the toolchain confirms a CHECK is enforced until a
+row actually violates it.
+
+**Rule:** For every integrity constraint, write a test that attempts the
+violation and asserts the specific constraint name in the error. `tests/db-integrity.mjs`
+does this for all 13 critical guards, each inside a rolled-back transaction.
+Run it against a throwaway database from `npx prisma dev --detach`. A constraint
+without a failing-case test is a comment.
+
+---
+
+## 2026-07-29 — `prisma.config.ts` resolves env() eagerly
+
+**Symptom:** `npx prisma dev --help` failed with
+`PrismaConfigEnvError: Cannot resolve environment variable: DIRECT_URL`.
+
+**Cause:** `env()` in `prisma.config.ts` resolves when the config file loads,
+which happens for every Prisma CLI invocation — including ones that never touch
+a database, like `--help`.
+
+**Rule:** Any Prisma CLI command in this project needs `DIRECT_URL` (and
+`DATABASE_URL`) present in the environment, even when it does not connect.
+A missing var reads as a broken CLI rather than a missing `.env`, so check the
+environment first when a Prisma command fails at startup.
+
+---
+
 ## 2026-07-29 — Next 16 removed the sync Request APIs my training assumes
 
 **Symptom:** About to write `function Page({ params }: { params: { id: string } })`

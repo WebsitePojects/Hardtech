@@ -96,7 +96,26 @@ transaction-mode pooler.
 
 Never point migrations at the pooled URL.
 
-## 6. Client instantiation in Next.js
+## 6. Driver adapters replaced the query engine — `datasourceUrl` is gone
+
+Prisma 7 removed the Rust query engine. The client takes a **driver adapter**
+instead, and there is no `datasourceUrl` constructor option any more:
+
+```ts
+// v6 — no longer exists
+new PrismaClient({ datasourceUrl: process.env.DATABASE_URL })
+
+// v7 — RIGHT
+import { PrismaPg } from '@prisma/adapter-pg'
+new PrismaClient({ adapter: new PrismaPg({ connectionString }) })
+```
+
+Requires `@prisma/adapter-pg` and `pg` (plus `@types/pg`), all installed.
+
+This is already done in `src/server/db.ts`. Do not construct a client anywhere
+else.
+
+## 7. Client instantiation in Next.js
 
 Next's dev server hot-reloads modules, so a naive `new PrismaClient()` at module
 scope leaks a new connection pool on every reload until Postgres refuses

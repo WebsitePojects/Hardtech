@@ -1,0 +1,921 @@
+// HardTech IT Corp — data model
+// Owned by the DBA role. See docs/adr/0001-data-model.md for the full
+// rationale, the index-by-index justification, and open questions.
+//
+// Prisma 7.9.1 contract (see .claude/rules/40-prisma-7.md):
+//   - generator provider is "prisma-client" (not "prisma-client-js")
+//   - output is mandatory and points outside node_modules
+//   - the datasource block carries only `provider`; connection URLs live in
+//     prisma.config.ts (DIRECT_URL for the CLI) and in the app's own
+//     PrismaClient construction (DATABASE_URL, pooled) — neither is this
+//     file's concern.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// The three platform roles. desktop-02 #5 (Role select: trainee/trainer/admin).
+enum UserRole {
+  TRAINEE
+  TRAINER
+  ADMIN
+}
+
+/// Account status. desktop-02 #7 (Status select: active/pending/suspended).
+enum UserStatus {
+  ACTIVE
+  PENDING
+  SUSPENDED
+}
+
+/// Trainer-specific status, distinct from UserStatus. mobile-02 help section
+/// 10 ("filter by status: Active, On Leave, Suspended"). See ADR open
+/// questions — "On Leave" does not exist on the generic UserStatus enum.
+enum TrainerStatus {
+  ACTIVE
+  ON_LEAVE
+  SUSPENDED
+}
+
+/// State of one trainee's enrollment in one program. desktop-02 #3
+/// (Enrollments & Payment Verification), mobile-06 (Graduate persona).
+enum EnrollmentStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  COMPLETED
+  REJECTED
+}
+
+/// State of one checkout/payment submission. desktop-01 #26-32, mobile-04
+/// (full 5-step enrollment flow).
+enum EnrollmentPaymentStatus {
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+/// desktop-01 #27 (payment method picker), desktop-02 #12 (Payment Methods).
+enum PaymentMethod {
+  GCASH
+  MAYA
+  BANK_TRANSFER
+  CARD
+}
+
+/// desktop-02 #17 (Evaluate form rating select).
+enum EvaluationRating {
+  CERTIFIED
+  COMPETENT
+  NEEDS_IMPROVEMENT
+}
+
+/// desktop-02 #9 (Certificate Approvals: pending/approved).
+enum CertificateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// desktop-02 #14 (session type badges), mobile-03 (Trainer Calendar help).
+enum SessionType {
+  LECTURE
+  HANDS_ON
+  WORKSHOP
+  ASSESSMENT
+}
+
+/// desktop-02 #20 (Assignment "Allowed submission types" chips).
+enum SubmissionType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+/// desktop-02 #21 (Modules file-type select).
+enum ModuleFileType {
+  PDF
+  MP4
+  DOCX
+}
+
+/// desktop-02 #10 (Announcement Type segmented control).
+enum AnnouncementType {
+  UPDATE
+  NOTICE
+  INFO
+}
+
+/// desktop-02 #10 (Announcement media attachment).
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+/// desktop-02 #13, mobile-02 help section 9 — the 9 confirmed audit
+/// categories (the "all" filter option is UI-only, not a stored value).
+enum AuditCategory {
+  USER
+  ENROLLMENT
+  PAYMENT
+  CERTIFICATE
+  CALENDAR
+  MODULE
+  SYSTEM
+  FORUM
+  COMMUNITY
+}
+
+/// The 6 fixed forum categories. desktop-01 #11, fixed/no admin CRUD screen
+/// observed, so modeled as an enum (fail-closed on an unrecognized category)
+/// rather than an editable table.
+enum ForumCategory {
+  GENERAL_DISCUSSION
+  QA_HELP
+  RESOURCES_TIPS
+  TROUBLESHOOTING
+  CAREER_JOBS
+  ANNOUNCEMENTS
+}
+
+/// desktop-01 guideline 5 ("Trainee posts require approval"), mobile-03
+/// (Trainer help "Moderating a Community": Approve/Reject a pending post).
+enum PostStatus {
+  PENDING_APPROVAL
+  PUBLISHED
+  REJECTED
+}
+
+/// desktop-01/02 post footer icon row (upvote/helpful/insightful).
+enum ReactionType {
+  UPVOTE
+  HELPFUL
+  INSIGHTFUL
+}
+
+/// mobile-04 ("Reporting Inappropriate Content" — 5 confirmed reasons).
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  MISINFORMATION
+  OFF_TOPIC
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  ACTIONED
+  DISMISSED
+}
+
+/// desktop-01/02 community topic tag badge (Mobile Repair / Desktop Repair /
+/// Networking / Troubleshooting).
+enum CommunityTopic {
+  MOBILE_REPAIR
+  DESKTOP_REPAIR
+  NETWORKING
+  TROUBLESHOOTING
+}
+
+/// desktop-02 #29 (community card "PUBLIC" badge; mobile-03 help: "Public
+/// communities let you in immediately. Private communities require Admin
+/// approval.").
+enum CommunityVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+/// mobile-03 help ("gold shield badge" for a promoted Moderator).
+enum CommunityRole {
+  MEMBER
+  MODERATOR
+}
+
+enum MembershipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+/// A person who can authenticate: trainee, trainer, or admin. Drives /login
+/// (desktop-02 #1), User Management (desktop-02 #4-7), all three dashboard
+/// sidebars, and every forum author byline.
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  phone        String?
+  role         UserRole
+  status       UserStatus @default(PENDING)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  trainerProfile           TrainerProfile?
+  programsAsPrimaryTrainer Program[]              @relation("ProgramPrimaryTrainer")
+  batchesAsTrainer         Batch[]                @relation("BatchTrainer")
+  enrollmentsAsTrainee     Enrollment[]           @relation("EnrollmentTrainee")
+  paymentsAsTrainee        EnrollmentPayment[]    @relation("PaymentTrainee")
+  paymentsVerified         EnrollmentPayment[]    @relation("PaymentVerifiedBy")
+  evaluationsGiven         Evaluation[]           @relation("EvaluationTrainer")
+  evaluationsRevoked       Evaluation[]           @relation("EvaluationRevokedBy")
+  certificatesApproved     CertificateRequest[]   @relation("CertificateApprovedBy")
+  sessionsAsTrainer        TrainingSession[]      @relation("SessionTrainer")
+  assignmentsAsTrainer     Assignment[]           @relation("AssignmentTrainer")
+  submissionsAsTrainee     AssignmentSubmission[] @relation("SubmissionTrainee")
+  modulesUploaded          Module[]               @relation("ModuleTrainer")
+  announcementsPosted      Announcement[]         @relation("AnnouncementPostedBy")
+  paymentMethodsUpdated    PaymentMethodConfig[]  @relation("PaymentMethodUpdatedBy")
+  auditLogEntries          AuditLog[]             @relation("AuditLogActor")
+  notifications            Notification[]         @relation("NotificationUser")
+  forumPosts               ForumPost[]            @relation("ForumPostAuthor")
+  forumPostsApproved       ForumPost[]            @relation("ForumPostApprovedBy")
+  replies                  Reply[]                @relation("ReplyAuthor")
+  postReactions            PostReaction[]         @relation("PostReactionUser")
+  replyReactions           ReplyReaction[]        @relation("ReplyReactionUser")
+  postBookmarks            PostBookmark[]         @relation("PostBookmarkUser")
+  postReportsFiled         PostReport[]           @relation("PostReportReporter")
+  postReportsResolved      PostReport[]           @relation("PostReportResolvedBy")
+  ratingsReceived          AuthorRating[]         @relation("AuthorRatingRated")
+  ratingsGiven             AuthorRating[]         @relation("AuthorRatingRater")
+  communityMemberships     CommunityMembership[]  @relation("CommunityMembershipUser")
+
+  @@index([role])
+  @@index([status])
+}
+
+/// Trainer-only bio/credentials. Drives /about instructor cards
+/// (desktop-01 #9) and admin Trainer Management (desktop-02 #8).
+model TrainerProfile {
+  id               String        @id @default(cuid())
+  userId           String        @unique
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  bio              String
+  credentials      String[]
+  facebookUrl      String?
+  primaryProgramId String?
+  primaryProgram   Program?      @relation("TrainerPrimaryProgram", fields: [primaryProgramId], references: [id], onDelete: SetNull)
+  status           TrainerStatus @default(ACTIVE)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([primaryProgramId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Programs, batches, enrollment & payment
+// ---------------------------------------------------------------------------
+
+/// The program catalog (5 rows: Computer Hardware Servicing, Cellphone
+/// Hardware Servicing, I.T. Software Development, Networking Basics, CCTV
+/// Installation). Drives /programs, /enroll Step 1, and every admin Program
+/// select (desktop-02 #6).
+model Program {
+  id                       String   @id @default(cuid())
+  name                     String   @unique
+  shortName                String
+  subtitle                 String?
+  description              String
+  durationLabel            String
+  scheduleLabel            String
+  levelLabel               String
+  /// CHECK Program_price_amount_non_negative (priceAmount >= 0) — migration
+  /// 20260729173000_author_rating_integrity.
+  priceAmount              Decimal  @db.Decimal(12, 2)
+  badgeLabel               String?
+  iconName                 String?
+  accentColor              String?
+  imageUrl                 String?
+  marketingEnrolledLabel   String?
+  primaryTrainerId         String?
+  primaryTrainer           User?    @relation("ProgramPrimaryTrainer", fields: [primaryTrainerId], references: [id], onDelete: SetNull)
+  instructorCredentialLine String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  curriculumTopics ProgramCurriculumTopic[]
+  trainerProfiles  TrainerProfile[]         @relation("TrainerPrimaryProgram")
+  batches          Batch[]
+  enrollments      Enrollment[]
+  modules          Module[]
+  testimonials     Testimonial[]
+
+  @@index([primaryTrainerId])
+}
+
+/// One "COURSE MODULES" checklist line on /programs and /enroll Step 1
+/// (e.g. "OS Installation & Configuration"). Not the same thing as the
+/// trainer-uploaded Module file below — see ADR open questions.
+model ProgramCurriculumTopic {
+  id        String  @id @default(cuid())
+  programId String
+  program   Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+  title     String
+  // CHECK ProgramCurriculumTopic_sort_order_non_negative (sortOrder >= 0) —
+  // migration 20260729173000_author_rating_integrity.
+  sortOrder Int     @default(0)
+
+  @@index([programId, sortOrder])
+}
+
+/// One scheduled cohort of a program under one trainer (e.g. "Cellphone
+/// Repair · Batch 2026-A"). Ties trainees, calendar sessions, and
+/// assignments together. Named on every trainer/trainee dashboard subtitle.
+model Batch {
+  id            String    @id @default(cuid())
+  programId     String
+  program       Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
+  trainerId     String
+  trainer       User      @relation("BatchTrainer", fields: [trainerId], references: [id], onDelete: Restrict)
+  code          String
+  scheduleLabel String?
+  startDate     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  enrollments      Enrollment[]
+  trainingSessions TrainingSession[]
+  assignments      Assignment[]
+
+  @@unique([programId, code])
+  @@index([trainerId])
+}
+
+/// One trainee's enrollment in one program (public ref ENR-xxxx). A single
+/// checkout can create several of these — one per selected program — all
+/// pointing at one shared EnrollmentPayment. Drives admin "Enrollments &
+/// Payment Verification" (desktop-02 #3), trainee "Enrolled Programs"
+/// (desktop-02 #25), and the admin "Program Mix" donut (desktop-02 #2).
+model Enrollment {
+  id              String            @id @default(cuid())
+  enrollmentRef   String            @unique
+  traineeId       String
+  trainee         User              @relation("EnrollmentTrainee", fields: [traineeId], references: [id], onDelete: Restrict)
+  programId       String
+  program         Program           @relation(fields: [programId], references: [id], onDelete: Restrict)
+  batchId         String?
+  batch           Batch?            @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  paymentId       String
+  payment         EnrollmentPayment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  // CHECK Enrollment_amount_non_negative (amount >= 0) and
+  // Enrollment_progress_percent_range (progressPercent BETWEEN 0 AND 100) —
+  // migration 20260729173000_author_rating_integrity.
+  amount          Decimal           @db.Decimal(12, 2)
+  status          EnrollmentStatus  @default(PENDING_VERIFICATION)
+  progressPercent Int               @default(0)
+  startDate       DateTime?
+  rejectionReason String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  evaluations         Evaluation[]
+  certificateRequests CertificateRequest[]
+
+  // Belt-and-suspenders: the same payment cannot fund the same program twice
+  // (see EnrollmentPayment.idempotencyKey for the primary double-submit guard).
+  @@unique([paymentId, programId])
+  @@index([traineeId])
+  @@index([status])
+  @@index([programId, status])
+  @@index([batchId])
+  @@index([createdAt])
+}
+
+/// One checkout submission — one GCash/Maya/Bank/Card payment that can cover
+/// 1-3 programs in a single "Confirm Payment" click. `idempotencyKey` is
+/// minted client-side when the /enroll wizard mounts and is the concrete
+/// duplicate-submit guard for the highest-risk mutation in the app (see
+/// .claude/rules/00-non-negotiables.md, "Enrollment is the highest-risk
+/// mutating flow"). desktop-01 #26-32, mobile-04 (full flow walkthrough).
+model EnrollmentPayment {
+  id               String                  @id @default(cuid())
+  traineeId        String
+  trainee          User                    @relation("PaymentTrainee", fields: [traineeId], references: [id], onDelete: Restrict)
+  idempotencyKey   String                  @unique
+  referenceCode    String                  @unique
+  paymentMethod    PaymentMethod
+  // CHECK EnrollmentPayment_total_amount_non_negative (totalAmount >= 0) —
+  // migration 20260729173000_author_rating_integrity.
+  totalAmount      Decimal                 @db.Decimal(12, 2)
+  proofImageUrl    String
+  status           EnrollmentPaymentStatus @default(SUBMITTED)
+  submittedAt      DateTime                @default(now())
+  verifiedAt       DateTime?
+  // CHECK EnrollmentPayment_no_self_verification (verifiedByUserId IS NULL
+  // OR traineeId <> verifiedByUserId) — a trainee cannot verify their own
+  // payment. Same migration.
+  verifiedByUserId String?
+  verifiedBy       User?                   @relation("PaymentVerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  rejectedAt       DateTime?
+  rejectionReason  String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  enrollments Enrollment[]
+
+  @@index([traineeId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Training delivery: evaluation, certificates, calendar, assignments, modules
+// ---------------------------------------------------------------------------
+
+/// A trainer's skill assessment of one trainee's enrollment. Drives "My
+/// Trainees > Evaluate" (desktop-02 #17-18) and the "Trained Graduate"
+/// badge on Credentials (mobile-06). "Undo Evaluation" sets revokedAt rather
+/// than deleting the row, preserving the audit trail.
+model Evaluation {
+  id              String           @id @default(cuid())
+  enrollmentId    String
+  enrollment      Enrollment       @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  trainerId       String
+  trainer         User             @relation("EvaluationTrainer", fields: [trainerId], references: [id], onDelete: Restrict)
+  skillArea       String?
+  rating          EvaluationRating
+  notes           String?
+  evaluatedAt     DateTime         @default(now())
+  revokedAt       DateTime?
+  revokedByUserId String?
+  revokedBy       User?            @relation("EvaluationRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([enrollmentId])
+  @@index([trainerId])
+}
+
+/// A request for the official e-certificate on a completed enrollment.
+/// Drives admin "Certificate Approvals" (desktop-02 #9) and the trainee
+/// Credentials "Official E-Certificate" section (mobile-03/06 — Locked ->
+/// Pending Approval -> Approved lifecycle).
+model CertificateRequest {
+  id                  String            @id @default(cuid())
+  enrollmentId        String
+  enrollment          Enrollment        @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  certificateCode     String            @unique
+  certificatePublicId String?           @unique
+  status              CertificateStatus @default(PENDING)
+  completedAt         DateTime
+  requestedAt         DateTime          @default(now())
+  approvedAt          DateTime?
+  approvedByUserId    String?
+  approvedBy          User?             @relation("CertificateApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  rejectionReason     String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([enrollmentId])
+  @@index([status])
+}
+
+/// One calendar event (Lecture/Hands-on/Workshop/Assessment). Drives
+/// trainer "Training Calendar" (desktop-02 #15) and trainee "Session
+/// Schedule" (desktop-02 #23), plus both dashboards' "Upcoming Sessions".
+model TrainingSession {
+  id          String      @id @default(cuid())
+  batchId     String
+  batch       Batch       @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  trainerId   String
+  trainer     User        @relation("SessionTrainer", fields: [trainerId], references: [id], onDelete: Restrict)
+  title       String
+  sessionType SessionType
+  sessionDate DateTime
+  startTime   String
+  location    String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  assignments Assignment[]
+
+  @@index([batchId, sessionDate])
+  @@index([trainerId, sessionDate])
+}
+
+/// A task a trainer posts to a batch. desktop-02 #19-20. Trainees submit a
+/// link/file back via AssignmentSubmission (mobile-03).
+model Assignment {
+  id                     String           @id @default(cuid())
+  batchId                String
+  batch                  Batch            @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  trainerId              String
+  trainer                User             @relation("AssignmentTrainer", fields: [trainerId], references: [id], onDelete: Restrict)
+  title                  String
+  instructions           String
+  dueDate                DateTime
+  dueTime                String
+  allowedSubmissionTypes SubmissionType[]
+  linkedSessionId        String?
+  linkedSession          TrainingSession? @relation(fields: [linkedSessionId], references: [id], onDelete: SetNull)
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  submissions AssignmentSubmission[]
+
+  @@index([batchId])
+  @@index([trainerId])
+  @@index([dueDate])
+}
+
+/// A trainee's submitted link/file for one assignment. Re-submitting
+/// updates this row rather than inserting a duplicate (mobile-03:
+/// "you can re-submit to update your answer before the deadline").
+model AssignmentSubmission {
+  id             String     @id @default(cuid())
+  assignmentId   String
+  assignment     Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  traineeId      String
+  trainee        User       @relation("SubmissionTrainee", fields: [traineeId], references: [id], onDelete: Restrict)
+  submissionLink String
+  submittedAt    DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([assignmentId, traineeId])
+}
+
+/// A trainer-uploaded learning-material file (PDF/MP4/DOCX). The same rows
+/// power trainer "Modules" (desktop-02 #21) and trainee "Materials"
+/// (desktop-02 #26) — one dataset, two views, gated by payment verification.
+model Module {
+  id            String         @id @default(cuid())
+  programId     String
+  program       Program        @relation(fields: [programId], references: [id], onDelete: Cascade)
+  trainerId     String
+  trainer       User           @relation("ModuleTrainer", fields: [trainerId], references: [id], onDelete: Restrict)
+  title         String
+  fileType      ModuleFileType
+  unitNumber    Int
+  fileUrl       String
+  // CHECK Module_file_size_bytes_non_negative (fileSizeBytes >= 0) —
+  // migration 20260729173000_author_rating_integrity.
+  fileSizeBytes Int
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([programId, unitNumber])
+  @@index([trainerId])
+}
+
+// ---------------------------------------------------------------------------
+// Site-wide admin content
+// ---------------------------------------------------------------------------
+
+/// A public notice fed into the landing page "Live Updates" ticker. Drives
+/// admin "Announcements" (desktop-02 #10).
+model Announcement {
+  id             String           @id @default(cuid())
+  title          String
+  body           String
+  mediaUrl       String?
+  mediaType      MediaType?
+  type           AnnouncementType
+  isPinned       Boolean          @default(false)
+  postedByUserId String
+  postedBy       User             @relation("AnnouncementPostedBy", fields: [postedByUserId], references: [id], onDelete: Restrict)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([isPinned, createdAt])
+}
+
+/// Admin-editable payment channel shown on /enroll Step 3 (GCash, Maya,
+/// Bank Transfer, Credit/Debit Card). Drives admin "Payment Methods"
+/// (desktop-02 #12). One row per method — never duplicated.
+model PaymentMethodConfig {
+  id              String        @id @default(cuid())
+  method          PaymentMethod @unique
+  displayName     String
+  accountNumber   String?
+  accountName     String?
+  bankName        String?
+  note            String?
+  isEnabled       Boolean       @default(true)
+  updatedByUserId String?
+  updatedBy       User?         @relation("PaymentMethodUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+/// One immutable record of a platform mutation. Drives admin "Audit Log"
+/// (desktop-02 #13, mobile-02 help section 9 — 9 confirmed categories).
+model AuditLog {
+  id          String        @id @default(cuid())
+  category    AuditCategory
+  action      String
+  description String?
+  referenceId String?
+  actorUserId String?
+  actor       User?         @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+
+  @@index([category, createdAt])
+  @@index([referenceId])
+  @@index([actorUserId])
+}
+
+/// One bell-icon notification. mobile-04 help ("Reading Your
+/// Notifications": unread badge, Unread/Read tabs, "Mark all read", last-20
+/// retention).
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("NotificationUser", fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  linkUrl   String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Forum
+// ---------------------------------------------------------------------------
+
+/// A forum or community post. Trainee-authored posts start
+/// PENDING_APPROVAL (desktop-01 guideline 5). Pinned and Trending are
+/// independent flags, not mutually exclusive states. Reaction/reply/
+/// bookmark/report counters are maintained by the service layer in the same
+/// transaction as the underlying toggle row, so they stay index-able for
+/// the "Newest / Most Active / Most Viewed / Most Reactions" sort control
+/// (desktop-02 #26, mobile-01 #26) without a live aggregate query.
+model ForumPost {
+  id               String         @id @default(cuid())
+  authorId         String
+  author           User           @relation("ForumPostAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  communityId      String?
+  community        Community?     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  category         ForumCategory?
+  title            String
+  body             String
+  hashtags         String[]
+  status           PostStatus     @default(PENDING_APPROVAL)
+  isPinned         Boolean        @default(false)
+  isTrending       Boolean        @default(false)
+  // Counters below are all CHECKed >= 0 in migration
+  // 20260729173000_author_rating_integrity (ForumPost_*_count_non_negative).
+  viewCount        Int            @default(0)
+  upvoteCount      Int            @default(0)
+  helpfulCount     Int            @default(0)
+  insightfulCount  Int            @default(0)
+  replyCount       Int            @default(0)
+  bookmarkCount    Int            @default(0)
+  reportCount      Int            @default(0)
+  approvedAt       DateTime?
+  // CHECK ForumPost_no_self_approval (approvedByUserId IS NULL OR authorId
+  // <> approvedByUserId) — a post's author cannot be its own approver,
+  // which would silently defeat "Trainee posts require approval." Same
+  // migration.
+  approvedByUserId String?
+  approvedBy       User?          @relation("ForumPostApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  replies   Reply[]
+  reactions PostReaction[]
+  bookmarks PostBookmark[]
+  reports   PostReport[]
+
+  @@index([category])
+  @@index([communityId])
+  @@index([status])
+  @@index([isPinned])
+  @@index([isTrending])
+  @@index([createdAt])
+  @@index([viewCount])
+  @@index([replyCount])
+  @@index([authorId])
+}
+
+/// A reply to a post (mobile-01 #29-30). One level deep in practice, with a
+/// self-relation available for the rare nested case.
+model Reply {
+  id              String    @id @default(cuid())
+  postId          String
+  post            ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId        String
+  author          User      @relation("ReplyAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  // CHECK Reply_no_self_parent (parentReplyId IS NULL OR parentReplyId <>
+  // id) — migration 20260729173000_author_rating_integrity.
+  parentReplyId   String?
+  parentReply     Reply?    @relation("ReplyToReply", fields: [parentReplyId], references: [id], onDelete: SetNull)
+  childReplies    Reply[]   @relation("ReplyToReply")
+  body            String
+  // Counters below are all CHECKed >= 0, same migration
+  // (Reply_*_count_non_negative).
+  upvoteCount     Int       @default(0)
+  helpfulCount    Int       @default(0)
+  insightfulCount Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  reactions ReplyReaction[]
+
+  @@index([postId])
+  @@index([parentReplyId])
+  @@index([authorId])
+}
+
+/// One user's like/helpful/insightful reaction to a post. Compound-unique so
+/// a double-fire tap cannot double-count (non-negotiables rule 3).
+model PostReaction {
+  id        String       @id @default(cuid())
+  postId    String
+  post      ForumPost    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation("PostReactionUser", fields: [userId], references: [id], onDelete: Cascade)
+  type      ReactionType
+  createdAt DateTime     @default(now())
+
+  @@unique([postId, userId, type])
+  @@index([userId])
+}
+
+/// Same idempotent-reaction pattern as PostReaction, scoped to a reply.
+model ReplyReaction {
+  id        String       @id @default(cuid())
+  replyId   String
+  reply     Reply        @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation("ReplyReactionUser", fields: [userId], references: [id], onDelete: Cascade)
+  type      ReactionType
+  createdAt DateTime     @default(now())
+
+  @@unique([replyId, userId, type])
+  @@index([userId])
+}
+
+/// One user's bookmark of a post. Compound-unique so a double-fire toggle
+/// cannot double-count. Drives the forum "Bookmarks" tab and the "My
+/// Bookmarks" rail (desktop-02 #28).
+model PostBookmark {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation("PostBookmarkUser", fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+/// A flag/report on a post (mobile-04: Spam/Harassment/Misinformation/
+/// Off-topic/Other). Compound-unique so repeat-clicking "Report" by the
+/// same user cannot file duplicates.
+model PostReport {
+  id               String       @id @default(cuid())
+  postId           String
+  post             ForumPost    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporterId       String
+  reporter         User         @relation("PostReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reason           ReportReason
+  note             String?
+  status           ReportStatus @default(PENDING)
+  resolvedAt       DateTime?
+  resolvedByUserId String?
+  resolvedBy       User?        @relation("PostReportResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  createdAt        DateTime     @default(now())
+
+  @@unique([postId, reporterId])
+  @@index([status])
+}
+
+/// One user's star rating of a forum author ("Rate this author",
+/// desktop-02 #30). Compound-unique so a re-rate updates in place instead
+/// of duplicating. Drives the author star row and the Rating Leaderboard.
+model AuthorRating {
+  id          String   @id @default(cuid())
+  // DB-level guards not expressible here — see
+  // prisma/migrations/20260729173000_author_rating_integrity/migration.sql:
+  //   AuthorRating_no_self_rating: ratedUserId <> raterUserId
+  //   AuthorRating_stars_range:    stars BETWEEN 1 AND 5
+  ratedUserId String
+  ratedUser   User     @relation("AuthorRatingRated", fields: [ratedUserId], references: [id], onDelete: Cascade)
+  raterUserId String
+  raterUser   User     @relation("AuthorRatingRater", fields: [raterUserId], references: [id], onDelete: Cascade)
+  stars       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([ratedUserId, raterUserId])
+  @@index([ratedUserId])
+}
+
+// ---------------------------------------------------------------------------
+// Communities
+// ---------------------------------------------------------------------------
+
+/// A region-scoped community addressed by slug (e.g. iloilo-it-community).
+/// Drives /communities and /communities/:slug (desktop-02 #28-29).
+model Community {
+  id           String              @id @default(cuid())
+  slug         String              @unique
+  name         String
+  region       String
+  description  String
+  rules        String[]
+  primaryTopic CommunityTopic?
+  visibility   CommunityVisibility @default(PUBLIC)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  memberships CommunityMembership[]
+  posts       ForumPost[]
+
+  @@index([region])
+  @@index([primaryTopic])
+  @@index([visibility])
+}
+
+/// One user's membership/join-request state for a community. Compound-
+/// unique so a double-fire "Join" click cannot create two rows — the same
+/// "has user done X to Y" idempotency pattern as PostBookmark/PostReaction.
+/// Public communities land APPROVED immediately; private communities start
+/// PENDING for the admin/moderator community-approval queue (mobile-03
+/// help: "Approving Community Join Requests").
+model CommunityMembership {
+  id          String           @id @default(cuid())
+  communityId String
+  community   Community        @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User             @relation("CommunityMembershipUser", fields: [userId], references: [id], onDelete: Cascade)
+  role        CommunityRole    @default(MEMBER)
+  status      MembershipStatus @default(PENDING)
+  requestedAt DateTime         @default(now())
+  joinedAt    DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([communityId, userId])
+  @@index([communityId, status])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Marketing content (no admin CRUD screen observed — see ADR open questions)
+// ---------------------------------------------------------------------------
+
+/// One photo on /gallery's "Training in Action" grid (desktop-01 #18).
+model GalleryPhoto {
+  id        String   @id @default(cuid())
+  imageUrl  String
+  caption   String?
+  // CHECK GalleryPhoto_sort_order_non_negative (sortOrder >= 0) — migration
+  // 20260729173000_author_rating_integrity.
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([sortOrder])
+}
+
+/// One graduate testimonial on the homepage "What Our Graduates Say"
+/// section (desktop-01 #4-5).
+model Testimonial {
+  id             String   @id @default(cuid())
+  quoteText      String
+  authorName     String
+  authorRole     String
+  avatarInitials String
+  badgeColor     String?
+  programId      String?
+  program        Program? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  isFeatured     Boolean  @default(false)
+  // CHECK Testimonial_sort_order_non_negative (sortOrder >= 0) — migration
+  // 20260729173000_author_rating_integrity.
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@index([sortOrder])
+}
+
+/// One question/answer pair in the /contact FAQ accordion (desktop-01 #22-25).
+model Faq {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  // CHECK Faq_sort_order_non_negative (sortOrder >= 0) — migration
+  // 20260729173000_author_rating_integrity.
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([sortOrder])
+}
