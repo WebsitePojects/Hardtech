@@ -13,7 +13,15 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import type { ProgramWithCurriculum } from "@/server/services/marketing.service";
+
+export interface ProgramsCarouselProgram {
+  id: string;
+  name: string;
+  durationLabel: string;
+  marketingEnrolledLabel: string | null;
+  iconName: string | null;
+  accentColor: string | null;
+}
 
 /**
  * "Core Programs" peeking-card carousel (docs/screens/desktop-01.md #1-2,
@@ -65,7 +73,7 @@ function resolveAccent(accentColor: string | null): string {
 export function ProgramsCarousel({
   programs,
 }: {
-  programs: ProgramWithCurriculum[];
+  programs: ProgramsCarouselProgram[];
 }) {
   const [api, setApi] = useState<CarouselApi>();
   const [selectedIndex, setSelectedIndex] = useState(0);

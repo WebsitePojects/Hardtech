@@ -1,5 +1,5 @@
 import type { ProgramWithCurriculum } from "@/server/services/marketing.service";
-import { ProgramsCarousel } from "./programs-carousel";
+import { ProgramsCarousel, type ProgramsCarouselProgram } from "./programs-carousel";
 
 /**
  * "Core Programs" section (docs/screens/desktop-01.md #1-2). The eyebrow/H2
@@ -18,6 +18,15 @@ export function ProgramsSection({
 }: {
   programs: ProgramWithCurriculum[];
 }) {
+  const carouselPrograms: ProgramsCarouselProgram[] = programs.map((program) => ({
+    id: program.id,
+    name: program.name,
+    durationLabel: program.durationLabel,
+    marketingEnrolledLabel: program.marketingEnrolledLabel,
+    iconName: program.iconName,
+    accentColor: program.accentColor,
+  }));
+
   return (
     <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
       <div className="mb-10 text-center">
@@ -28,7 +37,7 @@ export function ProgramsSection({
           Core Programs
         </h2>
       </div>
-      <ProgramsCarousel programs={programs} />
+      <ProgramsCarousel programs={carouselPrograms} />
     </section>
   );
 }

@@ -440,8 +440,510 @@ const PAYMENT_METHODS = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// Seed run
+// Demo login accounts — /login "TEST CREDENTIALS" box (desktop-02.md #1,
+// mobile-04.md #12): admin@gmail.com / trainer@gmail.com / trainee@gmail.com,
+// "Password: any value". `verifyDemoCredentials`
+// (src/server/auth/demo-credentials.ts) looks these up by *exact* email with
+// no password check, so these three rows are a hard functional requirement
+// for /login to work at all — not flavor data.
+//
+// Names are the demo personas the dashboard screenshots actually show, never
+// invented:
+//   - admin@gmail.com   -> "HardTech Admin", the forum's ADMIN-badged author
+//     (desktop-01.md #11) — the only admin persona anywhere in the corpus.
+//   - trainer@gmail.com -> "Henry Gomata Lopez", the only trainer ever shown
+//     signed into /dashboard/trainer ("Welcome, Mr. Henry Gomata Lopez",
+//     desktop-02.md #14, mobile-05.md #31).
+//   - trainee@gmail.com -> "Carlos Reyes", the trainee dashboard's default/
+//     selected "View as" persona with concrete seeded stats (desktop-02.md
+//     #22 — 68% progress, Cellphone Repair, Batch 2026-A; mobile-06.md).
+//
+// Flagged discrepancy (do not silently reconcile): desktop-02.md's own User
+// Management table (screenshot #4) shows different, also-sourced emails for
+// these same two named people — henry@hardtech.ph and carlos@gmail.com —
+// distinct from trainer@gmail.com/trainee@gmail.com and from wave-1's
+// henry.lopez@hardtechitcorp.com. Three different emails point at "Henry
+// Gomata Lopez" across the corpus. Since email is `@unique` only one row can
+// exist per address; this seed creates the two the product actually needs
+// (wave-1's existing TrainerProfile-bearing row, unedited, and this
+// login-and-dashboard-bearing row) and does not fabricate a third row for
+// User Management, a page not built this wave.
 // ---------------------------------------------------------------------------
+
+const DEMO_LOGIN_USERS = [
+  {
+    key: "demoAdmin",
+    email: "admin@gmail.com",
+    firstName: "HardTech",
+    lastName: "Admin",
+    role: "ADMIN",
+    status: "ACTIVE",
+  },
+  {
+    key: "demoTrainer",
+    email: "trainer@gmail.com",
+    firstName: "Henry Gomata",
+    lastName: "Lopez",
+    role: "TRAINER",
+    status: "ACTIVE",
+  },
+  {
+    key: "demoTrainee",
+    email: "trainee@gmail.com",
+    firstName: "Carlos",
+    lastName: "Reyes",
+    role: "TRAINEE",
+    status: "ACTIVE",
+  },
+] as const;
+
+/**
+ * Placeholder only. `verifyDemoCredentials` never reads this column for any
+ * seeded user when demo auth is enabled — deliberately NOT a real-looking
+ * hash, which would imply a check that does not happen.
+ */
+const DEMO_PASSWORD_PLACEHOLDER =
+  "demo-account-password-is-never-checked-see-verifyDemoCredentials";
+
+// ---------------------------------------------------------------------------
+// Supporting trainees — Henry's "Assigned Trainees" roster (desktop-02.md
+// #8/#16, mobile-05.md #12-14): 5 trainees incl. Carlos Reyes above. Emails
+// are sourced from the User Management table / My Trainees grid where
+// shown; Liza Cruz's is NOT SOURCED anywhere in the corpus (she appears only
+// by name) and follows wave-1's own convention for unsourced seed-only
+// login identifiers.
+// ---------------------------------------------------------------------------
+
+const SUPPORTING_TRAINEES = [
+  {
+    key: "maria",
+    email: "maria@gmail.com", // desktop-02.md #4
+    firstName: "Maria",
+    lastName: "Santos",
+    status: "ACTIVE",
+    progressPercent: 54,
+  },
+  {
+    key: "liza",
+    // NOT SOURCED — no email for Liza Cruz appears anywhere in the read
+    // corpus; seed-only login identifier, same convention as wave-1's
+    // TRAINERS emails.
+    email: "liza.cruz@gmail.com",
+    firstName: "Liza",
+    lastName: "Cruz",
+    status: "ACTIVE",
+    progressPercent: 92,
+  },
+  {
+    key: "juan",
+    email: "jdc@gmail.com", // desktop-02.md #16 My Trainees grid
+    firstName: "Juan",
+    lastName: "Dela Cruz",
+    status: "ACTIVE",
+    progressPercent: 41,
+  },
+  {
+    key: "patricia",
+    email: "patricia@gmail.com", // desktop-02.md #4
+    firstName: "Patricia",
+    lastName: "Ocampo",
+    status: "PENDING", // desktop-02.md #4 shows her account status as "pending"
+    progressPercent: 22,
+  },
+] as const;
+
+// ---------------------------------------------------------------------------
+// Communities — the 9 regional communities (desktop-02.md #29). Descriptions
+// are transcribed verbatim as truncated by the source UI or cut off by the
+// screenshot's viewport — never completed/invented. "Ilonngo" in the Iloilo
+// description is the source's own text (per docs/contracts/wave-2-app.md:
+// "The Iloilo community description really does say 'Ilonngo' — ship it
+// as-is"), not a transcription error introduced here.
+// ---------------------------------------------------------------------------
+
+const COMMUNITIES = [
+  {
+    slug: "ncr-metro-manila-technicians",
+    name: "NCR / Metro Manila Technicians",
+    region: "Metro Manila",
+    description: "The largest HardTech community — for technicians,...",
+    primaryTopic: null,
+    approvedMemberKeys: ["demoAdmin", "demoTrainer", "demoTrainee"],
+  },
+  {
+    slug: "quezon-city-repair-hub",
+    name: "Quezon City Repair Hub",
+    region: "Quezon City",
+    description: "Repair shops, freelancers, and trainees based in Quezon City....",
+    primaryTopic: "MOBILE_REPAIR",
+    approvedMemberKeys: ["maria", "juan"],
+  },
+  {
+    slug: "cebu-techs-network",
+    name: "Cebu Techs Network",
+    region: "Cebu City",
+    description: "For Visayas-based technicians. Cebu City and surrounding...",
+    primaryTopic: "TROUBLESHOOTING",
+    approvedMemberKeys: ["liza", "patricia"],
+  },
+  {
+    slug: "davao-tech-circle",
+    name: "Davao Tech Circle",
+    region: "Davao City",
+    description: "Davao Region community for mobile, desktop, and network...",
+    primaryTopic: "DESKTOP_REPAIR",
+    approvedMemberKeys: ["dylan"],
+  },
+  {
+    slug: "cavite-technicians",
+    name: "Cavite Technicians",
+    region: "Cavite",
+    description: "Cavite-based repair community. Bacoor, Imus, Dasmariñas, GM...",
+    primaryTopic: "MOBILE_REPAIR",
+    approvedMemberKeys: ["jam"],
+  },
+  {
+    slug: "laguna-tech-collective",
+    name: "Laguna Tech Collective",
+    region: "Laguna",
+    description: "Sta. Rosa, Calamba, Los Baños, San Pablo — a working...",
+    primaryTopic: "NETWORKING",
+    approvedMemberKeys: ["arl"],
+  },
+  {
+    slug: "pampanga-repair-pros",
+    name: "Pampanga Repair Pros",
+    region: "Pampanga",
+    // NOT FULLY SOURCED — cut off by the screenshot's viewport
+    // (desktop-02.md #29), only this fragment was ever visible.
+    description: "Angeles, San Fernando, Clark —",
+    primaryTopic: null,
+    approvedMemberKeys: [],
+  },
+  {
+    slug: "batangas-tech-hub",
+    name: "Batangas Tech Hub",
+    region: "Batangas",
+    description: "Lipa, Batangas City, Tanauan,", // NOT FULLY SOURCED — same reason
+    primaryTopic: null,
+    approvedMemberKeys: [],
+  },
+  {
+    slug: "iloilo-it-community",
+    name: "Iloilo IT Community",
+    region: "Iloilo City",
+    description: "For Ilonngo IT pros — repair,", // NOT FULLY SOURCED — same reason; "Ilonngo" verbatim
+    primaryTopic: null,
+    approvedMemberKeys: [],
+  },
+] as const;
+
+// ---------------------------------------------------------------------------
+// Forum posts — the 6 real posts from desktop-01.md #11-13 and desktop-02.md
+// #30-31, cross-referenced with mobile-01.md #24-30 for the one post whose
+// full (non-truncated) body/reply is available there. Every other body below
+// ends exactly where the source screenshot's own truncation ("...") cuts it
+// off — never completed. View counts sum to exactly 906 and reply counts sum
+// to exactly 9, matching the Forum Stats card (desktop-01.md #12) verbatim.
+// ---------------------------------------------------------------------------
+
+const FORUM_REFERENCE_DATE = new Date("2026-07-28T00:00:00.000Z");
+function daysBeforeReference(days: number): Date {
+  return new Date(FORUM_REFERENCE_DATE.getTime() - days * 86_400_000);
+}
+
+const FORUM_POSTS = [
+  {
+    id: "forum-post-welcome",
+    authorKey: "demoAdmin",
+    approvedByKey: null, // admin's own post — not subject to trainee-approval
+    category: "ANNOUNCEMENTS",
+    title: "Welcome to the HardTech Community Forum! 🎉",
+    // Truncated verbatim in source (desktop-01.md #11) — "-…" is where the
+    // screenshot's own ellipsis cuts a bullet list off, not this seed.
+    body: "We're thrilled to launch the official HardTech IT Corp community forum — a dedicated space for trainees, trainers, and graduates to connect, share knowledge, and grow together. What you can do here:",
+    hashtags: ["welcome", "community", "guidelines"],
+    isPinned: true,
+    isTrending: true,
+    createdAt: daysBeforeReference(434),
+    upvoteCount: 3,
+    helpfulCount: 0,
+    insightfulCount: 0,
+    viewCount: 312,
+    replyCount: 0,
+  },
+  {
+    id: "forum-post-motherboard-repair",
+    authorKey: "liza",
+    approvedByKey: "demoAdmin", // trainee post — requires approval per forum guideline 5
+    category: "GENERAL_DISCUSSION",
+    title: "I completed my first solo motherboard-level repair! 🙌",
+    body: "Just wanted to share this with the community — I successfully diagnosed and repaired a dead iPhone 12 motherboard completely on my own today, no trainer hovering! The device came in with no power and",
+    hashtags: ["success-story", "iphone-12", "motherboard", "ic-repair"],
+    isPinned: false,
+    isTrending: false,
+    createdAt: daysBeforeReference(428),
+    upvoteCount: 1,
+    helpfulCount: 0,
+    insightfulCount: 1,
+    viewCount: 92,
+    replyCount: 2,
+  },
+  {
+    id: "forum-post-repair-shop-hiring",
+    authorKey: "demoAdmin",
+    approvedByKey: null,
+    category: "CAREER_JOBS",
+    title: "Repair Shop Hiring — Mandaluyong & BGC (May 2026)",
+    body: "We've received several job referrals from partner employers this month. See the openings below. TechFixPH — SM Megamall Mandaluyong - Position: Junior Mobile Technician - Rate: ₱18,000–₱22,000/month",
+    hashtags: ["jobs", "hiring", "mandaluyong", "bgc", "career"],
+    isPinned: false,
+    isTrending: false,
+    createdAt: daysBeforeReference(429),
+    upvoteCount: 1,
+    helpfulCount: 1,
+    insightfulCount: 0,
+    viewCount: 148,
+    replyCount: 0,
+  },
+  {
+    id: "forum-post-s23-charging",
+    authorKey: "juan",
+    approvedByKey: "demoAdmin",
+    category: "TROUBLESHOOTING",
+    title:
+      "Samsung Galaxy S23 not charging after ultrasonic cleaning — board issue or connector?",
+    // Full body, not truncated — recovered from the post-detail view
+    // (mobile-01.md #28), which shows more than the forum-list excerpt.
+    body: "Took in a water-damaged S23 last week. After disassembly and ultrasonic cleaning with IPA solution, the board looks clean under a microscope — no visible corrosion remaining.\n\nProblems now:\n- Doesn't charge from USB-C (tested with 3 different cables and chargers)\n- Shows \"Moisture Detected\" even though the board is completely dry\n- Occasionally boots to Samsung logo then immediately shuts off",
+    hashtags: ["samsung", "s23", "water-damage", "usb-c", "charging"],
+    isPinned: false,
+    isTrending: false,
+    createdAt: daysBeforeReference(430),
+    upvoteCount: 0,
+    helpfulCount: 0,
+    insightfulCount: 0,
+    viewCount: 63,
+    replyCount: 1,
+  },
+  {
+    id: "forum-post-micro-soldering-toolkit",
+    authorKey: "demoTrainer",
+    approvedByKey: null,
+    category: "RESOURCES_TIPS",
+    title: "Micro-soldering starter toolkit — what you actually need vs. what's nice to have",
+    body: "After two years of hands-on micro-soldering work, here's an honest breakdown of what you truly need vs. what the YouTube channels make you think you need. Non-negotiables (Day 1 purchases): - Hakko FX",
+    hashtags: ["micro-soldering", "tools", "beginners", "resources"],
+    isPinned: false,
+    isTrending: true,
+    createdAt: daysBeforeReference(431),
+    upvoteCount: 2,
+    helpfulCount: 0,
+    insightfulCount: 1,
+    viewCount: 204,
+    replyCount: 3,
+  },
+  {
+    id: "forum-post-iphone15-screen",
+    authorKey: "demoTrainee",
+    approvedByKey: "demoAdmin",
+    category: "QA_HELP",
+    title: "How do I safely remove an iPhone 15 screen without damaging Face ID?",
+    body: "Hi everyone! I'm working on my first iPhone 15 screen replacement and I'm a bit nervous about the Face ID flex cables underneath the display assembly. My main concerns: 1. Where exactly are the Face I",
+    hashtags: ["iphone-15", "screen-replacement", "face-id"],
+    isPinned: false,
+    isTrending: true,
+    createdAt: daysBeforeReference(432),
+    upvoteCount: 0,
+    helpfulCount: 0,
+    insightfulCount: 0,
+    viewCount: 87,
+    replyCount: 3,
+  },
+] as const;
+
+/**
+ * Replies. Only forum-post-s23-charging's single reply is sourced verbatim
+ * (mobile-01.md #29-30, full text + insightfulCount=1). The other 8 replies
+ * are NOT SOURCED — no reply text for those threads appears anywhere in the
+ * read corpus — but the *count* per post (2, 3, 3) is sourced (desktop-01.md
+ * #11/#13) and must be real rows for ForumPost.replyCount/Forum Stats to add
+ * up, so short, clearly-flagged placeholder replies fill the gap rather than
+ * leaving the count unbacked by real data.
+ */
+const FORUM_REPLIES = [
+  {
+    postId: "forum-post-s23-charging",
+    authorKey: "demoTrainer",
+    body: 'The "Moisture Detected" error persisting on a clean board is a strong indicator the USB-C port itself has internal pin damage — even if it looks fine externally. Water can wick inside the port between the contacts and the plastic housing, causing intermittent shorts that the moisture sensor interprets as liquid.\n\nDiagnostic steps I\'d recommend:\n1. Replace the USB-C port first (it\'s a cheap part) before touching ICs\n2. Check continuity from the USB-C VBUS pin to the PMIC input rail\n3. If charging IC is suspect, check resistance on the charge pump output pins\n\nThe random boot-then-shutdown is likely the battery going below minimum threshold from the charging issue rather than PMIC damage. Start with the port swap — solves about 70% of these cases.',
+    insightfulCount: 1,
+  },
+  // NOT SOURCED below this line — placeholder replies backing sourced counts only.
+  {
+    postId: "forum-post-motherboard-repair",
+    authorKey: "demoTrainer",
+    body: "Nice work diagnosing that without help — motherboard-level repair on a first solo attempt is no small thing. What did you use to confirm the short before reflowing?",
+    insightfulCount: 0,
+  },
+  {
+    postId: "forum-post-motherboard-repair",
+    authorKey: "demoAdmin",
+    body: "Great milestone, Liza — mind if we feature this in next month's newsletter?",
+    insightfulCount: 0,
+  },
+  {
+    postId: "forum-post-micro-soldering-toolkit",
+    authorKey: "demoTrainee",
+    body: "Bookmarking this. Does the Hakko FX get you through logic-board work too, or is that a separate iron?",
+    insightfulCount: 0,
+  },
+  {
+    postId: "forum-post-micro-soldering-toolkit",
+    authorKey: "juan",
+    body: "This matches what we were told in class almost word for word. Appreciate you writing it down.",
+    insightfulCount: 0,
+  },
+  {
+    postId: "forum-post-micro-soldering-toolkit",
+    authorKey: "maria",
+    body: "What flux are you running with the hot air station these days?",
+    insightfulCount: 0,
+  },
+  {
+    postId: "forum-post-iphone15-screen",
+    authorKey: "demoTrainer",
+    body: "Go slow around the Face ID flex — remove the battery connector first, then work the display data cable bracket before touching the earpiece/proximity flex. Don't force the fold.",
+    insightfulCount: 1,
+  },
+  {
+    postId: "forum-post-iphone15-screen",
+    authorKey: "liza",
+    body: "I cracked my first Face ID flex the same way you're worried about. Heat the adhesive a bit longer than you think you need to before prying.",
+    insightfulCount: 0,
+  },
+  {
+    postId: "forum-post-iphone15-screen",
+    authorKey: "demoAdmin",
+    body: "Reminder to everyone: Face ID components are calibrated per-device and Apple does not support swapping them between units.",
+    insightfulCount: 0,
+  },
+] as const;
+
+/** Fixed reactor pool, most-senior-first — enough distinct users to back every post's reaction counts. */
+const REACTION_POOL = ["demoAdmin", "demoTrainer", "demoTrainee", "maria", "liza", "juan", "patricia"] as const;
+
+/**
+ * Author ratings — the Rating Leaderboard (desktop-01.md #11-13,
+ * desktop-02.md #28). Star sums are chosen so the average matches the
+ * screenshot's displayed value exactly (e.g. HardTech Admin's 4 ratings of
+ * [5,5,5,4] average 4.75, which the UI's one-decimal rounding displays as
+ * the sourced "4.8"). No rater ever rates themselves (AuthorRating_no_self_rating).
+ */
+const AUTHOR_RATINGS = [
+  { ratedKey: "demoTrainer", raterKey: "demoAdmin", stars: 5 },
+  { ratedKey: "demoTrainer", raterKey: "demoTrainee", stars: 5 },
+  { ratedKey: "demoTrainer", raterKey: "maria", stars: 5 },
+  { ratedKey: "demoTrainer", raterKey: "liza", stars: 5 },
+  { ratedKey: "liza", raterKey: "demoAdmin", stars: 5 },
+  { ratedKey: "liza", raterKey: "demoTrainer", stars: 5 },
+  { ratedKey: "demoAdmin", raterKey: "demoTrainer", stars: 5 },
+  { ratedKey: "demoAdmin", raterKey: "liza", stars: 5 },
+  { ratedKey: "demoAdmin", raterKey: "demoTrainee", stars: 5 },
+  { ratedKey: "demoAdmin", raterKey: "juan", stars: 4 },
+  { ratedKey: "demoTrainee", raterKey: "demoTrainer", stars: 4 },
+  { ratedKey: "demoTrainee", raterKey: "demoAdmin", stars: 4 },
+  { ratedKey: "maria", raterKey: "demoTrainer", stars: 4 },
+] as const;
+
+// ---------------------------------------------------------------------------
+// Dashboard content — one real batch/cohort under Henry (trainer@gmail.com)
+// so the trainer and trainee Overview pages (desktop-02.md #14/#22,
+// mobile-05.md #31-32) have real stat cards to render. Session dates are
+// deliberately shifted to run from the seed's own execution time (not the
+// screenshots' literal May 2026 dates) so "Upcoming Sessions" stays
+// genuinely upcoming no matter when this seed is (re-)run — titles, types,
+// and locations are transcribed verbatim; only the calendar date is
+// substituted. Flagged here rather than silently done.
+// ---------------------------------------------------------------------------
+
+function daysFromNow(days: number): Date {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return new Date(date.getTime() + days * 86_400_000);
+}
+
+const TRAINING_SESSIONS = [
+  {
+    id: "session-battery-charging-workshop",
+    title: "Battery & Charging Port Workshop",
+    sessionType: "WORKSHOP",
+    sessionDate: daysFromNow(14),
+    startTime: "01:00 PM",
+    location: "Lab A",
+  },
+  {
+    id: "session-screen-digitizer-replacement",
+    title: "Screen & Digitizer Replacement",
+    sessionType: "HANDS_ON",
+    sessionDate: daysFromNow(14),
+    startTime: "08:00 AM",
+    location: "Lab A",
+  },
+  {
+    id: "session-unit3-assessment",
+    title: "Unit 3 Assessment — Board Diagnostics",
+    sessionType: "ASSESSMENT",
+    sessionDate: daysFromNow(16),
+    startTime: "09:00 AM",
+    location: "Lab A",
+  },
+  {
+    id: "session-micro-soldering-fundamentals",
+    title: "Micro-Soldering Fundamentals",
+    sessionType: "LECTURE",
+    sessionDate: daysFromNow(19),
+    startTime: "08:00 AM",
+    location: "Lab A",
+  },
+] as const;
+
+const CELLPHONE_MODULES = [
+  {
+    id: "module-cellphone-unit1-fundamentals",
+    title: "Cellphone Repair Fundamentals — Unit 1",
+    fileType: "PDF",
+    unitNumber: 1,
+    fileSizeBytes: 2_400_000, // "2.4 MB"
+    createdAt: new Date("2026-03-12T00:00:00.000Z"),
+  },
+  {
+    id: "module-logic-board-anatomy-video",
+    title: "Logic Board Anatomy Video",
+    fileType: "MP4",
+    unitNumber: 2,
+    fileSizeBytes: 84_000_000, // "84 MB"
+    createdAt: new Date("2026-03-20T00:00:00.000Z"),
+  },
+  {
+    id: "module-micro-soldering-tools-guide",
+    title: "Micro-Soldering Tools Guide",
+    fileType: "PDF",
+    unitNumber: 2,
+    fileSizeBytes: 1_100_000, // "1.1 MB"
+    createdAt: new Date("2026-04-05T00:00:00.000Z"),
+  },
+  {
+    id: "module-assessment-quiz-unit2",
+    title: "Assessment Quiz — Unit 2",
+    fileType: "DOCX",
+    unitNumber: 2,
+    fileSizeBytes: 300_000, // "0.3 MB"
+    createdAt: new Date("2026-04-18T00:00:00.000Z"),
+  },
+] as const;
+
+// fileUrl values below follow the same placeholder-path convention as
+// GALLERY_PHOTOS above — NOT sourced URLs, no real files were provided.
 
 async function main() {
   // 1. Trainer Users — upsert by email (unique).
@@ -606,10 +1108,390 @@ async function main() {
     });
   }
 
+  // 8. Demo login accounts + supporting trainees — upsert by email (unique).
+  // Reuses `userIdByKey` from step 1 so every later step (forum authors,
+  // ratings, batch/enrollment data) can resolve any of these users the same
+  // way it resolves the 4 wave-1 trainers.
+  for (const demoUser of DEMO_LOGIN_USERS) {
+    const user = await prisma.user.upsert({
+      where: { email: demoUser.email },
+      update: {
+        firstName: demoUser.firstName,
+        lastName: demoUser.lastName,
+        role: demoUser.role,
+        status: demoUser.status,
+      },
+      create: {
+        email: demoUser.email,
+        passwordHash: DEMO_PASSWORD_PLACEHOLDER,
+        firstName: demoUser.firstName,
+        lastName: demoUser.lastName,
+        role: demoUser.role,
+        status: demoUser.status,
+      },
+    });
+    userIdByKey.set(demoUser.key, user.id);
+  }
+
+  for (const trainee of SUPPORTING_TRAINEES) {
+    const user = await prisma.user.upsert({
+      where: { email: trainee.email },
+      update: {
+        firstName: trainee.firstName,
+        lastName: trainee.lastName,
+        role: "TRAINEE",
+        status: trainee.status,
+      },
+      create: {
+        email: trainee.email,
+        passwordHash: hashSeedPassword(randomBytes(24).toString("hex")),
+        firstName: trainee.firstName,
+        lastName: trainee.lastName,
+        role: "TRAINEE",
+        status: trainee.status,
+      },
+    });
+    userIdByKey.set(trainee.key, user.id);
+  }
+
+  // 9. Communities — upsert by slug (unique).
+  const communityIdBySlug = new Map<string, string>();
+  for (const community of COMMUNITIES) {
+    const record = await prisma.community.upsert({
+      where: { slug: community.slug },
+      update: {
+        name: community.name,
+        region: community.region,
+        description: community.description,
+        primaryTopic: community.primaryTopic,
+        visibility: "PUBLIC",
+        rules: [], // no per-community rules sourced anywhere in the corpus
+      },
+      create: {
+        slug: community.slug,
+        name: community.name,
+        region: community.region,
+        description: community.description,
+        primaryTopic: community.primaryTopic,
+        visibility: "PUBLIC",
+        rules: [],
+      },
+    });
+    communityIdBySlug.set(community.slug, record.id);
+  }
+
+  // 10. Community memberships — upsert by the (communityId, userId) compound
+  // unique, so re-running never duplicates a membership row.
+  for (const community of COMMUNITIES) {
+    const communityId = communityIdBySlug.get(community.slug);
+    if (!communityId) continue;
+    for (const memberKey of community.approvedMemberKeys) {
+      const userId = userIdByKey.get(memberKey);
+      if (!userId) continue;
+      await prisma.communityMembership.upsert({
+        where: { communityId_userId: { communityId, userId } },
+        update: { status: "APPROVED", role: "MEMBER", joinedAt: new Date() },
+        create: {
+          communityId,
+          userId,
+          status: "APPROVED",
+          role: "MEMBER",
+          joinedAt: new Date(),
+        },
+      });
+    }
+  }
+
+  // 11. Forum posts — ForumPost has no natural unique key, so this is the
+  // same delete-then-recreate pattern as Testimonial/GalleryPhoto/Faq above,
+  // scoped to nothing else touching this table. Deleting cascades away this
+  // run's Reply/PostReaction/PostBookmark/PostReport rows automatically
+  // (all four have `onDelete: Cascade` on their postId FK), so children are
+  // recreated fresh in the steps below without a separate deleteMany each.
+  await prisma.forumPost.deleteMany({});
+  await prisma.forumPost.createMany({
+    data: FORUM_POSTS.map((post) => {
+      const authorId = userIdByKey.get(post.authorKey);
+      if (!authorId) {
+        throw new Error(`seed: forum post ${post.id} has no resolvable author (${post.authorKey})`);
+      }
+      const approvedByUserId = post.approvedByKey ? (userIdByKey.get(post.approvedByKey) ?? null) : null;
+      return {
+        id: post.id,
+        authorId,
+        communityId: null,
+        category: post.category,
+        title: post.title,
+        body: post.body,
+        hashtags: [...post.hashtags],
+        status: "PUBLISHED" as const,
+        isPinned: post.isPinned,
+        isTrending: post.isTrending,
+        viewCount: post.viewCount,
+        upvoteCount: post.upvoteCount,
+        helpfulCount: post.helpfulCount,
+        insightfulCount: post.insightfulCount,
+        replyCount: post.replyCount,
+        bookmarkCount: 0, // sourced: forum sidebar shows "My Bookmarks — No bookmarks yet"
+        reportCount: 0, // no reports observed anywhere in the corpus
+        approvedAt: approvedByUserId ? post.createdAt : null,
+        approvedByUserId, // never equals authorId — respects ForumPost_no_self_approval
+        createdAt: post.createdAt,
+      };
+    }),
+  });
+
+  // 12. Replies — createMany against the literal post ids assigned above.
+  await prisma.reply.createMany({
+    data: FORUM_REPLIES.map((reply) => {
+      const authorId = userIdByKey.get(reply.authorKey);
+      if (!authorId) {
+        throw new Error(`seed: reply on ${reply.postId} has no resolvable author (${reply.authorKey})`);
+      }
+      return {
+        postId: reply.postId,
+        authorId,
+        body: reply.body,
+        upvoteCount: 0,
+        helpfulCount: 0,
+        insightfulCount: reply.insightfulCount,
+      };
+    }),
+  });
+
+  // 13. Post reactions — real toggle rows backing each post's denormalized
+  // counters, so forum.service.ts's per-viewer "has reacted" check has
+  // something real to query instead of the counts existing in isolation.
+  function reactorsFor(excludeKey: string, count: number): string[] {
+    return REACTION_POOL.filter((key) => key !== excludeKey).slice(0, count);
+  }
+  const postReactionRows: { postId: string; userId: string; type: "UPVOTE" | "HELPFUL" | "INSIGHTFUL" }[] = [];
+  for (const post of FORUM_POSTS) {
+    const reactionsByType: [ "UPVOTE" | "HELPFUL" | "INSIGHTFUL", number ][] = [
+      ["UPVOTE", post.upvoteCount],
+      ["HELPFUL", post.helpfulCount],
+      ["INSIGHTFUL", post.insightfulCount],
+    ];
+    for (const [type, count] of reactionsByType) {
+      if (count === 0) continue;
+      for (const reactorKey of reactorsFor(post.authorKey, count)) {
+        const userId = userIdByKey.get(reactorKey);
+        if (!userId) continue;
+        postReactionRows.push({ postId: post.id, userId, type });
+      }
+    }
+  }
+  await prisma.postReaction.createMany({ data: postReactionRows, skipDuplicates: true });
+
+  // 14. Author ratings — upsert by the (ratedUserId, raterUserId) compound
+  // unique. Never rated <> rater (AuthorRating_no_self_rating is live and
+  // tested — see prisma/migrations/20260729173000_author_rating_integrity).
+  for (const rating of AUTHOR_RATINGS) {
+    const ratedUserId = userIdByKey.get(rating.ratedKey);
+    const raterUserId = userIdByKey.get(rating.raterKey);
+    if (!ratedUserId || !raterUserId) continue;
+    await prisma.authorRating.upsert({
+      where: { ratedUserId_raterUserId: { ratedUserId, raterUserId } },
+      update: { stars: rating.stars },
+      create: { ratedUserId, raterUserId, stars: rating.stars },
+    });
+  }
+
+  // 15. Trainer batch + calendar + modules + trainee enrollments — the data
+  // backing dashboard.service.ts's trainer/trainee Overview reads.
+  const cellphoneProgramId = programIdByKey.get("cellphone");
+  const cellphoneProgram = PROGRAMS.find((program) => program.key === "cellphone");
+  const trainerId = userIdByKey.get("demoTrainer");
+
+  if (cellphoneProgramId && cellphoneProgram && trainerId) {
+    const batch = await prisma.batch.upsert({
+      where: { programId_code: { programId: cellphoneProgramId, code: "2026-A" } },
+      update: { trainerId, scheduleLabel: cellphoneProgram.scheduleLabel, startDate: new Date("2026-03-10T00:00:00.000Z") },
+      create: {
+        programId: cellphoneProgramId,
+        trainerId,
+        code: "2026-A",
+        scheduleLabel: cellphoneProgram.scheduleLabel,
+        startDate: new Date("2026-03-10T00:00:00.000Z"),
+      },
+    });
+
+    // TrainingSession has no natural unique key — scope the delete-then-recreate to this batch.
+    await prisma.trainingSession.deleteMany({ where: { batchId: batch.id } });
+    await prisma.trainingSession.createMany({
+      data: TRAINING_SESSIONS.map((session) => ({
+        id: session.id,
+        batchId: batch.id,
+        trainerId,
+        title: session.title,
+        sessionType: session.sessionType,
+        sessionDate: session.sessionDate,
+        startTime: session.startTime,
+        location: session.location,
+      })),
+    });
+
+    // Module has no natural unique key — scope the delete-then-recreate to this program.
+    await prisma.module.deleteMany({ where: { programId: cellphoneProgramId } });
+    await prisma.module.createMany({
+      data: CELLPHONE_MODULES.map((module) => ({
+        id: module.id,
+        programId: cellphoneProgramId,
+        trainerId,
+        title: module.title,
+        fileType: module.fileType,
+        unitNumber: module.unitNumber,
+        fileUrl: `/files/modules/${module.id}.${module.fileType.toLowerCase()}`, // NOT SOURCED — placeholder path, no real file was provided
+        fileSizeBytes: module.fileSizeBytes,
+        createdAt: module.createdAt,
+      })),
+    });
+
+    // Enrollments — the 5 trainees on Henry's "Assigned Trainees" roster
+    // (desktop-02.md #8/#16), each with its own verified EnrollmentPayment.
+    const traineeEnrollments: {
+      key: string;
+      progressPercent: number;
+      status: "COMPLETED" | "ACTIVE";
+    }[] = [
+      { key: "demoTrainee", progressPercent: 68, status: "ACTIVE" as const },
+      ...SUPPORTING_TRAINEES.map((trainee) => ({
+        key: trainee.key,
+        progressPercent: trainee.progressPercent,
+        // Liza Cruz is the one trainee already evaluated ("Trained" badge,
+        // desktop-02.md #16) with a pending certificate request — her
+        // enrollment is COMPLETED, not still ACTIVE.
+        status: trainee.key === "liza" ? ("COMPLETED" as const) : ("ACTIVE" as const),
+      })),
+    ];
+
+    let lizaEnrollmentId: string | null = null;
+    for (const enrollment of traineeEnrollments) {
+      const traineeId = userIdByKey.get(enrollment.key);
+      if (!traineeId) continue;
+
+      const referenceCode = `HT-ENR-SEED-${enrollment.key.toUpperCase()}`;
+      const payment = await prisma.enrollmentPayment.upsert({
+        where: { referenceCode },
+        update: {
+          traineeId,
+          totalAmount: "5000.00",
+          status: "VERIFIED",
+          verifiedAt: new Date("2026-03-10T00:00:00.000Z"),
+          verifiedByUserId: userIdByKey.get("demoAdmin") ?? null,
+        },
+        create: {
+          traineeId,
+          idempotencyKey: `seed-payment-${enrollment.key}`,
+          referenceCode,
+          paymentMethod: "GCASH",
+          totalAmount: "5000.00",
+          proofImageUrl: `/files/payment-proofs/${enrollment.key}.jpg`, // NOT SOURCED — placeholder path
+          status: "VERIFIED",
+          submittedAt: new Date("2026-03-09T00:00:00.000Z"),
+          verifiedAt: new Date("2026-03-10T00:00:00.000Z"),
+          verifiedByUserId: userIdByKey.get("demoAdmin") ?? null,
+        },
+      });
+
+      const enrollmentRecord = await prisma.enrollment.upsert({
+        where: { paymentId_programId: { paymentId: payment.id, programId: cellphoneProgramId } },
+        update: {
+          batchId: batch.id,
+          amount: "5000.00",
+          status: enrollment.status,
+          progressPercent: enrollment.progressPercent,
+          startDate: batch.startDate,
+        },
+        create: {
+          enrollmentRef: `ENR-SEED-${enrollment.key.toUpperCase()}`,
+          traineeId,
+          programId: cellphoneProgramId,
+          batchId: batch.id,
+          paymentId: payment.id,
+          amount: "5000.00",
+          status: enrollment.status,
+          progressPercent: enrollment.progressPercent,
+          startDate: batch.startDate,
+        },
+      });
+
+      if (enrollment.key === "liza") lizaEnrollmentId = enrollmentRecord.id;
+    }
+
+    // Evaluation + CertificateRequest for Liza Cruz (desktop-02.md #9/#16 —
+    // "Trained" badge, pending CRT-1004).
+    if (lizaEnrollmentId) {
+      await prisma.evaluation.deleteMany({ where: { enrollmentId: lizaEnrollmentId } });
+      await prisma.evaluation.create({
+        data: {
+          enrollmentId: lizaEnrollmentId,
+          trainerId,
+          rating: "CERTIFIED",
+          evaluatedAt: new Date("2026-05-09T00:00:00.000Z"),
+        },
+      });
+
+      await prisma.certificateRequest.upsert({
+        where: { certificateCode: "CRT-1004" },
+        update: {
+          enrollmentId: lizaEnrollmentId,
+          status: "PENDING",
+          completedAt: new Date("2026-05-09T00:00:00.000Z"),
+        },
+        create: {
+          enrollmentId: lizaEnrollmentId,
+          certificateCode: "CRT-1004",
+          status: "PENDING",
+          completedAt: new Date("2026-05-09T00:00:00.000Z"),
+          requestedAt: new Date("2026-05-10T00:00:00.000Z"),
+        },
+      });
+    }
+  }
+
+  // 16. Notifications — the admin bell panel (mobile-05.md #30). No natural
+  // unique key; scoped delete-then-recreate for this one seeded user.
+  const demoAdminId = userIdByKey.get("demoAdmin");
+  if (demoAdminId) {
+    await prisma.notification.deleteMany({ where: { userId: demoAdminId } });
+    await prisma.notification.createMany({
+      data: [
+        {
+          userId: demoAdminId,
+          title: "New enrollment to review",
+          body: "Juan Dela Cruz enrolled in I.T. Software Development.",
+          isRead: false,
+        },
+        {
+          userId: demoAdminId,
+          title: "New enrollment to review",
+          body: "Juan Dela Cruz enrolled in Cellphone Hardware Servicing.",
+          isRead: false,
+        },
+        {
+          userId: demoAdminId,
+          title: "New enrollment to review",
+          body: "Juan Dela Cruz enrolled in Computer Hardware Servicing.",
+          isRead: false,
+        },
+        {
+          userId: demoAdminId,
+          title: "3 enrollments awaiting approval",
+          body: "Review the pending queue under Enrollments.",
+          isRead: false,
+        },
+      ],
+    });
+  }
+
   console.log(
     `Seeded ${TRAINERS.length} trainers, ${PROGRAMS.length} programs, ` +
       `${TESTIMONIALS.length} testimonials, ${GALLERY_PHOTOS.length} gallery photos, ` +
-      `${FAQS.length} FAQs, ${PAYMENT_METHODS.length} payment methods.`,
+      `${FAQS.length} FAQs, ${PAYMENT_METHODS.length} payment methods, ` +
+      `${DEMO_LOGIN_USERS.length} demo login users, ${SUPPORTING_TRAINEES.length} supporting trainees, ` +
+      `${COMMUNITIES.length} communities, ${FORUM_POSTS.length} forum posts, ` +
+      `${FORUM_REPLIES.length} replies, ${AUTHOR_RATINGS.length} author ratings.`,
   );
 }
 
