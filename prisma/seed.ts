@@ -53,14 +53,14 @@ function hashSeedPassword(password: string): string {
 // ---------------------------------------------------------------------------
 // Trainers — the 4 named staff on /about (desktop-01 #9, mobile-01 #16-20).
 // Facebook handles from docs/research/01-design-source.md. Emails are not
-// shown in any screenshot; they are seed-only login identifiers following an
+// not shown in screenshots; they are seed-only login identifiers following an
 // obvious institutional pattern, not sourced content.
 // ---------------------------------------------------------------------------
 
 const TRAINERS = [
   {
     key: "henry",
-    email: "henry.lopez@hardtechitcorp.com",
+    email: "trainer@gmail.com",
     firstName: "Henry Gomata",
     lastName: "Lopez",
     title: "Owner & President",
@@ -122,6 +122,8 @@ const TRAINERS = [
     primaryProgramKey: "cellphone",
   },
 ] as const;
+
+const LEGACY_HENRY_EMAIL = "henry.lopez@hardtechitcorp.com";
 
 // ---------------------------------------------------------------------------
 // Programs — the 5-program catalog confirmed in docs/screens/desktop-02.md
@@ -395,7 +397,7 @@ const FAQS = [
 // Payment methods — /enroll Step 3 picker (desktop-01 #27-29, mobile-04
 // #21-22). GCash's remittance details are the only ones shown on screen
 // (desktop-01 #28: Number 0917-123-4567, Account Name "HardTech IT Corp").
-// Maya/Bank Transfer/Card never show an account number or bank name on any
+// Maya/Bank Transfer/Card never show an account number or bank name on the
 // screen — their `note` fields capture only the sub-labels that ARE shown
 // ("Instant transfer", "BDO, BPI, Metrobank", "Visa / Mastercard").
 // ---------------------------------------------------------------------------
@@ -442,7 +444,7 @@ const PAYMENT_METHODS = [
 // ---------------------------------------------------------------------------
 // Demo login accounts — /login "TEST CREDENTIALS" box (desktop-02.md #1,
 // mobile-04.md #12): admin@gmail.com / trainer@gmail.com / trainee@gmail.com,
-// "Password: any value". `verifyDemoCredentials`
+// "Password: arbitrary value". `verifyDemoCredentials`
 // (src/server/auth/demo-credentials.ts) looks these up by *exact* email with
 // no password check, so these three rows are a hard functional requirement
 // for /login to work at all — not flavor data.
@@ -498,7 +500,7 @@ const DEMO_LOGIN_USERS = [
 ] as const;
 
 /**
- * Placeholder only. `verifyDemoCredentials` never reads this column for any
+ * Placeholder only. `verifyDemoCredentials` never reads this column for seeded
  * seeded user when demo auth is enabled — deliberately NOT a real-looking
  * hash, which would imply a check that does not happen.
  */
@@ -942,6 +944,110 @@ const CELLPHONE_MODULES = [
   },
 ] as const;
 
+const ASSIGNMENTS = [
+  {
+    id: "assignment-unit-3-lab-report",
+    title: "Unit 3 Lab Report",
+    instructions: "Instructions for trainees...",
+    dueDate: new Date("2026-07-28T00:00:00.000Z"),
+    dueTime: "11:59 PM",
+    allowedSubmissionTypes: ["IMAGE", "VIDEO", "DOCUMENT"],
+    linkedSessionId: "session-unit3-assessment",
+  },
+] as const;
+
+const ASSIGNMENT_SUBMISSIONS = [
+  {
+    assignmentId: "assignment-unit-3-lab-report",
+    traineeKey: "demoTrainee",
+    submissionLink: "image, video, or document files",
+    submittedAt: new Date("2026-07-28T00:00:00.000Z"),
+  },
+] as const;
+
+const ANNOUNCEMENTS = [
+  {
+    title: "June 2026 Batch Enrollments Now Open!",
+    body: "New batches for all programs are accepting enrollments. Limited slots — secure yours before they fill up.",
+    type: "UPDATE",
+    isPinned: true,
+    createdAt: new Date("2026-05-25T00:00:00.000Z"),
+  },
+  {
+    title: "Holiday Schedule — June 12",
+    body: "Classes are suspended on June 12 (Independence Day). Regular schedule resumes on June 13, 2026.",
+    type: "NOTICE",
+    isPinned: false,
+    createdAt: new Date("2026-05-20T00:00:00.000Z"),
+  },
+] as const;
+
+const AUDIT_LOG_ENTRIES = [
+  {
+    category: "PAYMENT",
+    action: "Verified payment",
+    description: "ENR-ms49u61n-7ntf",
+    actorKey: "demoAdmin",
+    createdAt: new Date("2026-07-28T06:25:00.000Z"),
+  },
+  {
+    category: "ENROLLMENT",
+    action: "Enrollment approved",
+    description: "ENR-ms49u61n-7ntf",
+    actorKey: "demoAdmin",
+    createdAt: new Date("2026-07-28T06:25:00.000Z"),
+  },
+  {
+    category: "ENROLLMENT",
+    action: "Re-enrolled in program",
+    description: "ENR-ms49u61n-7ntf — I.T. Software Development",
+    actorKey: "juan",
+    createdAt: new Date("2026-07-28T06:25:00.000Z"),
+  },
+  {
+    category: "ENROLLMENT",
+    action: "Re-enrolled in program",
+    description: "ENR-ms49u61n-ddp2 — Cellphone Hardware Servicing",
+    actorKey: "juan",
+    createdAt: new Date("2026-07-28T06:25:00.000Z"),
+  },
+  {
+    category: "ENROLLMENT",
+    action: "Re-enrolled in program",
+    description: "ENR-ms49u61k-ke8k — Computer Hardware Servicing",
+    actorKey: "juan",
+    createdAt: new Date("2026-07-28T06:25:00.000Z"),
+  },
+  {
+    category: "ENROLLMENT",
+    action: "Approved enrollment",
+    description: "ENR-0086 — Carlos Reyes",
+    actorKey: "demoAdmin",
+    createdAt: new Date("2026-05-14T01:12:00.000Z"),
+  },
+  {
+    category: "PAYMENT",
+    action: "Verified payment",
+    description: "ENR-0086 — ₱5,000",
+    actorKey: "demoAdmin",
+    createdAt: new Date("2026-05-14T01:13:00.000Z"),
+  },
+  {
+    category: "CALENDAR",
+    action: "Created event",
+    description: "EV-3 — Board Diagnostics Assessment",
+    actorKey: "demoTrainer",
+    createdAt: new Date("2026-05-13T08:40:00.000Z"),
+  },
+  {
+    category: "USER",
+    action: "Updated role",
+    description: "U-007 → trainer",
+    actorKey: "demoAdmin",
+    createdAt: new Date("2026-05-12T02:05:00.000Z"),
+  },
+] as const;
+
 // fileUrl values below follow the same placeholder-path convention as
 // GALLERY_PHOTOS above — NOT sourced URLs, no real files were provided.
 
@@ -1062,6 +1168,36 @@ async function main() {
 
   // 4. Testimonials — no natural unique key; delete-then-recreate the whole
   // marketing table.
+  const canonicalHenryId = userIdByKey.get("henry");
+  const legacyHenry = await prisma.user.findUnique({ where: { email: LEGACY_HENRY_EMAIL } });
+  if (canonicalHenryId && legacyHenry && legacyHenry.id !== canonicalHenryId) {
+    await prisma.program.updateMany({
+      where: { primaryTrainerId: legacyHenry.id },
+      data: { primaryTrainerId: canonicalHenryId },
+    });
+    await prisma.batch.updateMany({
+      where: { trainerId: legacyHenry.id },
+      data: { trainerId: canonicalHenryId },
+    });
+    await prisma.trainingSession.updateMany({
+      where: { trainerId: legacyHenry.id },
+      data: { trainerId: canonicalHenryId },
+    });
+    await prisma.assignment.updateMany({
+      where: { trainerId: legacyHenry.id },
+      data: { trainerId: canonicalHenryId },
+    });
+    await prisma.module.updateMany({
+      where: { trainerId: legacyHenry.id },
+      data: { trainerId: canonicalHenryId },
+    });
+    await prisma.evaluation.updateMany({
+      where: { trainerId: legacyHenry.id },
+      data: { trainerId: canonicalHenryId },
+    });
+    await prisma.user.delete({ where: { id: legacyHenry.id } });
+  }
+
   await prisma.testimonial.deleteMany({});
   await prisma.testimonial.createMany({
     data: TESTIMONIALS.map((testimonial, index) => ({
@@ -1110,7 +1246,7 @@ async function main() {
 
   // 8. Demo login accounts + supporting trainees — upsert by email (unique).
   // Reuses `userIdByKey` from step 1 so every later step (forum authors,
-  // ratings, batch/enrollment data) can resolve any of these users the same
+  // ratings, batch/enrollment data) can resolve these users the same
   // way it resolves the 4 wave-1 trainers.
   for (const demoUser of DEMO_LOGIN_USERS) {
     const user = await prisma.user.upsert({
@@ -1317,6 +1453,7 @@ async function main() {
     });
 
     // TrainingSession has no natural unique key — scope the delete-then-recreate to this batch.
+    await prisma.assignment.deleteMany({ where: { batchId: batch.id } });
     await prisma.trainingSession.deleteMany({ where: { batchId: batch.id } });
     await prisma.trainingSession.createMany({
       data: TRAINING_SESSIONS.map((session) => ({
@@ -1328,6 +1465,20 @@ async function main() {
         sessionDate: session.sessionDate,
         startTime: session.startTime,
         location: session.location,
+      })),
+    });
+
+    await prisma.assignment.createMany({
+      data: ASSIGNMENTS.map((assignment) => ({
+        id: assignment.id,
+        batchId: batch.id,
+        trainerId,
+        title: assignment.title,
+        instructions: assignment.instructions,
+        dueDate: assignment.dueDate,
+        dueTime: assignment.dueTime,
+        allowedSubmissionTypes: [...assignment.allowedSubmissionTypes],
+        linkedSessionId: assignment.linkedSessionId,
       })),
     });
 
@@ -1421,6 +1572,21 @@ async function main() {
 
     // Evaluation + CertificateRequest for Liza Cruz (desktop-02.md #9/#16 —
     // "Trained" badge, pending CRT-1004).
+    await prisma.assignmentSubmission.createMany({
+      data: ASSIGNMENT_SUBMISSIONS.flatMap((submission) => {
+        const traineeId = userIdByKey.get(submission.traineeKey);
+        if (!traineeId) return [];
+        return [
+          {
+            assignmentId: submission.assignmentId,
+            traineeId,
+            submissionLink: submission.submissionLink,
+            submittedAt: submission.submittedAt,
+          },
+        ];
+      }),
+    });
+
     if (lizaEnrollmentId) {
       await prisma.evaluation.deleteMany({ where: { enrollmentId: lizaEnrollmentId } });
       await prisma.evaluation.create({
@@ -1485,13 +1651,41 @@ async function main() {
     });
   }
 
+  if (demoAdminId) {
+    await prisma.announcement.deleteMany({});
+    await prisma.announcement.createMany({
+      data: ANNOUNCEMENTS.map((announcement) => ({
+        title: announcement.title,
+        body: announcement.body,
+        type: announcement.type,
+        isPinned: announcement.isPinned,
+        postedByUserId: demoAdminId,
+        createdAt: announcement.createdAt,
+      })),
+    });
+  }
+
+  await prisma.auditLog.deleteMany({});
+  await prisma.auditLog.createMany({
+    data: AUDIT_LOG_ENTRIES.map((entry) => ({
+      category: entry.category,
+      action: entry.action,
+      description: entry.description,
+      referenceId: null,
+      actorUserId: userIdByKey.get(entry.actorKey) ?? null,
+      createdAt: entry.createdAt,
+    })),
+  });
+
   console.log(
     `Seeded ${TRAINERS.length} trainers, ${PROGRAMS.length} programs, ` +
       `${TESTIMONIALS.length} testimonials, ${GALLERY_PHOTOS.length} gallery photos, ` +
       `${FAQS.length} FAQs, ${PAYMENT_METHODS.length} payment methods, ` +
       `${DEMO_LOGIN_USERS.length} demo login users, ${SUPPORTING_TRAINEES.length} supporting trainees, ` +
       `${COMMUNITIES.length} communities, ${FORUM_POSTS.length} forum posts, ` +
-      `${FORUM_REPLIES.length} replies, ${AUTHOR_RATINGS.length} author ratings.`,
+      `${FORUM_REPLIES.length} replies, ${AUTHOR_RATINGS.length} author ratings, ` +
+      `${ASSIGNMENTS.length} assignments, ${ASSIGNMENT_SUBMISSIONS.length} assignment submissions, ` +
+      `${ANNOUNCEMENTS.length} announcements, ${AUDIT_LOG_ENTRIES.length} audit log entries.`,
   );
 }
 

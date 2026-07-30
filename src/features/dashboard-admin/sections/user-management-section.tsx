@@ -4,20 +4,35 @@ import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-heade
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getAdminUserList } from "@/server/services/dashboard.service";
 import { ADMIN_ROLE_FILTER_OPTIONS } from "../confirmed-options";
 import { DataNotConnectedNote } from "../components/data-not-connected-note";
 import { UserManagementRow, type UserManagementItem } from "../components/user-management-row";
 
-// NOT SOURCED: dashboard.service has no user-list read (only
-// userRepository.countAll() via getAdminOverviewStats). Typed and mapped
-// for real below so UserManagementRow's mutation guards are exercised by
-// real code; it is simply fed no rows until that read exists.
-const USERS: UserManagementItem[] = [];
+function initialsFor(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
 
 /**
  * "User Management" (desktop-02.md #4-7, mobile-05.md #5-11).
  */
-export function UserManagementSection() {
+export async function UserManagementSection() {
+  const users: UserManagementItem[] = (await getAdminUserList()).map((user) => ({
+    id: user.id,
+    name: user.name,
+    initials: initialsFor(user.name),
+    email: user.email,
+    role: user.role,
+    programLabel: user.program,
+    status: user.status,
+  }));
+
   return (
     <div className="space-y-6">
       <DashboardPageHeader
@@ -56,14 +71,14 @@ export function UserManagementSection() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {USERS.length === 0 ? (
+          {users.length === 0 ? (
             <TableRow>
               <TableCell colSpan={6} className="whitespace-normal py-6">
-                <DataNotConnectedNote detail="The user list has no service read yet." />
+                <DataNotConnectedNote detail="No users found." />
               </TableCell>
             </TableRow>
           ) : (
-            USERS.map((user) => <UserManagementRow key={user.id} user={user} />)
+            users.map((user) => <UserManagementRow key={user.id} user={user} />)
           )}
         </TableBody>
       </Table>

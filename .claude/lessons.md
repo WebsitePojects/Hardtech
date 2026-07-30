@@ -15,6 +15,49 @@ Format:
 
 ---
 
+## 2026-07-31 — A 307 is not proof that a page renders
+
+**Symptom:** A builder agent reported `/dashboard/admin` verified, quoting HTTP
+`307`. The acceptance test in its brief literally asked for 307. Fetching the
+same route with a valid admin session returned **500** on three of nine
+sections.
+
+**Cause:** `307` is the auth gate redirecting an anonymous request to `/login`.
+It exercises `proxy.ts` and nothing else — not the page, not a service, not a
+query. Any route behind an auth gate returns 307 whether its body is perfect or
+throws on the first line. The acceptance criterion tested the guard and called
+it a test of the guarded thing.
+
+**Rule:** For a gated route, the unauthenticated status code is a precondition,
+never the verification. Mint a real signed session (`signSessionToken` from
+`src/server/auth/session-token.ts`), send it as the `hardtech_session` cookie,
+fetch **every** section, and assert on rendered content — a known row, a stat
+that matches a counted value. Write acceptance criteria that a broken page
+cannot satisfy.
+
+---
+
+## 2026-07-31 — "Stale connection pool" was wrong twice; the database was simply dead
+
+**Symptom:** Admin sections 500'd with `Server has closed the connection` on a
+`$queryRaw`. The reflex diagnosis — the long-lived dev-server pool holding
+connections killed by a reseed — had already been wrong once earlier in the
+build.
+
+**Cause:** The `prisma dev` Postgres backing the local database had died while
+its proxy kept listening on the same port, so the port probe looked healthy and
+`netstat` showed LISTENING. Connections were accepted and then reset. Restarting
+the Next dev server changed nothing, because the dev server was never the
+problem. A bare `pg.Client` reproduced `ECONNRESET` with no framework involved.
+
+**Rule:** Before blaming an application-level pool, drop to the lowest layer
+that can fail: connect with `pg` directly. A listening port proves a process is
+bound, not that the database behind it is alive. Recovery is
+`npx prisma dev stop <name>` then `start <name>` — restarting the app server
+treats a symptom. Data survives the cycle; the counts were identical afterwards.
+
+---
+
 ## 2026-07-29 — A migration that "reconciles" can still be unrunnable
 
 **Symptom:** The generated baseline migration matched the schema perfectly —

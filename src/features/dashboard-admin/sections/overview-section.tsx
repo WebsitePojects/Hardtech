@@ -7,7 +7,8 @@ import {
   DashboardStatGrid,
 } from "@/components/dashboard/dashboard-stat-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
-import { getAdminOverviewStats } from "@/server/services/dashboard.service";
+import { getAdminAnalytics, getAdminOverviewStats } from "@/server/services/dashboard.service";
+import { OverviewRevenueEnrollmentsChart } from "../components/admin-analytics-charts";
 import { formatPesoCompact } from "../format-peso";
 import { DataNotConnectedNote } from "../components/data-not-connected-note";
 
@@ -22,8 +23,13 @@ const PROGRAM_MIX_TONES = ["bg-primary", "bg-primary-light", "bg-brand-blue", "b
  * docstring for why the other 8 sections are structure-only.
  */
 export async function OverviewSection() {
-  const stats = await getAdminOverviewStats();
+  const [stats, analytics] = await Promise.all([getAdminOverviewStats(), getAdminAnalytics(6)]);
   const totalProgramMix = stats.programMix.reduce((sum, row) => sum + row.activeEnrollmentCount, 0);
+  const chartData = analytics.enrollmentsByMonth.map((row, index) => ({
+    month: row.month,
+    enrollments: row.count,
+    revenue: analytics.revenueTrend[index]?.total ?? 0,
+  }));
 
   return (
     <div className="space-y-6">
@@ -66,7 +72,11 @@ export async function OverviewSection() {
                 package.json (docs/research/01-design-source.md lists it,
                 but it's absent from this build's dependencies) — the
                 combo area+line chart cannot be sourced or rendered yet. */}
-            <DataNotConnectedNote detail="Monthly revenue/enrollment history has no service read yet." />
+            {chartData.length === 0 ? (
+              <DataNotConnectedNote detail="Monthly revenue/enrollment history returned no buckets." />
+            ) : (
+              <OverviewRevenueEnrollmentsChart data={chartData} />
+            )}
           </CardContent>
         </Card>
 

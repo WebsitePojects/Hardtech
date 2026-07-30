@@ -16,6 +16,14 @@ import {
   updateUserStatus,
 } from "../mutations/user-mutations";
 
+function isUserRole(value: string): value is UserRole {
+  return ADMIN_ROLE_OPTIONS.some((option) => option.value === value);
+}
+
+function isUserStatus(value: string): value is UserStatus {
+  return ADMIN_STATUS_OPTIONS.some((option) => option.value === value);
+}
+
 export type UserManagementItem = {
   id: string;
   name: string;
@@ -32,7 +40,7 @@ export type UserManagementItem = {
  * Every Select's onValueChange and the "Remove" Button go through the same
  * disabled/pending/early-return guard (usePendingAction) before calling
  * the wave-4 stub in ../mutations/user-mutations.ts, which always throws.
- * All four controls disable together while any one of them is in flight,
+ * All four controls disable together while one of them is in flight,
  * so an admin cannot fire a second write against the same row mid-save.
  */
 export function UserManagementRow({ user }: { user: UserManagementItem }) {
@@ -44,9 +52,10 @@ export function UserManagementRow({ user }: { user: UserManagementItem }) {
     roleAction.isPending || programAction.isPending || statusAction.isPending || removeAction.isPending;
 
   async function handleRoleChange(value: string) {
+    if (!isUserRole(value)) return;
     await roleAction.run(async () => {
       try {
-        await updateUserRole({ userId: user.id, role: value as UserRole });
+        await updateUserRole({ userId: user.id, role: value });
       } catch {
         toast.error("Updating a user's role isn't wired up yet in this build.");
       }
@@ -54,9 +63,10 @@ export function UserManagementRow({ user }: { user: UserManagementItem }) {
   }
 
   async function handleStatusChange(value: string) {
+    if (!isUserStatus(value)) return;
     await statusAction.run(async () => {
       try {
-        await updateUserStatus({ userId: user.id, status: value as UserStatus });
+        await updateUserStatus({ userId: user.id, status: value });
       } catch {
         toast.error("Updating a user's status isn't wired up yet in this build.");
       }

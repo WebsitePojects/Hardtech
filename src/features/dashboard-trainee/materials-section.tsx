@@ -1,54 +1,78 @@
-import { FileText } from "lucide-react";
+import { Download, FileText, Video } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import type { TraineeMaterialItem } from "@/server/services/dashboard.service";
+import { formatFileSize } from "@/features/dashboard-trainer/format";
+import { cn } from "@/lib/utils";
 
 export type MaterialsSectionProps = {
-  materialsCount: number;
+  materials: TraineeMaterialItem[];
 };
 
-/**
- * desktop-02.md #26, mobile-06.md 14:32:39/14:32:42: "Learning Materials" —
- * a grid of per-file cards (title, PDF/MP4/DOCX Badge, "Unit N · size",
- * Download button) sourced from `Module` rows.
- *
- * `dashboard.service.ts` only exposes the *count* of those rows
- * (`TraineeOverview.materialsCount`, internally
- * `moduleRepository.countByProgramId`) — no read returns the titles, file
- * types, or sizes the real card grid needs, and per
- * .claude/rules/10-architecture.md this builder may not import a
- * repository directly to get them. Rendering 4 cards with invented titles
- * would violate .claude/rules/20-design-fidelity.md ("do not invent");
- * claiming zero materials would misrepresent the one real number this page
- * does have. So: the sourced count renders, the per-file grid does not.
- *
- * TODO(orchestrator): dashboard.service lacks a trainee materials-list read
- * (Module rows for the trainee's active program: title, fileType,
- * unitNumber, fileSizeBytes). Wire the grid from desktop-02.md #26 once it
- * exists.
- */
-export function MaterialsSection({ materialsCount }: MaterialsSectionProps) {
+const MATERIAL_FILE_TYPE_LABEL: Record<TraineeMaterialItem["fileType"], string> = {
+  PDF: "PDF",
+  MP4: "MP4",
+  DOCX: "DOCX",
+};
+
+export function MaterialsSection({ materials }: MaterialsSectionProps) {
   return (
     <div className="space-y-6">
       <DashboardPageHeader title="Learning Materials" />
 
-      <Card>
-        <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
-          <span
-            className="flex size-10 items-center justify-center rounded-full bg-primary/15 text-primary"
-            aria-hidden
-          >
-            <FileText className="size-5" />
-          </span>
-          <p className="font-heading text-sm font-semibold text-foreground">
-            {materialsCount} material{materialsCount === 1 ? "" : "s"} on file
-          </p>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            Per-file details aren&apos;t available in this build yet — check back once the materials
-            list is wired up.
-          </p>
-        </CardContent>
-      </Card>
+      {materials.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
+            <span
+              className="flex size-10 items-center justify-center rounded-full bg-primary/15 text-primary"
+              aria-hidden
+            >
+              <FileText className="size-5" />
+            </span>
+            <p className="font-heading text-sm font-semibold text-foreground">No materials yet</p>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              Your trainer hasn&apos;t uploaded learning materials yet.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {materials.map((material) => {
+            const isVideo = material.fileType === "MP4";
+            const Icon = isVideo ? Video : FileText;
+            return (
+              <Card key={material.id}>
+                <CardContent className="space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <span
+                      className={cn(
+                        "flex size-10 shrink-0 items-center justify-center rounded-full",
+                        isVideo ? "bg-brand-blue/15 text-brand-blue" : "bg-primary/15 text-primary",
+                      )}
+                      aria-hidden
+                    >
+                      <Icon className="size-5" />
+                    </span>
+                    <Badge variant="outline">{MATERIAL_FILE_TYPE_LABEL[material.fileType]}</Badge>
+                  </div>
+                  <div>
+                    <p className="font-heading text-sm font-semibold text-foreground">{material.title}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Unit {material.unitNumber} · {formatFileSize(material.fileSizeBytes)}
+                    </p>
+                  </div>
+                  <Button type="button" variant="outline" className="w-full" disabled>
+                    <Download className="size-4" aria-hidden /> Download
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

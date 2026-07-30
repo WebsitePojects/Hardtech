@@ -1,36 +1,21 @@
 import { ClipboardList } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { AssignmentSubmissionForm } from "./assignment-submission-form";
 import type { TraineeAssignmentListItem } from "./types";
 
-/**
- * desktop-02.md #24, mobile-06.md 14:32:26: "Assignments" — verbatim
- * empty-state copy every captured screenshot of this trainee page shows.
- *
- * `dashboard.service.ts` exposes no read for Assignment/AssignmentSubmission
- * (only `getTraineeOverview`, `getDashboardUser`, `getNotifications` — see
- * that module's own scope note). Per .claude/rules/10-architecture.md this
- * builder may not import a repository or `db` to fill the gap, so
- * `assignments` stays a real, correctly-typed, always-empty array instead
- * of fabricated rows.
- *
- * TODO(orchestrator): dashboard.service lacks a trainee assignment-listing
- * read (Assignment rows scoped to the trainee's batch, each joined with the
- * trainee's own AssignmentSubmission if one exists). Once it lands, map its
- * result into `assignments` below — `AssignmentSubmissionForm` is already
- * built against `TraineeAssignmentListItem` with full disabled/pending/
- * idempotency-key guards and is ready to receive real rows.
- */
-const assignments: TraineeAssignmentListItem[] = [];
+export type AssignmentsSectionProps = {
+  assignments: TraineeAssignmentListItem[];
+};
 
-export function AssignmentsSection() {
+export function AssignmentsSection({ assignments }: AssignmentsSectionProps) {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
         title="Assignments"
-        description="Submit tasks posted by your trainer — images, videos, or documents."
+        description="Submit tasks posted by your trainer - images, videos, or documents."
       />
 
       {assignments.length === 0 ? (
@@ -51,7 +36,36 @@ export function AssignmentsSection() {
       ) : (
         <div className="space-y-4">
           {assignments.map((assignment) => (
-            <AssignmentSubmissionForm key={assignment.id} assignment={assignment} />
+            <Card key={assignment.id}>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-heading text-sm font-semibold text-foreground">{assignment.title}</p>
+                    <p className="text-sm text-muted-foreground">{assignment.instructions}</p>
+                  </div>
+                  {assignment.submission ? (
+                    <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
+                      Submitted
+                    </Badge>
+                  ) : null}
+                </div>
+                {assignment.submission ? (
+                  <div className="rounded-lg border border-glass-border p-3 text-sm">
+                    <p className="font-medium text-foreground">Submitted {assignment.submission.submittedAt}</p>
+                    <a
+                      href={assignment.submission.submissionLink}
+                      className="break-all text-primary hover:underline"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {assignment.submission.submissionLink}
+                    </a>
+                  </div>
+                ) : (
+                  <AssignmentSubmissionForm assignment={assignment} />
+                )}
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

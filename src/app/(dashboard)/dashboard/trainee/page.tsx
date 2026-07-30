@@ -1,11 +1,18 @@
 import { requireRole } from "@/server/auth/session";
-import { getDashboardUser, getTraineeOverview } from "@/server/services/dashboard.service";
+import {
+  getDashboardUser,
+  getTraineeAssignments,
+  getTraineeCertificateStatus,
+  getTraineeMaterials,
+  getTraineeOverview,
+} from "@/server/services/dashboard.service";
 import { AssignmentsSection } from "@/features/dashboard-trainee/assignments-section";
 import { CredentialsSection } from "@/features/dashboard-trainee/credentials-section";
 import { EnrolledProgramsSection } from "@/features/dashboard-trainee/enrolled-programs-section";
 import { MaterialsSection } from "@/features/dashboard-trainee/materials-section";
 import { MyDashboardSection } from "@/features/dashboard-trainee/my-dashboard-section";
 import { SessionScheduleSection } from "@/features/dashboard-trainee/session-schedule-section";
+import type { TraineeAssignmentListItem, TraineeSessionView } from "@/features/dashboard-trainee/types";
 
 export const metadata = {
   title: "Trainee Dashboard | HardTech IT Corp",
@@ -19,23 +26,64 @@ interface TraineeDashboardPageProps {
   searchParams: Promise<TraineeDashboardSearchParams>;
 }
 
-const VALID_SECTIONS = [
-  "my-dashboard",
-  "session-schedule",
-  "assignments",
-  "enrolled-programs",
-  "materials",
-  "credentials",
-] as const;
+type TraineeSection =
+  | "my-dashboard"
+  | "session-schedule"
+  | "assignments"
+  | "enrolled-programs"
+  | "materials"
+  | "credentials";
 
-type TraineeSection = (typeof VALID_SECTIONS)[number];
-
-/** Fail closed (.claude/rules/00-non-negotiables.md rule 3): any unrecognized
+/** Fail closed (.claude/rules/00-non-negotiables.md rule 3): unrecognized
  * `?section=` value falls through to the default tab, never a crash or a
  * blank page — mirrors dashboard-sidebar-nav.tsx's own
  * `items[0]?.id` fallback. */
 function parseSection(value: string | undefined): TraineeSection {
-  return VALID_SECTIONS.includes(value as TraineeSection) ? (value as TraineeSection) : "my-dashboard";
+  switch (value) {
+    case "my-dashboard":
+    case "session-schedule":
+    case "assignments":
+    case "enrolled-programs":
+    case "materials":
+    case "credentials":
+      return value;
+    default:
+      return "my-dashboard";
+  }
+}
+
+function toSessionView(sessions: Awaited<ReturnType<typeof getTraineeOverview>>["upcomingSessions"]): TraineeSessionView[] {
+  return sessions.map((session) => ({
+    id: session.id,
+    title: session.title,
+    sessionType: session.sessionType,
+    sessionDate: session.sessionDate.toISOString().slice(0, 10),
+    startTime: session.startTime,
+    location: session.location,
+  }));
+}
+
+function toAssignmentView(
+  assignments: Awaited<ReturnType<typeof getTraineeAssignments>>,
+): TraineeAssignmentListItem[] {
+  return assignments.map((assignment) => ({
+    id: assignment.id,
+    title: assignment.title,
+    instructions: assignment.instructions,
+    dueDate: assignment.dueDate.toISOString().slice(0, 10),
+    dueTime: assignment.dueTime,
+    allowedSubmissionTypes: assignment.allowedSubmissionTypes,
+    submission: assignment.submission
+      ? {
+          submissionLink: assignment.submission.submissionLink,
+          submittedAt: assignment.submission.submittedAt.toLocaleDateString("en-US", {
+            month: "short",
+            day: "2-digit",
+            year: "numeric",
+          }),
+        }
+      : null,
+  }));
 }
 
 /**
@@ -64,16 +112,23 @@ export default async function TraineeDashboardPage(props: TraineeDashboardPagePr
 
   switch (section) {
     case "session-schedule":
-      return <SessionScheduleSection sessions={overview.upcomingSessions} />;
-    case "assignments":
-      return <AssignmentsSection />;
+      return <SessionScheduleSection sessions={toSessionView(overview.upcomingSessions)} />;
+    case "assignments": {
+      const assignments = await getTraineeAssignments(session.userId, session.role);
+      return <AssignmentsSection assignments={toAssignmentView(assignments)} />;
+    }
     case "enrolled-programs":
       return <EnrolledProgramsSection overview={overview} />;
-    case "materials":
-      return <MaterialsSection materialsCount={overview.materialsCount} />;
-    case "credentials":
-      return <CredentialsSection displayName={displayName} overview={overview} />;
+    case "materials": {
+      const materials = await getTraineeMaterials(session.userId, session.role);
+      return <MaterialsSection materials={materials} />;
+    }
+    case "credentials": {
+      const certificateStatus = await getTraineeCertificateStatus(session.userId, session.role);
+      return <CredentialsSection displayName={displayName} overview={overview} certificateStatus={certificateStatus} />;
+    }
     case "my-dashboard":
+      return <MyDashboardSection displayName={displayName} overview={overview} />;
     default:
       return <MyDashboardSection displayName={displayName} overview={overview} />;
   }

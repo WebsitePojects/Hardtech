@@ -1,18 +1,13 @@
 "use client";
 
 import { X } from "lucide-react";
-import { toast } from "sonner";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { usePendingAction } from "../use-pending-action";
-import { removeAssignedTrainee } from "../mutations/trainer-mutations";
 
 export type AssignedTrainee = {
-  enrollmentId: string;
-  batchId: string;
   name: string;
   programLabel: string;
 };
@@ -68,7 +63,7 @@ export function TrainerCard({ trainer }: { trainer: TrainerManagementItem }) {
         ) : (
           <ul className="max-h-56 space-y-1 overflow-y-auto">
             {trainer.assignedTrainees.map((trainee) => (
-              <AssignedTraineeRow key={trainee.enrollmentId} trainee={trainee} />
+              <AssignedTraineeRow key={`${trainee.name}-${trainee.programLabel}`} trainee={trainee} />
             ))}
           </ul>
         )}
@@ -78,18 +73,6 @@ export function TrainerCard({ trainer }: { trainer: TrainerManagementItem }) {
 }
 
 function AssignedTraineeRow({ trainee }: { trainee: AssignedTrainee }) {
-  const removeAction = usePendingAction();
-
-  async function handleRemove() {
-    await removeAction.run(async () => {
-      try {
-        await removeAssignedTrainee({ enrollmentId: trainee.enrollmentId, batchId: trainee.batchId });
-      } catch {
-        toast.error("Removing an assigned trainee isn't wired up yet in this build.");
-      }
-    });
-  }
-
   return (
     <li className="flex items-center justify-between gap-2 rounded-lg px-1.5 py-1.5 text-sm hover:bg-glass-hover">
       <span className="text-foreground">
@@ -100,8 +83,7 @@ function AssignedTraineeRow({ trainee }: { trainee: AssignedTrainee }) {
         variant="ghost"
         size="icon-xs"
         aria-label={`Remove ${trainee.name}`}
-        disabled={removeAction.isPending}
-        onClick={handleRemove}
+        disabled
         className="text-destructive hover:bg-destructive/10 hover:text-destructive"
       >
         <X className="size-3.5" aria-hidden />

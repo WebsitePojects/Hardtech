@@ -16,10 +16,10 @@ interface AdminDashboardPageProps {
   // No dynamic route params on this page, so PageProps<'/dashboard/admin'>
   // adds nothing over a hand-written shape — same call the FORUM builder
   // made for its own non-dynamic /forum page (src/app/(app)/forum/page.tsx).
-  searchParams: Promise<{ section?: string }>;
+  searchParams: Promise<{ section?: string; category?: string }>;
 }
 
-const SECTION_RENDERERS: Record<AdminSectionId, () => React.ReactNode> = {
+const SECTION_RENDERERS: Record<AdminSectionId, (category?: string) => React.ReactNode> = {
   overview: () => <OverviewSection />,
   enrollments: () => <EnrollmentsSection />,
   "user-management": () => <UserManagementSection />,
@@ -28,7 +28,7 @@ const SECTION_RENDERERS: Record<AdminSectionId, () => React.ReactNode> = {
   announcements: () => <AnnouncementsSection />,
   analytics: () => <AnalyticsSection />,
   "payment-methods": () => <PaymentMethodsSection />,
-  "audit-log": () => <AuditLogSection />,
+  "audit-log": (category) => <AuditLogSection categoryFilter={category} />,
 };
 
 /**
@@ -44,13 +44,13 @@ const SECTION_RENDERERS: Record<AdminSectionId, () => React.ReactNode> = {
  *
  * Section switching is `?section=<id>` on this single route
  * (dashboard-sidebar-nav.tsx). `parseAdminSection` fails closed to
- * "overview" for any value outside the 9 known ids (rule 3).
+ * "overview" for values outside the 9 known ids (rule 3).
  */
 export default async function AdminDashboardPage(props: AdminDashboardPageProps) {
   await requireRole("ADMIN");
 
-  const { section } = await props.searchParams;
+  const { section, category } = await props.searchParams;
   const activeSection = parseAdminSection(section);
 
-  return <>{SECTION_RENDERERS[activeSection]()}</>;
+  return <>{SECTION_RENDERERS[activeSection](category)}</>;
 }

@@ -25,7 +25,7 @@ export type MyDashboardSectionProps = {
  * The graduate variant (congrats banner replacing the session list, badge
  * text swapping to "Graduate") is entirely `overview.status === "COMPLETED"`
  * driven — real data, not a hardcoded persona branch — so it renders
- * correctly for *any* trainee who graduates, not just the Liza Cruz demo
+ * correctly for every trainee who graduates, not just the Liza Cruz demo
  * row. mobile-06.md's Open Questions flags Liza's stale "Sessions Ahead: 4"
  * despite an empty session list as a demo-data bug; since this stat comes
  * straight from `overview.sessionsAheadCount` (computed from the same

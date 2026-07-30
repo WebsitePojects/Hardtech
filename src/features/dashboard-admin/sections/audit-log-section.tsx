@@ -1,28 +1,44 @@
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getAdminAuditLog } from "@/server/services/dashboard.service";
+import { AuditLogCategoryFilter } from "../components/audit-log-category-filter";
 import { DataNotConnectedNote } from "../components/data-not-connected-note";
 
-/** desktop-02.md #13 + mobile-05.md #27-28: "all" plus the 7 confirmed
- * audit categories visible in the open dropdown before it's cut off by the
- * viewport. schema.prisma's AuditCategory enum additionally declares FORUM
- * and COMMUNITY, but neither appears in the sourced screenshots' dropdown,
- * so they are not added here — see this builder's return report. */
-const AUDIT_CATEGORY_OPTIONS = [
-  "all",
-  "user",
-  "enrollment",
-  "payment",
-  "certificate",
-  "calendar",
-  "module",
-  "system",
-];
+const CATEGORY_LABELS: Record<string, string> = {
+  USER: "user",
+  ENROLLMENT: "enrollment",
+  PAYMENT: "payment",
+  CERTIFICATE: "certificate",
+  CALENDAR: "calendar",
+  MODULE: "module",
+  SYSTEM: "system",
+  FORUM: "forum",
+  COMMUNITY: "community",
+};
+
+function toServiceCategory(value: string | undefined): string | undefined {
+  if (value === undefined || value === "all") return undefined;
+  return value.toUpperCase();
+}
+
+function formatTimestamp(date: Date): string {
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
 
 /**
- * "Audit Log" (desktop-02.md #13, mobile-05.md #25-28). Read-only — no
- * mutating controls on this page.
+ * "Audit Log" (desktop-02.md #13, mobile-05.md #25-28). Read-only.
  */
-export function AuditLogSection() {
+export async function AuditLogSection({ categoryFilter }: { categoryFilter?: string }) {
+  const entries = await getAdminAuditLog(toServiceCategory(categoryFilter), 50);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -30,22 +46,32 @@ export function AuditLogSection() {
           title="Audit Log"
           description="All changes captured chronologically"
         />
-        <Select defaultValue="all">
-          <SelectTrigger className="w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {AUDIT_CATEGORY_OPTIONS.map((option) => (
-              <SelectItem key={option} value={option}>
-                {option}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <AuditLogCategoryFilter value={categoryFilter} />
       </div>
 
-      {/* NOT SOURCED: dashboard.service has no audit-log entry read. */}
-      <DataNotConnectedNote detail="Audit log entries have no service read yet." />
+      {entries.length === 0 ? (
+        <DataNotConnectedNote detail="No audit log entries found for this filter." />
+      ) : (
+        <div className="space-y-3">
+          {entries.map((entry) => (
+            <Card key={entry.id} className="flex-row flex-wrap items-start justify-between gap-3 p-4">
+              <div className="min-w-0 space-y-1">
+                <Badge variant="outline">{CATEGORY_LABELS[entry.category] ?? "unknown"}</Badge>
+                <p className="text-sm font-semibold text-foreground">{entry.action}</p>
+                {entry.description ? (
+                  <p className="text-sm text-muted-foreground">{entry.description}</p>
+                ) : null}
+                {entry.referenceId ? (
+                  <p className="text-xs text-muted-foreground">{entry.referenceId}</p>
+                ) : null}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {entry.actorName ?? "System"} &middot; {formatTimestamp(entry.createdAt)}
+              </p>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

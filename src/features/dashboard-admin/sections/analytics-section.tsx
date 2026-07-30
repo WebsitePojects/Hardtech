@@ -6,7 +6,11 @@ import {
   DashboardStatCard,
   DashboardStatGrid,
 } from "@/components/dashboard/dashboard-stat-card";
-import { DataNotConnectedNote } from "../components/data-not-connected-note";
+import { getAdminAnalytics } from "@/server/services/dashboard.service";
+import {
+  EnrollmentsByMonthChart,
+  RevenueTrendChart,
+} from "../components/admin-analytics-charts";
 
 /**
  * "Reports & Analytics" (desktop-02.md #11). The sidebar's own nav item
@@ -14,7 +18,9 @@ import { DataNotConnectedNote } from "../components/data-not-connected-note";
  * confirmed, intentional mismatch (mobile-05.md screenshot #20 / open
  * question #5) reproduced as-is, not reconciled.
  */
-export function AnalyticsSection() {
+export async function AnalyticsSection() {
+  const analytics = await getAdminAnalytics(6);
+
   return (
     <div className="space-y-6">
       <DashboardPageHeader
@@ -41,7 +47,7 @@ export function AnalyticsSection() {
                 enrollment-count read, and recharts is not in
                 package.json — the bar chart cannot be sourced or
                 rendered yet. */}
-            <DataNotConnectedNote detail="Monthly enrollment counts have no service read yet." />
+            <EnrollmentsByMonthChart data={analytics.enrollmentsByMonth} />
           </CardContent>
         </Card>
         <Card>
@@ -50,7 +56,7 @@ export function AnalyticsSection() {
           </CardHeader>
           <CardContent>
             {/* TODO(orchestrator): same gap as above, for monthly revenue. */}
-            <DataNotConnectedNote detail="Monthly revenue totals have no service read yet." />
+            <RevenueTrendChart data={analytics.revenueTrend} />
           </CardContent>
         </Card>
       </div>

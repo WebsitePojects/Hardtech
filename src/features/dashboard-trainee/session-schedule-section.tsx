@@ -7,8 +7,8 @@ import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-heade
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { UpcomingSessionItem } from "@/server/services/dashboard.service";
 import { SessionTypeBadge } from "./session-type-badge";
+import type { TraineeSessionView } from "./types";
 
 const WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
@@ -49,7 +49,7 @@ export type SessionScheduleSectionProps = {
    * "Verification") rather than worked around with an unowned repository
    * import.
    */
-  sessions: UpcomingSessionItem[];
+  sessions: TraineeSessionView[];
 };
 
 /**
@@ -64,7 +64,8 @@ export function SessionScheduleSection({ sessions }: SessionScheduleSectionProps
   const [selectedDay, setSelectedDay] = useState(today);
 
   const days = useMemo(() => buildCalendarDays(visibleMonth), [visibleMonth]);
-  const sessionsOnDay = (day: Date) => sessions.filter((session) => isSameDay(new Date(session.sessionDate), day));
+  const sessionsOnDay = (day: Date) =>
+    sessions.filter((session) => isSameDay(new Date(`${session.sessionDate}T00:00:00`), day));
   const selectedSessions = sessionsOnDay(selectedDay);
 
   function goToToday() {

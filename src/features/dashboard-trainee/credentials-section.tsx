@@ -1,47 +1,40 @@
-import { GraduationCap, Lock, ShieldCheck } from "lucide-react";
+import { Award, Clock, Download, GraduationCap, Lock, ShieldCheck } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { TraineeOverview } from "@/server/services/dashboard.service";
+import { cn } from "@/lib/utils";
+import type { TraineeCertificateStatus, TraineeOverview } from "@/server/services/dashboard.service";
 import { CredentialCard } from "./credential-card";
 
 export type CredentialsSectionProps = {
   displayName: string;
   overview: TraineeOverview;
+  certificateStatus: TraineeCertificateStatus | null;
 };
 
-/**
- * desktop-02.md #27, mobile-06.md 14:32:50-14:33:18: "My Credentials" — two
- * badge cards (Verified Trainee, Trained Graduate) plus an Official
- * E-Certificate row with a 3-state lifecycle (Locked -> Pending Approval ->
- * an approved state never captured in the screenshot corpus).
- *
- * `dashboard.service.ts` exposes no `CertificateRequest` read at all — only
- * `TraineeOverview.status`, the trainee's own `EnrollmentStatus`. That IS
- * real, already-fetched data, so the two badge cards are driven by it
- * (ACTIVE or COMPLETED -> Verified Trainee earned; COMPLETED -> Trained
- * Graduate earned) rather than invented — this mirrors exactly what every
- * sourced screenshot shows for each persona's real status.
- *
- * The Official E-Certificate row's Pending Approval / Approved states need
- * the actual `CertificateRequest` row (status, requestedAt) that no service
- * export returns, so this never claims either without evidence. It renders
- * the sourced, verbatim "Locked" copy for every non-graduate (a real,
- * data-backed condition), and an honest, clearly-provisional line — not
- * invented product copy — once `status` is `COMPLETED`, since repeating
- * "Locked" for a graduate would be a known-false statement (mobile-06.md
- * 14:33:18 shows Locked always clears on graduation).
- *
- * TODO(orchestrator): dashboard.service lacks a trainee certificate-request
- * read (CertificateRequest.status scoped to the trainee's active
- * enrollment). Wire the real Pending Approval / Approved states once it
- * exists.
- */
-export function CredentialsSection({ displayName, overview }: CredentialsSectionProps) {
+type CertificateDisplayState = "LOCKED" | "PENDING" | "APPROVED" | "REJECTED";
+
+function getCertificateState(certificateStatus: TraineeCertificateStatus | null): CertificateDisplayState {
+  if (!certificateStatus) return "LOCKED";
+
+  switch (certificateStatus.status) {
+    case "PENDING":
+      return "PENDING";
+    case "APPROVED":
+      return "APPROVED";
+    case "REJECTED":
+      return "REJECTED";
+    default:
+      return "LOCKED";
+  }
+}
+
+export function CredentialsSection({ displayName, overview, certificateStatus }: CredentialsSectionProps) {
   const program = overview.activeProgram;
   const isVerified = overview.status === "ACTIVE" || overview.status === "COMPLETED";
   const isGraduate = overview.status === "COMPLETED";
+  const certificateState = getCertificateState(certificateStatus);
 
   return (
     <div className="space-y-6">
@@ -64,7 +57,7 @@ export function CredentialsSection({ displayName, overview }: CredentialsSection
           name={displayName}
           subtext={
             isGraduate
-              ? (program?.batchLabel ?? "")
+              ? `${program?.programName ?? "Program"} · ${overview.overallProgressPercent}% complete`
               : `${program?.programName ?? "Program"} · ${overview.overallProgressPercent}% complete`
           }
           helperText={isGraduate ? undefined : "Awarded after completing training & certificate approval"}
@@ -75,21 +68,52 @@ export function CredentialsSection({ displayName, overview }: CredentialsSection
         <CardContent className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span
-              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground"
+              className={cn(
+                "flex size-9 shrink-0 items-center justify-center rounded-full",
+                certificateState === "PENDING"
+                  ? "bg-brand-orange/15 text-brand-orange"
+                : certificateState === "APPROVED"
+                  ? "bg-primary/15 text-primary"
+                : certificateState === "REJECTED"
+                  ? "bg-destructive/15 text-destructive"
+                  : "bg-muted text-muted-foreground",
+              )}
               aria-hidden
             >
-              <Lock className="size-4" />
+              {certificateState === "PENDING" ? (
+                <Clock className="size-4" />
+              ) : certificateState === "APPROVED" ? (
+                <Award className="size-4" />
+              ) : certificateState === "REJECTED" ? (
+                <Lock className="size-4" />
+              ) : (
+                <Lock className="size-4" />
+              )}
             </span>
             <div>
               <p className="text-sm font-semibold text-foreground">Official E-Certificate</p>
               <p className="text-sm text-muted-foreground">
-                {isGraduate
-                  ? "Certificate status isn't available in this build yet."
-                  : "Unlocks once your trainer marks your training as completed"}
+                {certificateState === "PENDING"
+                  ? "Your certificate request is awaiting admin approval"
+                  : certificateState === "APPROVED"
+                    ? (certificateStatus?.certificateCode ?? "")
+                    : certificateState === "REJECTED"
+                      ? "Certificate request rejected"
+                    : "Unlocks once your trainer marks your training as completed"}
               </p>
             </div>
           </div>
-          {!isGraduate ? (
+          {certificateState === "PENDING" ? (
+            <Badge variant="outline" className="border-brand-orange/40 bg-brand-orange/10 text-brand-orange">
+              Pending Approval
+            </Badge>
+          ) : certificateState === "APPROVED" ? (
+            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
+              <Download className="size-3" aria-hidden /> Download
+            </Badge>
+          ) : certificateState === "REJECTED" ? (
+            <Badge variant="destructive">Rejected</Badge>
+          ) : !isGraduate ? (
             <Badge variant="outline" className="text-muted-foreground">
               🔒 Locked
             </Badge>
