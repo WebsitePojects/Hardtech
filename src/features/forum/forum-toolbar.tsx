@@ -69,12 +69,12 @@ export function ForumToolbar({
             onKeyDown={handleSearchKeyDown}
             onBlur={() => navigate({ search: searchValue.trim() || undefined })}
             placeholder="Search posts, authors, or tags..."
-            className="pl-8"
+            className="h-10 border-glass-border bg-glass pl-8 text-xs"
           />
         </div>
 
         <Select value={sort} onValueChange={(value) => navigate({ sort: value })}>
-          <SelectTrigger className="w-full sm:w-44">
+          <SelectTrigger className="h-10 w-full border-glass-border bg-glass text-xs sm:w-44">
             <ArrowUpDown className="size-3.5" aria-hidden />
             <SelectValue />
           </SelectTrigger>

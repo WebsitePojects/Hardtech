@@ -52,18 +52,18 @@ export function LeftRail({
   currentSearch.delete("category");
 
   return (
-    <div className="hidden w-72 shrink-0 flex-col gap-4 lg:flex">
-      <Card>
-        <CardHeader>
+    <div className="hidden w-[236px] shrink-0 flex-col gap-3 lg:flex">
+      <Card className="border border-glass-border bg-surface-card ring-0">
+        <CardHeader className="px-3.5 pb-1 pt-3.5">
           <CardTitle className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
             Categories
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-1">
+        <CardContent className="space-y-0.5 px-3.5 pb-3.5">
           <Link
             href={buildCategoryHref(null, currentSearch)}
             className={cn(
-              "flex items-center justify-between rounded-lg px-2.5 py-2 text-sm transition-colors hover:bg-glass-hover",
+              "flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-glass-hover",
               !activeCategory && "bg-primary/10 text-primary",
             )}
           >
@@ -93,15 +93,15 @@ export function LeftRail({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
+      <Card className="border border-glass-border bg-surface-card ring-0">
+        <CardHeader className="px-3.5 pb-1 pt-3.5">
           <CardTitle className="flex items-center gap-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
             <ShieldCheck className="size-4" aria-hidden />
             Guidelines
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <ol className="list-decimal space-y-2 pl-4 text-sm text-muted-foreground marker:text-primary">
+        <CardContent className="px-3.5 pb-3.5">
+          <ol className="list-decimal space-y-1.5 pl-4 text-xs text-muted-foreground marker:text-primary">
             {GUIDELINES.map((rule) => (
               <li key={rule}>{rule}</li>
             ))}
@@ -109,28 +109,28 @@ export function LeftRail({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
+      <Card className="border border-glass-border bg-surface-card ring-0">
+        <CardHeader className="px-3.5 pb-1 pt-3.5">
           <CardTitle className="flex items-center gap-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
             <BarChart3 className="size-4" aria-hidden />
             Forum Stats
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3 text-sm">
+        <CardContent className="grid grid-cols-2 gap-x-3 gap-y-2.5 px-3.5 pb-3.5 text-xs">
           <div>
-            <p className="text-lg font-semibold text-foreground">{stats.totalPosts}</p>
+            <p className="text-base font-semibold text-foreground">{stats.totalPosts}</p>
             <p className="text-muted-foreground">Posts</p>
           </div>
           <div>
-            <p className="text-lg font-semibold text-foreground">{stats.totalReplies}</p>
+            <p className="text-base font-semibold text-foreground">{stats.totalReplies}</p>
             <p className="text-muted-foreground">Replies</p>
           </div>
           <div>
-            <p className="text-lg font-semibold text-foreground">{stats.totalViews}</p>
+            <p className="text-base font-semibold text-foreground">{stats.totalViews}</p>
             <p className="text-muted-foreground">Total Views</p>
           </div>
           <div>
-            <p className="text-lg font-semibold text-foreground">{stats.memberCount}</p>
+            <p className="text-base font-semibold text-foreground">{stats.memberCount}</p>
             <p className="text-muted-foreground">Members</p>
           </div>
         </CardContent>

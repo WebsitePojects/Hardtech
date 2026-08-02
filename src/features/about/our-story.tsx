@@ -21,7 +21,7 @@ export function OurStory() {
         <div className="relative flex flex-col">
           <div className="relative aspect-4/3 w-full">
             <Image
-              src="https://images.unsplash.com/photo-1767448068187-5be3cbc848c7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800&q=80"
+              src="/images/gallery/gallery-02.jpg"
               alt="HardTech trainees and trainers holding completion certificates"
               fill
               className="object-cover"

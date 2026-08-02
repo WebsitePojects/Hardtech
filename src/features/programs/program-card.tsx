@@ -17,6 +17,7 @@ import type { ProgramWithCurriculum } from "@/server/services/marketing.service"
 
 import { decimalToCentavos, formatCentavos } from "./format-currency";
 import { renderProgramIcon, resolveAccent } from "./program-visuals";
+import { ProgramPhoto } from "./program-photo";
 
 interface ProgramCardProps {
   program: ProgramWithCurriculum;
@@ -50,6 +51,17 @@ function InfoTile({
 }
 
 export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProps) {
+  const marketingImage =
+    program.name === "Computer Hardware Servicing"
+      ? "/images/gallery/gallery-01.jpg"
+      : program.name === "Cellphone Hardware Servicing"
+        ? "/images/gallery/gallery-08.jpg"
+        : program.name === "I.T. Software Development"
+          ? "/images/gallery/gallery-15.jpg"
+          : null;
+
+  if (!marketingImage) return null;
+
   const accent = resolveAccent(program.accentColor);
   const priceCentavos = decimalToCentavos(program.priceAmount);
 
@@ -64,7 +76,7 @@ export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProp
   // question 5.
   const showMobileStrikethrough = program.name === "Computer Hardware Servicing";
 
-  const photo = program.imageUrl ? (
+  const photo = (
     <div className="relative aspect-4/3 w-full overflow-hidden rounded-2xl lg:aspect-auto lg:h-full">
       {/*
         Plain <img>, not next/image: next.config.ts (images.remotePatterns) is
@@ -72,20 +84,14 @@ export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProp
         not guaranteed to be allow-listed. next/image would throw at runtime
         for an unconfigured domain.
       */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={program.imageUrl}
-        alt={program.name}
-        className="size-full object-cover"
-        loading="lazy"
-      />
+      <ProgramPhoto src={marketingImage} alt={program.name} />
       {program.badgeLabel ? (
         <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground">
           {program.badgeLabel}
         </Badge>
       ) : null}
     </div>
-  ) : null;
+  );
 
   const content = (
     <div className="flex flex-col gap-5 p-1">
@@ -166,7 +172,7 @@ export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProp
   );
 
   return (
-    <Card className="glass grid gap-6 overflow-hidden rounded-3xl p-6 lg:grid-cols-2 lg:p-8">
+    <Card className="glass grid gap-5 overflow-hidden rounded-xl p-5 lg:grid-cols-2 lg:p-6">
       <div className={cn(imageSide === "right" && "lg:order-2")}>{photo}</div>
       <div className={cn(imageSide === "right" && "lg:order-1")}>{content}</div>
     </Card>

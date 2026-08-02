@@ -1,35 +1,53 @@
 import { Bell, ChevronDown } from "lucide-react";
+import Link from "next/link";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-/**
- * Right side of the desktop navbar: notification bell with a count badge,
- * then a role chip (initials + role name + chevron) — docs/screens/
- * desktop-02.md #28 (forum navbar: bell badge "2", role chip "TR" /
- * "Trainee").
- *
- * TODO(wave-3): wire to session. There is no auth in wave 1, so these are
- * static placeholders rendered as plain (non-interactive) elements rather
- * than buttons, since neither does anything yet.
- */
-export function NavbarActions() {
+export type NavbarUser = {
+  initials: string;
+  roleLabel: string;
+};
+
+/** Session-aware right side of the desktop navbar. */
+export function NavbarActions({ user }: { user: NavbarUser | null }) {
+  if (!user) {
+    return (
+      <div className="hidden items-center gap-2 md:flex">
+        <Link
+          href="/login"
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "border-glass-border bg-transparent hover:bg-glass-hover",
+          )}
+        >
+          Login
+        </Link>
+        <Link href="/enroll" className={buttonVariants({ size: "sm" })}>
+          Enroll Now
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="hidden items-center gap-3 md:flex">
-      <div className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-foreground/80">
+      <div
+        className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-foreground/80"
+        aria-label="Notifications"
+      >
         <Bell className="size-4" aria-hidden />
-        <Badge className="absolute -top-1 -right-1 h-4 min-w-4 justify-center rounded-full px-1 text-[0.65rem]">
-          2
-        </Badge>
+        {/* TODO(orchestrator): connect the unread notification service read before showing a badge. */}
       </div>
 
       <div className="flex items-center gap-2 rounded-full border border-glass-border bg-glass py-1 pr-2.5 pl-1">
         <Avatar size="sm">
           <AvatarFallback className="bg-primary/15 text-xs font-semibold text-neon">
-            TR
+            {user.initials}
           </AvatarFallback>
         </Avatar>
-        <span className="font-sub text-sm font-medium text-foreground">Trainee</span>
+        <span className="font-sub text-sm font-medium text-foreground">{user.roleLabel}</span>
         <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
       </div>
     </div>

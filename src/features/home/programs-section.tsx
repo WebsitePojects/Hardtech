@@ -25,11 +25,12 @@ export function ProgramsSection({
     marketingEnrolledLabel: program.marketingEnrolledLabel,
     iconName: program.iconName,
     accentColor: program.accentColor,
+    imageUrl: program.imageUrl,
   }));
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
-      <div className="mb-10 text-center">
+    <section className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 lg:pb-8 lg:pt-20">
+      <div className="text-center">
         <p className="mb-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
           WHAT WE OFFER
         </p>
@@ -37,7 +38,9 @@ export function ProgramsSection({
           Core Programs
         </h2>
       </div>
-      <ProgramsCarousel programs={carouselPrograms} />
+      <div className="mt-10">
+        <ProgramsCarousel programs={carouselPrograms} />
+      </div>
     </section>
   );
 }

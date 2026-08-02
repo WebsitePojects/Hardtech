@@ -23,15 +23,15 @@ export function RightRail({
   leaderboard: LeaderboardEntry[];
 }) {
   return (
-    <div className="hidden w-72 shrink-0 flex-col gap-4 xl:flex">
-      <Card>
-        <CardHeader>
+    <div className="hidden w-[220px] shrink-0 flex-col gap-3 xl:flex">
+      <Card className="border border-glass-border bg-surface-card ring-0">
+        <CardHeader className="px-3.5 pb-1 pt-3.5">
           <CardTitle className="flex items-center gap-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
             <TrendingUp className="size-4 text-brand-orange" aria-hidden />
             Trending
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-2 px-3.5 pb-3.5">
           {trendingPosts.length === 0 ? (
             <p className="text-sm text-muted-foreground">No trending posts yet.</p>
           ) : (
@@ -49,14 +49,14 @@ export function RightRail({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
+      <Card className="border border-glass-border bg-surface-card ring-0">
+        <CardHeader className="px-3.5 pb-1 pt-3.5">
           <CardTitle className="flex items-center gap-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
             <Bookmark className="size-4" aria-hidden />
             My Bookmarks
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3.5 pb-3.5">
           {bookmarkedPosts.length === 0 ? (
             <p className="text-sm text-muted-foreground">No bookmarks yet.</p>
           ) : (
@@ -73,13 +73,13 @@ export function RightRail({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
+      <Card className="border border-glass-border bg-surface-card ring-0">
+        <CardHeader className="px-3.5 pb-1 pt-3.5">
           <CardTitle className="flex items-center gap-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
             ⭐ Rating Leaderboard
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2.5">
+        <CardContent className="space-y-2 px-3.5 pb-3.5">
           {leaderboard.map((entry, index) => {
             const rank = index + 1;
             const initials = `${entry.firstName[0] ?? ""}${entry.lastName[0] ?? ""}`.toUpperCase();

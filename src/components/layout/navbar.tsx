@@ -1,7 +1,29 @@
 import { SiteLogo } from "./site-logo";
 import { DesktopNav } from "./desktop-nav";
-import { NavbarActions } from "./navbar-actions";
+import { NavbarActions, type NavbarUser } from "./navbar-actions";
 import { MobileNav } from "./mobile-nav";
+import { getSession } from "@/server/auth/session";
+import { getDashboardUser } from "@/server/services/dashboard.service";
+
+function roleLabel(role: "ADMIN" | "TRAINER" | "TRAINEE"): string {
+  switch (role) {
+    case "ADMIN":
+      return "Admin";
+    case "TRAINER":
+      return "Trainer";
+    case "TRAINEE":
+      return "Trainee";
+  }
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0] ?? "")
+    .join("")
+    .toUpperCase() || "?";
+}
 
 /**
  * Floating pill-shaped glass navbar, horizontally centred and detached from
@@ -14,15 +36,21 @@ import { MobileNav } from "./mobile-nav";
  * (`DesktopNav` for the Explore dropdown + active-route highlighting,
  * `MobileNav` for the drawer) are client components.
  */
-export function Navbar() {
+export async function Navbar() {
+  const session = await getSession();
+  const userRecord = session ? await getDashboardUser(session.userId) : null;
+  const user: NavbarUser | null = session && userRecord
+    ? { initials: getInitials(userRecord.name), roleLabel: roleLabel(session.role) }
+    : null;
+
   return (
     <div className="sticky top-4 z-50 mx-auto w-full max-w-7xl px-4 sm:px-6">
-      <header className="glass mx-auto flex w-full max-w-6xl items-center justify-between gap-2 rounded-full px-3 py-2 sm:px-4">
+      <header className="glass mx-auto flex w-full max-w-7xl items-center justify-between gap-3 rounded-full px-4 py-2 sm:px-6">
         <SiteLogo />
         <DesktopNav />
         <div className="flex items-center gap-2">
-          <NavbarActions />
-          <MobileNav />
+          <NavbarActions user={user} />
+          <MobileNav user={user} />
         </div>
       </header>
     </div>

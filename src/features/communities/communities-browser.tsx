@@ -62,7 +62,7 @@ export function CommunitiesBrowser({
       <RegionBanner regionOptions={regionOptions} />
 
       <div className="space-y-1">
-        <h2 className="font-heading text-lg font-semibold text-foreground">
+        <h2 className="font-heading text-base font-semibold text-foreground">
           ✨ Recommended for you
         </h2>
         <p className="text-sm text-muted-foreground">

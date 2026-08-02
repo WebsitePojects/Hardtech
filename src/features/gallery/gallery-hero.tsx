@@ -21,7 +21,8 @@ export function GalleryHero() {
             GALLERY
           </Badge>
           <h1 className="mt-4 font-heading text-4xl font-bold text-balance sm:text-5xl">
-            Training in <span className="text-primary">Action</span>
+            Training in
+            <span className="block text-primary">Action</span>
           </h1>
           <p className="mt-4 max-w-xl text-muted-foreground">
             Real moments from our training sessions, workshops, and graduation

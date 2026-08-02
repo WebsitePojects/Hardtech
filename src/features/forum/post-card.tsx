@@ -18,17 +18,17 @@ export function PostCard({ post }: { post: ForumPostSummary }) {
   const CategoryIcon = post.category ? CATEGORY_ICONS[post.category] : null;
 
   return (
-    <Card>
-      <CardContent className="space-y-3">
+    <Card className="border border-glass-border bg-surface-card ring-0 transition-colors hover:border-[var(--glass-border-strong)]">
+      <CardContent className="space-y-2.5 p-4 sm:p-[18px]">
         {post.isPinned || post.isTrending ? (
           <div className="flex flex-wrap gap-2">
             {post.isPinned ? (
-              <Badge className="border-brand-orange/40 bg-brand-orange/10 text-brand-orange" variant="outline">
+              <Badge className="border-brand-orange/40 bg-brand-orange/10 text-brand-orange">
                 <Pin className="size-3" aria-hidden /> PINNED
               </Badge>
             ) : null}
             {post.isTrending ? (
-              <Badge className="border-brand-orange/40 bg-brand-orange/10 text-brand-orange" variant="outline">
+              <Badge className="border-brand-orange/40 bg-brand-orange/10 text-brand-orange">
                 <TrendingUp className="size-3" aria-hidden /> TRENDING
               </Badge>
             ) : null}
@@ -47,17 +47,17 @@ export function PostCard({ post }: { post: ForumPostSummary }) {
 
         <div className="space-y-1.5">
           <Link href={`/forum/${post.id}`} className="block">
-            <h3 className="font-heading text-lg font-semibold text-foreground hover:text-primary">
+            <h3 className="font-heading text-base font-semibold leading-snug text-foreground hover:text-primary sm:text-[15px]">
               {post.title}
             </h3>
           </Link>
-          <p className="line-clamp-2 text-sm text-muted-foreground">{post.body}</p>
+          <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">{post.body}</p>
         </div>
 
         {post.hashtags.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {post.hashtags.map((tag) => (
-              <span key={tag} className="text-xs text-primary">
+            <span key={tag} className="rounded border border-glass-border bg-glass px-1.5 py-0.5 text-[10px] text-muted-foreground">
                 #{tag}
               </span>
             ))}

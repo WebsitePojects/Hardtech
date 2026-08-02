@@ -18,7 +18,7 @@ import type { ForumPostSummary } from "./types";
  */
 export function PostEngagementBar({ post }: { post: ForumPostSummary }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-glass-border pt-2 text-xs text-muted-foreground">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-glass-border pt-2.5 text-[11px] text-muted-foreground">
       <div className="flex items-center gap-1">
         <ReactionButton
           label="Upvote"

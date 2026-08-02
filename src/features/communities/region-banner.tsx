@@ -28,8 +28,8 @@ export function RegionBanner({ regionOptions }: { regionOptions: string[] }) {
     : [DEFAULT_REGION, ...regionOptions];
 
   return (
-    <Card>
-      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+    <Card className="border border-glass-border bg-surface-card ring-0">
+      <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div className="flex items-start gap-3">
           <MapPin className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
           <div>

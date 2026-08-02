@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   ChevronRight,
-  Diamond,
   GraduationCap,
   Shield,
   Trophy,
@@ -75,8 +74,8 @@ export function WhyHardTech() {
     <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:items-center">
         <div>
-          <p className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold tracking-widest text-primary uppercase">
-            <Diamond className="size-3" />
+          <p className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-primary/30 px-3 py-1 text-xs font-semibold tracking-widest text-primary uppercase">
+            <span aria-hidden>✦</span>
             WHY HARDTECH
           </p>
           <h2 className="text-3xl font-bold sm:text-4xl">
@@ -95,17 +94,17 @@ export function WhyHardTech() {
           </Button>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           {FEATURES.map((feature) => (
             <Card key={feature.title}>
               <CardContent className="flex flex-col gap-3">
                 <span
-                  className={`inline-flex size-10 items-center justify-center rounded-lg ${feature.accentClass}`}
+                  className={`inline-flex size-8 items-center justify-center rounded-lg ${feature.accentClass}`}
                 >
-                  <feature.icon className="size-5" />
+                  <feature.icon className="size-4" />
                 </span>
                 <h3 className="font-semibold">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs leading-relaxed text-muted-foreground">
                   {feature.description}
                 </p>
               </CardContent>

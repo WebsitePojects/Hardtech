@@ -15,6 +15,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { SiteLogo } from "./site-logo";
+import type { NavbarUser } from "./navbar-actions";
 import { exploreNavItems, primaryNavItems } from "./nav-items";
 
 /**
@@ -28,7 +29,7 @@ import { exploreNavItems, primaryNavItems } from "./nav-items";
  * drawer (the layout persists across marketing routes, so an uncontrolled
  * sheet would otherwise stay open after navigation).
  */
-export function MobileNav() {
+export function MobileNav({ user }: { user: NavbarUser | null }) {
   const pathname = usePathname();
 
   return (
@@ -52,6 +53,16 @@ export function MobileNav() {
           <SheetTitle asChild>
             <SiteLogo size="sm" />
           </SheetTitle>
+          {user && (
+            <div className="mt-3 flex items-center gap-2 rounded-full bg-glass px-3 py-2 text-left">
+              <span className="flex size-7 items-center justify-center rounded-full bg-primary/15 font-sub text-xs font-semibold text-neon">
+                {user.initials}
+              </span>
+              <span className="font-sub text-sm font-medium text-foreground">
+                {user.roleLabel}
+              </span>
+            </div>
+          )}
         </SheetHeader>
 
         <nav
@@ -108,16 +119,20 @@ export function MobileNav() {
         </nav>
 
         <div className="flex flex-col gap-2 border-t border-glass-border p-4">
-          <SheetClose asChild>
-            <Link href="/login" className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
-              Login
-            </Link>
-          </SheetClose>
-          <SheetClose asChild>
-            <Link href="/enroll" className={cn(buttonVariants(), "w-full")}>
-              Enroll Now
-            </Link>
-          </SheetClose>
+          {!user && (
+            <>
+              <SheetClose asChild>
+                <Link href="/login" className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
+                  Login
+                </Link>
+              </SheetClose>
+              <SheetClose asChild>
+                <Link href="/enroll" className={cn(buttonVariants(), "w-full")}>
+                  Enroll Now
+                </Link>
+              </SheetClose>
+            </>
+          )}
         </div>
       </SheetContent>
     </Sheet>

@@ -43,6 +43,12 @@ export function StepSelectPlan({
     onContinue();
   }
 
+  const visiblePrograms = programs.filter(
+    (program) =>
+      program.name === "Computer Hardware Servicing" ||
+      program.name === "Cellphone Hardware Servicing" ||
+      program.name === "I.T. Software Development",
+  );
   const count = selectedProgramIds.length;
   const continueLabel =
     count === 0 ? "Continue" : count === 1 ? "Continue with 1 program" : `Continue with ${count} programs`;
@@ -62,7 +68,7 @@ export function StepSelectPlan({
       </div>
 
       <div className="space-y-3">
-        {programs.map((program) => {
+        {visiblePrograms.map((program) => {
           const accent = resolveAccent(program.accentColor);
           const selected = selectedProgramIds.includes(program.id);
 

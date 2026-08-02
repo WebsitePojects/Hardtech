@@ -22,20 +22,20 @@ export function CommunityCard({ community }: { community: CommunitySummary }) {
   const TopicIcon = community.primaryTopic ? TOPIC_ICONS[community.primaryTopic] : null;
 
   return (
-    <Card className="overflow-hidden">
-      <div className="relative h-20 bg-gradient-to-br from-primary/30 via-brand-blue/20 to-brand-purple/20">
+    <Card className="overflow-hidden border border-glass-border bg-surface-card ring-0">
+      <div className="relative h-[92px] bg-gradient-to-br from-primary/30 via-brand-blue/20 to-brand-purple/20">
         <span className="absolute top-3 right-3">
           <Badge variant="outline" className="border-glass-border bg-glass text-foreground">
             {community.visibility === "PUBLIC" ? "🌐 PUBLIC" : "🔒 PRIVATE"}
           </Badge>
         </span>
-        <span className="absolute -bottom-4 left-4 flex size-10 items-center justify-center rounded-full border border-glass-border bg-surface-card text-lg">
+        <span className="absolute -bottom-4 left-4 flex size-11 items-center justify-center rounded-full border border-glass-border bg-surface-card text-lg">
           {TopicIcon ? <TopicIcon className="size-5 text-primary" aria-hidden /> : "🏘️"}
         </span>
       </div>
-      <CardContent className="space-y-2 pt-6">
+      <CardContent className="space-y-2 p-4 pt-7">
         <Link href={`/communities/${community.slug}`}>
-          <h3 className="font-heading text-base font-semibold text-foreground hover:text-primary">
+          <h3 className="font-heading text-sm font-semibold text-foreground hover:text-primary">
             {community.name}
           </h3>
         </Link>
@@ -43,7 +43,7 @@ export function CommunityCard({ community }: { community: CommunitySummary }) {
           <MapPin className="size-3.5" aria-hidden />
           {community.region}
         </p>
-        <p className="line-clamp-2 text-sm text-muted-foreground">{community.description}</p>
+        <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">{community.description}</p>
 
         {community.primaryTopic ? (
           <Badge variant="outline" className="gap-1">

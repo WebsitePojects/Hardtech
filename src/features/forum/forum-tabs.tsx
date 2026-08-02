@@ -27,7 +27,7 @@ export function ForumTabs({
   return (
     <div
       role="tablist"
-      className="flex w-full gap-1 overflow-x-auto rounded-lg bg-muted p-[3px] [scrollbar-width:none]"
+      className="flex w-full gap-1 overflow-x-auto rounded-xl border border-glass-border bg-glass p-1 [scrollbar-width:none]"
     >
       {TABS.map((tab) => (
         <Link
@@ -36,9 +36,9 @@ export function ForumTabs({
           role="tab"
           aria-selected={active === tab.value}
           className={cn(
-            "shrink-0 rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors",
+            "shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
             active === tab.value
-              ? "bg-background text-foreground shadow-sm"
+              ? "bg-primary/15 text-primary shadow-sm"
               : "text-muted-foreground hover:text-foreground",
           )}
         >

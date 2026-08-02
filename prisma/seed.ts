@@ -343,27 +343,38 @@ const TESTIMONIALS = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// Gallery photos — /gallery "Training in Action" grid (mobile-06
-// #14:33:54-14:34:14). The screenshots confirm 8 real training/graduation
-// photographs with NO visible captions anywhere in the corpus (mobile-06:
-// "no visible captions... no lightbox affordance"), so `caption` is left
-// null for every row rather than inventing text that was never on screen.
-// No hosted image files were provided in the corpus (the only real asset on
-// record, per docs/research/01-design-source.md, is one unrelated Unsplash
-// stock photo), so `imageUrl` uses a placeholder path convention — NOT a
-// sourced URL — pending real asset upload.
+// Gallery photos — /gallery "Training in Action" grid. Captions are factual
+// descriptions of the local photographs in public/images/gallery; no names
+// are inferred from the images.
 // ---------------------------------------------------------------------------
 
 const GALLERY_PHOTOS = [
-  "/images/gallery/shop-interior-group-01.jpg",
-  "/images/gallery/night-group-photo.jpg",
-  "/images/gallery/trainee-closeup.jpg",
-  "/images/gallery/workshop-microscope-bench.jpg",
-  "/images/gallery/graduation-certificates-group.jpg",
-  "/images/gallery/motherboard-teardown-closeup.jpg",
-  "/images/gallery/microscope-soldering-handson.jpg",
-  "/images/gallery/shop-interior-group-02.jpg",
-].map((imageUrl, index) => ({ imageUrl, caption: null, sortOrder: index }));
+  ["gallery-01.jpg", "Trainees working at microscope repair benches in the HardTech lab."],
+  ["gallery-02.jpg", "Group photo of trainees holding completion certificates in the training lab."],
+  ["gallery-03.jpg", "Graduates holding certificates together after a training session."],
+  ["gallery-04.jpg", "Training group photo in front of a display and equipment area."],
+  ["gallery-05.jpg", "Close-up of electronic components and a circuit board during repair work."],
+  ["gallery-06.jpg", "Microscope repair workstation with test equipment and a device on the bench."],
+  ["gallery-07.jpg", "Trainees practicing board repair at microscope workstations."],
+  ["gallery-08.jpg", "Two trainees working at a microscope station beside a HardTech training banner."],
+  ["gallery-09.jpg", "Group photo of trainees holding completion certificates in the training lab."],
+  ["gallery-10.jpg", "Two people posing together inside the training lab."],
+  ["gallery-11.jpg", "Disassembled mobile-device components arranged on a repair table."],
+  ["gallery-12.jpg", "Trainees seated at microscope stations during hands-on board work."],
+  ["gallery-13.jpg", "Empty row of microscope repair benches and testing equipment."],
+  ["gallery-14.jpg", "Two people posing beside a monitor and repair equipment."],
+  ["gallery-15.jpg", "Two trainees observing a board-repair workstation beneath a HardTech banner."],
+  ["gallery-16.jpg", "Group of graduates holding completion certificates."],
+  ["gallery-17.jpg", "Group gathering around a table in an outdoor covered area."],
+  ["gallery-18.jpg", "Close-up of hands working under a microscope during soldering practice."],
+  ["gallery-19.jpg", "Mobile phone and test instruments on a repair bench."],
+  ["gallery-20.jpg", "Two people posing together beside a board-repair workstation."],
+  ["gallery-21.jpg", "Group photo of trainees seated in the HardTech training lab."],
+].map(([fileName, caption], index) => ({
+  imageUrl: `/images/gallery/${fileName}`,
+  caption,
+  sortOrder: index,
+}));
 
 // ---------------------------------------------------------------------------
 // FAQs — /contact FAQ accordion (desktop-01 #22-25, mobile-02 #141659-141711),

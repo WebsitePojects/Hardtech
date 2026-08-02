@@ -24,18 +24,18 @@ export function AuthorRow({
   const initials = `${author.firstName[0] ?? ""}${author.lastName[0] ?? ""}`.toUpperCase();
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-1.5">
       <Avatar size={compact ? "sm" : "default"}>
         <AvatarFallback className="bg-primary/15 font-semibold text-primary">
           {initials}
         </AvatarFallback>
       </Avatar>
-      <span className="font-sub text-sm font-semibold text-foreground">
+      <span className="font-sub text-xs font-semibold text-foreground">
         {author.firstName} {author.lastName}
       </span>
       <RoleBadge role={author.role} />
       {/* TODO(orchestrator): forum.service lacks author reputationBadge */}
-      <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+      <span className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
         <RatingStars average={author.ratingAverage} count={author.ratingCount} />
         <span className="inline-flex items-center gap-1">
           <FileText className="size-3.5" aria-hidden />

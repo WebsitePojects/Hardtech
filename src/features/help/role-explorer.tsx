@@ -22,7 +22,7 @@ import {
 import { StepTimeline } from "@/features/help/step-timeline";
 
 export function RoleExplorer() {
-  const [selectedRoleId, setSelectedRoleId] = useState<HelpRoleId>("admin");
+  const [selectedRoleId, setSelectedRoleId] = useState<HelpRoleId>("trainee");
   const selectedRole =
     HELP_ROLES.find((role) => role.id === selectedRoleId) ?? HELP_ROLES[0];
   const accent = ACCENT_STYLES[selectedRole.accent];
