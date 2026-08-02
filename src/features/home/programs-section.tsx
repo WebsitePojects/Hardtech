@@ -1,5 +1,6 @@
 import type { ProgramWithCurriculum } from "@/server/services/marketing.service";
 import { ProgramsCarousel, type ProgramsCarouselProgram } from "./programs-carousel";
+import { AnnouncementsCard, type Announcement } from "./announcements-card";
 
 /**
  * "Core Programs" section (docs/screens/desktop-01.md #1-2). The eyebrow/H2
@@ -15,8 +16,10 @@ import { ProgramsCarousel, type ProgramsCarouselProgram } from "./programs-carou
  */
 export function ProgramsSection({
   programs,
+  announcements,
 }: {
   programs: ProgramWithCurriculum[];
+  announcements: Announcement[];
 }) {
   const carouselPrograms: ProgramsCarouselProgram[] = programs.map((program) => ({
     id: program.id,
@@ -29,7 +32,7 @@ export function ProgramsSection({
   }));
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 lg:pb-8 lg:pt-20">
+    <section className="mx-auto w-full max-w-6xl px-4 pt-8 pb-12 sm:px-6 sm:py-14 lg:pb-8 lg:pt-20">
       <div className="text-center">
         <p className="mb-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
           WHAT WE OFFER
@@ -38,9 +41,10 @@ export function ProgramsSection({
           Core Programs
         </h2>
       </div>
-      <div className="mt-10">
+      <div className="mt-6 sm:mt-10">
         <ProgramsCarousel programs={carouselPrograms} />
       </div>
+      <AnnouncementsCard announcements={announcements} mobileOnly />
     </section>
   );
 }

@@ -31,7 +31,7 @@ const PILLARS: Array<{ icon: LucideIcon; label: string; description: string }> =
 
 export function Foundation() {
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
+    <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:py-24">
       <div className="mb-10 text-center">
         <p className="mb-3 text-xs font-semibold tracking-widest text-primary uppercase">
           OUR FOUNDATION

@@ -22,7 +22,7 @@ const ADVANTAGES = [
 
 export function Advantage() {
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
+    <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:py-24">
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:items-center">
         <div>
           <p className="mb-3 text-xs font-semibold tracking-widest text-primary uppercase">

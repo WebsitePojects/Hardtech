@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Star, Users } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Footer } from "@/components/layout/footer";
 import { RoleBadge } from "@/features/forum/author-badges";
+import { getInitials } from "@/components/dashboard/get-initials";
 
 // NOT SOURCED: no screenshot in docs/screens/ captures /forum/leaderboard
 // itself — desktop-01.md #11-13 and desktop-02.md #28 only show the
@@ -19,7 +20,7 @@ import { RoleBadge } from "@/features/forum/author-badges";
 // Cannot find module '@/server/services/forum.service' is expected until
 // DATA-2 lands it — see src/app/(app)/forum/page.tsx for the full contract
 // disclaimer. Expected shape: getLeaderboard(limit?: number): Promise<LeaderboardEntry[]>
-import { getLeaderboard } from "@/server/services/forum.service";
+import { getForumStats, getLeaderboard } from "@/server/services/forum.service";
 
 export const metadata = {
   title: "Rating Leaderboard | HardTech IT Corp",
@@ -28,11 +29,15 @@ export const metadata = {
 const MEDALS = ["🥇", "🥈", "🥉"];
 
 export default async function ForumLeaderboardPage() {
-  const leaderboard = await getLeaderboard();
+  const [leaderboard, forumStats] = await Promise.all([getLeaderboard(), getForumStats()]);
+  const totalRatings = leaderboard.reduce((sum, entry) => sum + entry.ratingCount, 0);
+  const communityAverage = totalRatings === 0
+    ? 0
+    : leaderboard.reduce((sum, entry) => sum + entry.ratingAverage * entry.ratingCount, 0) / totalRatings;
 
   return (
     <>
-      <div className="mx-auto max-w-3xl space-y-6 px-4 pt-24 pb-16 sm:px-6 sm:pt-28">
+      <div className="mx-auto max-w-3xl space-y-6 px-4 pt-20 pb-16 sm:px-6 sm:pt-28">
         <Link
           href="/forum"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -52,6 +57,30 @@ export default async function ForumLeaderboardPage() {
           </p>
         </div>
 
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Card className="bg-surface-secondary">
+            <CardContent className="flex flex-col items-center gap-1 p-3 text-center">
+              <Users className="size-4 text-brand-blue" aria-hidden />
+              <strong className="font-heading text-xl text-brand-blue">{forumStats.memberCount}</strong>
+              <span className="text-xs text-muted-foreground">Total Members</span>
+            </CardContent>
+          </Card>
+          <Card className="bg-surface-secondary">
+            <CardContent className="flex flex-col items-center gap-1 p-3 text-center">
+              <Star className="size-4 text-brand-orange" aria-hidden />
+              <strong className="font-heading text-xl text-brand-orange">{totalRatings}</strong>
+              <span className="text-xs text-muted-foreground">Total Ratings</span>
+            </CardContent>
+          </Card>
+          <Card className="bg-surface-secondary">
+            <CardContent className="flex flex-col items-center gap-1 p-3 text-center">
+              <Star className="size-4 text-brand-orange" aria-hidden />
+              <strong className="font-heading text-xl text-brand-orange">{communityAverage.toFixed(1)}★</strong>
+              <span className="text-xs text-muted-foreground">Community Avg</span>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardContent className="space-y-1">
             {leaderboard.length === 0 ? (
@@ -61,8 +90,7 @@ export default async function ForumLeaderboardPage() {
             ) : (
               leaderboard.map((entry, index) => {
                 const rank = index + 1;
-                const initials =
-                  `${entry.firstName[0] ?? ""}${entry.lastName[0] ?? ""}`.toUpperCase();
+                const initials = getInitials(`${entry.firstName} ${entry.lastName}`);
                 return (
                   <div
                     key={entry.userId}

@@ -29,8 +29,8 @@ export default async function LoginPage() {
   if (session) redirect("/dashboard");
 
   return (
-    <div className="hero-glow relative mx-auto grid w-full max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center lg:py-24">
-      <div className="space-y-8">
+    <div className="hero-glow relative mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 sm:gap-10 sm:px-6 sm:py-16 lg:grid-cols-2 lg:items-center lg:py-24">
+      <div className="space-y-6 lg:space-y-8">
         <Badge variant="outline" className="gap-1.5 border-primary/40 text-primary">
           <span className="size-1.5 rounded-full bg-primary" aria-hidden />
           System Online · 2026 Batches Open
@@ -58,7 +58,7 @@ export default async function LoginPage() {
           ))}
         </ul>
 
-        <p className="text-xs text-muted-foreground">
+        <p className="hidden text-xs text-muted-foreground lg:block">
           © 2026 HardTech IT Corp. All rights reserved.
         </p>
       </div>

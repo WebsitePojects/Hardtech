@@ -39,7 +39,7 @@ export function Instructors({ trainers }: { trainers: TrainerWithUser[] }) {
   if (trainers.length === 0) return null;
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
+    <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:py-24">
       <div className="mb-10 text-center">
         <p className="mb-3 text-xs font-semibold tracking-widest text-primary uppercase">
           EXPERT TRAINERS

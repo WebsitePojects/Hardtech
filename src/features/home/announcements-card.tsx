@@ -4,9 +4,9 @@ import Image from "next/image";
 import { useState } from "react";
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 
-type Announcement = { id: string; title: string; body: string; type: string; mediaUrl: string | null; createdAt: string };
+export type Announcement = { id: string; title: string; body: string; type: string; mediaUrl: string | null; createdAt: string };
 
-export function AnnouncementsCard({ announcements }: { announcements: Announcement[] }) {
+export function AnnouncementsCard({ announcements, mobileOnly = false, desktopOnly = false }: { announcements: Announcement[]; mobileOnly?: boolean; desktopOnly?: boolean }) {
   const [activeIndex, setActiveIndex] = useState(0);
   if (announcements.length === 0) return null;
   const announcement = announcements[activeIndex] ?? announcements[0];
@@ -16,7 +16,7 @@ export function AnnouncementsCard({ announcements }: { announcements: Announceme
   const mediaUrl = announcement.mediaUrl ?? "/images/home/announcement-june-2026-batch.jpg";
 
   return (
-    <aside className="absolute right-[4%] top-10 z-10 hidden w-[360px] rounded-2xl border border-primary/40 bg-background/80 p-4 shadow-[0_0_20px_var(--glow-primary)] backdrop-blur-md lg:block" aria-label="Live updates">
+    <aside className={`relative right-auto top-auto z-10 mx-auto mb-8 block w-[calc(100%-1rem)] max-w-[360px] rounded-2xl border border-primary/40 bg-background/80 p-3 shadow-[0_0_20px_var(--glow-primary)] backdrop-blur-md lg:absolute lg:right-[4%] lg:top-10 lg:mx-0 lg:mb-0 lg:block lg:w-[360px] lg:p-4 ${mobileOnly ? "lg:hidden" : ""} ${desktopOnly ? "hidden lg:block" : ""}`} aria-label="Live updates">
       <div className="flex items-center gap-2 text-[10px] font-semibold tracking-wider text-primary">
         <span className="size-1.5 rounded-full bg-primary" aria-hidden /> LIVE UPDATES
         <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px]">{announcement.type}</span>

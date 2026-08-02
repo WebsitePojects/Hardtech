@@ -4,6 +4,7 @@ import { NavbarActions, type NavbarUser } from "./navbar-actions";
 import { MobileNav } from "./mobile-nav";
 import { getSession } from "@/server/auth/session";
 import { getDashboardUser } from "@/server/services/dashboard.service";
+import { getInitials } from "@/components/dashboard/get-initials";
 
 function roleLabel(role: "ADMIN" | "TRAINER" | "TRAINEE"): string {
   switch (role) {
@@ -14,15 +15,6 @@ function roleLabel(role: "ADMIN" | "TRAINER" | "TRAINEE"): string {
     case "TRAINEE":
       return "Trainee";
   }
-}
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0] ?? "")
-    .join("")
-    .toUpperCase() || "?";
 }
 
 /**

@@ -108,6 +108,7 @@ export function RoleExplorer() {
         key={selectedRole.id}
         type="single"
         collapsible
+        defaultValue={selectedRole.sections[0]?.id}
         className="mt-6 gap-3"
       >
         {selectedRole.sections.map((section) => {

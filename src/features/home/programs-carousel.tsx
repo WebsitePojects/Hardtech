@@ -34,10 +34,10 @@ export function ProgramsCarousel({ programs }: { programs: ProgramsCarouselProgr
   const next = () => setSelectedIndex((selectedIndex + 1) % programs.length);
 
             return (
-    <div className="relative mx-auto h-[292px] w-full max-w-5xl overflow-hidden">
+    <div className="relative mx-auto h-[116px] w-full max-w-5xl overflow-hidden lg:h-[292px]">
       <button type="button" aria-label="Previous program" onClick={previous} className="absolute left-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-glass-border bg-background/80 p-3 text-muted-foreground transition hover:border-primary hover:text-primary lg:block"><ChevronLeft className="size-4" /></button>
       <button type="button" aria-label="Next program" onClick={next} className="absolute right-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-glass-border bg-background/80 p-3 text-muted-foreground transition hover:border-primary hover:text-primary lg:block"><ChevronRight className="size-4" /></button>
-      <div className="relative top-28 mx-auto h-[250px] w-full max-w-4xl [perspective:1100px]">
+      <div className="relative top-0 mx-auto h-[106px] w-full max-w-4xl [--carousel-step:112px] [perspective:1100px] lg:top-28 lg:h-[250px] lg:[--carousel-step:180px]">
         {programs.map((program, index) => {
           const rawOffset = index - selectedIndex;
           const offset = rawOffset > programs.length / 2 ? rawOffset - programs.length : rawOffset < -programs.length / 2 ? rawOffset + programs.length : rawOffset;
@@ -47,7 +47,7 @@ export function ProgramsCarousel({ programs }: { programs: ProgramsCarouselProgr
           const visible = distance <= 2;
           const accent = resolveAccent(program.accentColor);
           return (
-            <article key={program.id} className={`absolute left-1/2 top-1/2 h-[220px] w-[290px] overflow-hidden rounded-2xl border p-6 transition-all duration-500 ${active ? "border-brand-blue shadow-[0_0_25px_var(--glow-brand-blue)]" : "border-glass-border"}`} style={{ transform: `translate(-50%, -50%) translateX(${offset * 180}px) translateZ(${active ? 80 : Math.max(0, 20 - distance * 10)}px) rotateY(${offset * -22}deg) scale(${active ? 1 : distance === 1 ? 0.82 : 0.66})`, opacity: visible ? active ? 1 : distance === 1 ? 0.62 : 0.28 : 0, zIndex: 10 - distance, backgroundImage: program.imageUrl ? `linear-gradient(var(--glass), var(--glass)), url(${program.imageUrl})` : undefined, backgroundSize: "cover", backgroundPosition: "center", pointerEvents: visible ? "auto" : "none" }}>
+            <article key={program.id} className={`absolute left-1/2 top-1/2 h-[100px] w-[190px] overflow-hidden rounded-xl border p-3 transition-all duration-500 lg:h-[220px] lg:w-[290px] lg:rounded-2xl lg:p-6 ${active ? "border-brand-blue shadow-[0_0_25px_var(--glow-brand-blue)]" : "border-glass-border"}`} style={{ transform: `translate(-50%, -50%) translateX(calc(${offset} * var(--carousel-step))) translateZ(${active ? 80 : Math.max(0, 20 - distance * 10)}px) rotateY(${offset * -22}deg) scale(${active ? 1 : distance === 1 ? 0.82 : 0.66})`, opacity: visible ? active ? 1 : distance === 1 ? 0.62 : 0.28 : 0, zIndex: 10 - distance, backgroundImage: program.imageUrl ? `linear-gradient(var(--glass), var(--glass)), url(${program.imageUrl})` : undefined, backgroundSize: "cover", backgroundPosition: "center", pointerEvents: visible ? "auto" : "none" }}>
               <div className="absolute inset-0 bg-background/65" />
               <div className="relative flex h-full flex-col gap-3">
                 <span className={`inline-flex size-10 items-center justify-center rounded-xl ${accent}`}><Icon className="size-5" /></span>

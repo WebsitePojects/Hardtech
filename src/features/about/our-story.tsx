@@ -16,7 +16,7 @@ import Image from "next/image";
  */
 export function OurStory() {
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
+    <section className="mx-auto w-full max-w-6xl px-4 py-20 sm:px-6 lg:py-24">
       <div className="grid gap-10 overflow-hidden rounded-2xl border border-glass-border lg:grid-cols-2">
         <div className="relative flex flex-col">
           <div className="relative aspect-4/3 w-full">

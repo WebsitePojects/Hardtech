@@ -24,8 +24,7 @@ export async function HomeHero() {
   return (
     <section className="relative overflow-hidden">
       <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 -z-10 h-[36rem]" />
-      <AnnouncementsCard announcements={announcements} />
-      <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-6 px-4 py-16 text-center sm:px-6 lg:py-20">
+      <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-4 px-4 py-8 text-center sm:gap-6 sm:px-6 sm:py-16 lg:py-20">
         <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 px-3 py-1 text-xs font-semibold tracking-wide text-primary">
           <span className="size-1.5 rounded-full bg-primary" aria-hidden />
           ENROLLMENTS OPEN - 2026
@@ -46,6 +45,7 @@ export async function HomeHero() {
           {TRUST_ITEMS.map((item) => <li key={item.label} className="flex items-center gap-1.5"><CircleCheckBig className={`size-4 ${item.colorClass}`} />{item.label}</li>)}
         </ul>
       </div>
+      <AnnouncementsCard announcements={announcements} desktopOnly />
     </section>
   );
 }
