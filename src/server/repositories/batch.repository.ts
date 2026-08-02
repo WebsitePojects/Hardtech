@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import type { Prisma } from "@/../generated/prisma/client";
 
 /** Pure data access for Batch. */
 export const batchRepository = {
@@ -13,5 +14,9 @@ export const batchRepository = {
       include: { program: true },
       orderBy: { createdAt: "asc" },
     });
+  },
+
+  unassignTrainee(tx: Prisma.TransactionClient, enrollmentId: string, batchId: string) {
+    return tx.enrollment.updateMany({ where: { id: enrollmentId, batchId }, data: { batchId: null } });
   },
 };

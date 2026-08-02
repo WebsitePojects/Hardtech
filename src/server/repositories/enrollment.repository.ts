@@ -10,7 +10,9 @@ const withProgramAndBatch = {
 export const enrollmentRepository = {
   findByTraineeAndTrainer(traineeId: string, trainerId: string) { return db.enrollment.findFirst({ where: { traineeId, batch: { trainerId } }, orderBy: { createdAt: "desc" } }); },
   findByTraineeAndBatch(traineeId: string, batchId: string) { return db.enrollment.findFirst({ where: { traineeId, batchId } }); },
+  findLatestByTraineeId(traineeId: string) { return db.enrollment.findFirst({ where: { traineeId }, orderBy: { createdAt: "desc" } }); },
   transitionByPayment(tx: Prisma.TransactionClient, paymentId: string, status: EnrollmentStatus, reason?: string) { return tx.enrollment.updateMany({ where: { paymentId, status: "PENDING_VERIFICATION" }, data: { status, rejectionReason: reason ?? null } }); },
+  updateProgram(tx: Prisma.TransactionClient, enrollmentId: string, programId: string) { return tx.enrollment.updateMany({ where: { id: enrollmentId, programId: { not: programId } }, data: { programId } }); },
   findProgramsByIds(programIds: string[]) {
     return db.program.findMany({ where: { id: { in: programIds } }, select: { id: true, priceAmount: true } });
   },

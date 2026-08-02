@@ -10,7 +10,7 @@ export function OfficeMapCard({ office }: { office: Office }) {
   const mapsEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(office.addressFull)}&output=embed`;
 
   return (
-    <Card className="overflow-hidden p-0">
+    <Card className="overflow-hidden bg-surface-secondary p-0">
       <div className="relative aspect-video w-full">
         <iframe
           src={mapsEmbedUrl}

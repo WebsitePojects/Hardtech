@@ -21,6 +21,7 @@ export function PhotoGrid({ photos }: { photos: GalleryPhoto[] }) {
               width={1200}
               height={1600}
               sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+              loading="eager"
               className="block h-auto w-full object-cover"
             />
           </div>

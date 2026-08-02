@@ -26,7 +26,7 @@ export function ForgotPasswordForm() {
     startTransition(async () => {
       try {
         const result = await requestPasswordReset({ email });
-        setError(result.error);
+        setError(result.error ?? null);
       } catch {
         // The action currently always throws — see the TODO(wave-3) comment
         // in actions.ts. Surfaced honestly rather than shown as a success.

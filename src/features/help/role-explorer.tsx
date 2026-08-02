@@ -79,7 +79,7 @@ export function RoleExplorer() {
       </div>
 
       {/* Role description */}
-      <Card className={cn("mt-8", accent.tintBg, "border", accent.border)}>
+      <Card className={cn("mt-8 bg-surface-secondary", accent.tintBg, "border", accent.border)}>
         <CardContent className="flex flex-col items-center gap-3 text-center">
           <Bilingual
             text={selectedRole.description}
@@ -148,7 +148,7 @@ export function RoleExplorer() {
       </Accordion>
 
       {/* Still need help? */}
-      <Card className="mt-6">
+      <Card className="mt-6 bg-surface-secondary">
         <CardContent className="flex flex-col items-center gap-2 text-center">
           <h3 className="font-heading text-lg font-semibold">
             Still need help? · Kailangan pa ng tulong?

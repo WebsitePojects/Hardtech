@@ -34,7 +34,7 @@ export function ProgramsCarousel({ programs }: { programs: ProgramsCarouselProgr
   const next = () => setSelectedIndex((selectedIndex + 1) % programs.length);
 
             return (
-    <div className="relative mx-auto h-[292px] w-full max-w-5xl">
+    <div className="relative mx-auto h-[292px] w-full max-w-5xl overflow-hidden">
       <button type="button" aria-label="Previous program" onClick={previous} className="absolute left-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-glass-border bg-background/80 p-3 text-muted-foreground transition hover:border-primary hover:text-primary lg:block"><ChevronLeft className="size-4" /></button>
       <button type="button" aria-label="Next program" onClick={next} className="absolute right-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-glass-border bg-background/80 p-3 text-muted-foreground transition hover:border-primary hover:text-primary lg:block"><ChevronRight className="size-4" /></button>
       <div className="relative top-28 mx-auto h-[250px] w-full max-w-4xl [perspective:1100px]">

@@ -37,6 +37,7 @@ export function AnnouncementCard({ item }: { item: AnnouncementItem }) {
   const removeAction = usePendingAction();
 
   async function handleDelete() {
+    if (removeAction.isPending) return;
     await removeAction.run(async () => {
       try {
         await deleteAnnouncement({ announcementId: item.id });
@@ -63,7 +64,7 @@ export function AnnouncementCard({ item }: { item: AnnouncementItem }) {
           onClick={handleDelete}
           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
-          <Trash2 className="size-4" aria-hidden />
+          {removeAction.isPending ? "Deleting…" : <Trash2 className="size-4" aria-hidden />}
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">{item.body}</p>

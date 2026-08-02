@@ -33,7 +33,7 @@ export function GalleryHero() {
 
         <div className="grid grid-cols-2 gap-4">
           {STATS.map(({ icon: Icon, value, label }) => (
-            <Card key={label} className="ring-glass-border">
+            <Card key={label} className="bg-surface-secondary ring-glass-border">
               <CardContent className="flex flex-col gap-2">
                 <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon className="size-4.5" />

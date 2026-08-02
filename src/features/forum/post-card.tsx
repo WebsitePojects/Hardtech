@@ -18,7 +18,7 @@ export function PostCard({ post }: { post: ForumPostSummary }) {
   const CategoryIcon = post.category ? CATEGORY_ICONS[post.category] : null;
 
   return (
-    <Card className="border border-glass-border bg-surface-card ring-0 transition-colors hover:border-[var(--glass-border-strong)]">
+    <Card className="border border-glass-border bg-surface-secondary ring-0 transition-colors hover:border-[var(--glass-border-strong)]">
       <CardContent className="space-y-2.5 p-4 sm:p-[18px]">
         {post.isPinned || post.isTrending ? (
           <div className="flex flex-wrap gap-2">

@@ -32,6 +32,7 @@ export type PaymentMethodFieldConfig = {
  * and the per-method field set are structural and are reproduced exactly.
  */
 export function PaymentMethodCard({ config }: { config: PaymentMethodFieldConfig }) {
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [numberValue, setNumberValue] = useState("");
   const [accountNumberValue, setAccountNumberValue] = useState("");
   const [accountNameValue, setAccountNameValue] = useState("");
@@ -42,7 +43,7 @@ export function PaymentMethodCard({ config }: { config: PaymentMethodFieldConfig
   async function handleSave() {
     await save.run(async () => {
       try {
-        await savePaymentMethod({
+        const result = await savePaymentMethod({
           method: config.method,
           displayName: config.displayName,
           accountNumber:
@@ -55,9 +56,11 @@ export function PaymentMethodCard({ config }: { config: PaymentMethodFieldConfig
           accountName: accountNameValue || null,
           note: noteValue || null,
           isEnabled,
+          idempotencyKey,
         });
+        if (!result.ok) toast.error(result.error);
       } catch {
-        toast.error("Saving a payment method isn't wired up yet in this build.");
+        toast.error("Unable to save the payment method.");
       }
     });
   }

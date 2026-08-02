@@ -50,7 +50,7 @@ export function ContactHero() {
 
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {CONTACT_CARDS.map(({ icon: Icon, label, value, caption }) => (
-            <Card key={label}>
+            <Card key={label} className="bg-surface-secondary">
               <CardContent className="flex flex-col gap-2">
                 <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon className="size-4.5" />

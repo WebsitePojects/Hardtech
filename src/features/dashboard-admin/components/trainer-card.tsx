@@ -6,8 +6,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { useState } from "react";
+import { toast } from "sonner";
+import { usePendingAction } from "../use-pending-action";
+import { removeAssignedTrainee } from "../mutations/trainer-mutations";
 
 export type AssignedTrainee = {
+  enrollmentId: string;
+  batchId: string;
   name: string;
   programLabel: string;
 };
@@ -73,6 +79,19 @@ export function TrainerCard({ trainer }: { trainer: TrainerManagementItem }) {
 }
 
 function AssignedTraineeRow({ trainee }: { trainee: AssignedTrainee }) {
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const remove = usePendingAction();
+  async function handleRemove() {
+    if (!window.confirm(`Remove ${trainee.name} from this batch?`)) return;
+    await remove.run(async () => {
+      try {
+        const result = await removeAssignedTrainee({ enrollmentId: trainee.enrollmentId, batchId: trainee.batchId, idempotencyKey });
+        if (!result.ok) toast.error(result.error);
+      } catch {
+        toast.error("Unable to remove the trainee.");
+      }
+    });
+  }
   return (
     <li className="flex items-center justify-between gap-2 rounded-lg px-1.5 py-1.5 text-sm hover:bg-glass-hover">
       <span className="text-foreground">
@@ -83,10 +102,11 @@ function AssignedTraineeRow({ trainee }: { trainee: AssignedTrainee }) {
         variant="ghost"
         size="icon-xs"
         aria-label={`Remove ${trainee.name}`}
-        disabled
+        disabled={remove.isPending}
+        onClick={handleRemove}
         className="text-destructive hover:bg-destructive/10 hover:text-destructive"
       >
-        <X className="size-3.5" aria-hidden />
+        {remove.isPending ? "…" : <X className="size-3.5" aria-hidden />}
       </Button>
     </li>
   );

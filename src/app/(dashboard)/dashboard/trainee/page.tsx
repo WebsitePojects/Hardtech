@@ -13,45 +13,16 @@ import { MaterialsSection } from "@/features/dashboard-trainee/materials-section
 import { MyDashboardSection } from "@/features/dashboard-trainee/my-dashboard-section";
 import { SessionScheduleSection } from "@/features/dashboard-trainee/session-schedule-section";
 import type { TraineeAssignmentListItem, TraineeSessionView } from "@/features/dashboard-trainee/types";
+import { DashboardSection } from "@/components/dashboard/dashboard-shell";
 
 export const metadata = {
   title: "Trainee Dashboard | HardTech IT Corp",
 };
 
-interface TraineeDashboardSearchParams {
-  section?: string;
-}
-
-interface TraineeDashboardPageProps {
-  searchParams: Promise<TraineeDashboardSearchParams>;
-}
-
-type TraineeSection =
-  | "my-dashboard"
-  | "session-schedule"
-  | "assignments"
-  | "enrolled-programs"
-  | "materials"
-  | "credentials";
-
 /** Fail closed (.claude/rules/00-non-negotiables.md rule 3): unrecognized
  * `?section=` value falls through to the default tab, never a crash or a
  * blank page — mirrors dashboard-sidebar-nav.tsx's own
  * `items[0]?.id` fallback. */
-function parseSection(value: string | undefined): TraineeSection {
-  switch (value) {
-    case "my-dashboard":
-    case "session-schedule":
-    case "assignments":
-    case "enrolled-programs":
-    case "materials":
-    case "credentials":
-      return value;
-    default:
-      return "my-dashboard";
-  }
-}
-
 function toSessionView(sessions: Awaited<ReturnType<typeof getTraineeOverview>>["upcomingSessions"]): TraineeSessionView[] {
   return sessions.map((session) => ({
     id: session.id,
@@ -97,39 +68,27 @@ function toAssignmentView(
  * (.claude/rules/00-non-negotiables.md rule 5 — one gate is not enough,
  * every gated route re-checks its own role).
  */
-export default async function TraineeDashboardPage(props: TraineeDashboardPageProps) {
+export default async function TraineeDashboardPage() {
   const session = await requireRole("TRAINEE");
 
-  const searchParams = await props.searchParams;
-  const section = parseSection(searchParams.section);
-
-  const [user, overview] = await Promise.all([
+  const [user, overview, assignments, materials, certificateStatus] = await Promise.all([
     getDashboardUser(session.userId),
     getTraineeOverview(session.userId),
+    getTraineeAssignments(session.userId, session.role),
+    getTraineeMaterials(session.userId, session.role),
+    getTraineeCertificateStatus(session.userId, session.role),
   ]);
 
   const displayName = user?.name ?? "Trainee";
 
-  switch (section) {
-    case "session-schedule":
-      return <SessionScheduleSection sessions={toSessionView(overview.upcomingSessions)} />;
-    case "assignments": {
-      const assignments = await getTraineeAssignments(session.userId, session.role);
-      return <AssignmentsSection assignments={toAssignmentView(assignments)} />;
-    }
-    case "enrolled-programs":
-      return <EnrolledProgramsSection overview={overview} />;
-    case "materials": {
-      const materials = await getTraineeMaterials(session.userId, session.role);
-      return <MaterialsSection materials={materials} />;
-    }
-    case "credentials": {
-      const certificateStatus = await getTraineeCertificateStatus(session.userId, session.role);
-      return <CredentialsSection displayName={displayName} overview={overview} certificateStatus={certificateStatus} />;
-    }
-    case "my-dashboard":
-      return <MyDashboardSection displayName={displayName} overview={overview} />;
-    default:
-      return <MyDashboardSection displayName={displayName} overview={overview} />;
-  }
+  return (
+    <>
+      <DashboardSection section="my-dashboard"><MyDashboardSection displayName={displayName} overview={overview} /></DashboardSection>
+      <DashboardSection section="session-schedule"><SessionScheduleSection sessions={toSessionView(overview.upcomingSessions)} /></DashboardSection>
+      <DashboardSection section="assignments"><AssignmentsSection assignments={toAssignmentView(assignments)} /></DashboardSection>
+      <DashboardSection section="enrolled-programs"><EnrolledProgramsSection overview={overview} /></DashboardSection>
+      <DashboardSection section="materials"><MaterialsSection materials={materials} /></DashboardSection>
+      <DashboardSection section="credentials"><CredentialsSection displayName={displayName} overview={overview} certificateStatus={certificateStatus} /></DashboardSection>
+    </>
+  );
 }

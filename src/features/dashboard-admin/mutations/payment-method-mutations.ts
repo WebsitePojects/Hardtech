@@ -7,6 +7,7 @@
 // server-side (rule 4) rather than trusting the form payload as-is.
 
 import type { PaymentMethod } from "@/../generated/prisma/enums";
+import { savePaymentMethodAction } from "@/app/(dashboard)/dashboard/admin/actions";
 
 export interface SavePaymentMethodInput {
   method: PaymentMethod;
@@ -16,12 +17,9 @@ export interface SavePaymentMethodInput {
   bankName: string | null;
   note: string | null;
   isEnabled: boolean;
+  idempotencyKey?: string;
 }
 
-export async function savePaymentMethod(input: SavePaymentMethodInput): Promise<never> {
-  void input;
-  throw new Error(
-    "TODO(wave-4): saving a payment method is not implemented yet. " +
-      "This build stops at the disabled/pending guard on purpose.",
-  );
+export async function savePaymentMethod(input: SavePaymentMethodInput) {
+  return savePaymentMethodAction(input);
 }

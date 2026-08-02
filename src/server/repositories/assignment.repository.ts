@@ -5,7 +5,8 @@ import type { SubmissionType } from "@/../generated/prisma/client";
 export const assignmentRepository = {
   findBatchByTrainerId(trainerId: string) { return db.batch.findFirst({ where: { trainerId }, orderBy: { createdAt: "asc" } }); },
   findById(id: string) { return db.assignment.findUnique({ where: { id } }); },
-  create(data: { batchId: string; trainerId: string; title: string; instructions: string; dueDate: Date; dueTime: string; allowedSubmissionTypes: SubmissionType[] }) { return db.assignment.create({ data }); },
+  create(data: { batchId: string; trainerId: string; title: string; instructions: string; dueDate: Date; dueTime: string; allowedSubmissionTypes: SubmissionType[]; idempotencyKey: string }) { return db.assignment.create({ data }); },
+  findByIdempotencyKey(idempotencyKey: string) { return db.assignment.findUnique({ where: { idempotencyKey } }); },
   /** Every assignment a trainer has posted — feeds the trainer's own Assignments list (desktop-02.md #19-20). */
   findManyByTrainerId(trainerId: string) {
     return db.assignment.findMany({

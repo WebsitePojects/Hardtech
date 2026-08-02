@@ -1,5 +1,5 @@
 import { db } from "@/server/db";
-import type { UserRole } from "@/../generated/prisma/client";
+import type { Prisma, UserRole, UserStatus } from "@/../generated/prisma/client";
 
 /** Pure data access for User. No role/eligibility rules — see 10-architecture.md. */
 export const userRepository = {
@@ -64,5 +64,25 @@ export const userRepository = {
       },
       orderBy: { createdAt: "asc" },
     });
+  },
+
+  updateRole(tx: Prisma.TransactionClient, id: string, currentRole: UserRole, role: UserRole) {
+    return tx.user.updateMany({ where: { id, role: currentRole }, data: { role } });
+  },
+
+  updateStatus(tx: Prisma.TransactionClient, id: string, currentStatus: UserStatus, status: UserStatus) {
+    return tx.user.updateMany({ where: { id, status: currentStatus }, data: { status } });
+  },
+
+  suspend(tx: Prisma.TransactionClient, id: string) {
+    return tx.user.updateMany({ where: { id, status: { not: "SUSPENDED" } }, data: { status: "SUSPENDED" } });
+  },
+
+  updateRoleIfNot(tx: Prisma.TransactionClient, id: string, role: UserRole) {
+    return tx.user.updateMany({ where: { id, role: { not: role } }, data: { role } });
+  },
+
+  updateStatusIfNot(tx: Prisma.TransactionClient, id: string, status: UserStatus) {
+    return tx.user.updateMany({ where: { id, status: { not: status } }, data: { status } });
   },
 };

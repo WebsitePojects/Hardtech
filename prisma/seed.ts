@@ -46,8 +46,8 @@ const prisma = new PrismaClient({
  */
 function hashSeedPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64).toString("hex");
-  return `${salt}:${hash}`;
+  const hash = scryptSync(password, salt, 64, { N: 16384, r: 8, p: 1, maxmem: 32 * 1024 * 1024 }).toString("base64url");
+  return `scrypt$v=1$n=16384$r=8$p=1$l=64$${salt}$${hash}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -515,8 +515,7 @@ const DEMO_LOGIN_USERS = [
  * seeded user when demo auth is enabled — deliberately NOT a real-looking
  * hash, which would imply a check that does not happen.
  */
-const DEMO_PASSWORD_PLACEHOLDER =
-  "demo-account-password-is-never-checked-see-verifyDemoCredentials";
+const DEMO_DEVELOPMENT_PASSWORD = "HardTechLocalDevOnly!";
 
 // ---------------------------------------------------------------------------
 // Supporting trainees — Henry's "Assigned Trainees" roster (desktop-02.md
@@ -1267,10 +1266,11 @@ async function main() {
         lastName: demoUser.lastName,
         role: demoUser.role,
         status: demoUser.status,
+        passwordHash: hashSeedPassword(DEMO_DEVELOPMENT_PASSWORD),
       },
       create: {
         email: demoUser.email,
-        passwordHash: DEMO_PASSWORD_PLACEHOLDER,
+        passwordHash: hashSeedPassword(DEMO_DEVELOPMENT_PASSWORD),
         firstName: demoUser.firstName,
         lastName: demoUser.lastName,
         role: demoUser.role,

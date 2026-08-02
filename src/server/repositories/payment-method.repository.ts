@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import type { PaymentMethod, Prisma } from "@/../generated/prisma/client";
 
 /**
  * Pure data access for PaymentMethodConfig. Whether disabled methods should
@@ -10,6 +11,39 @@ export const paymentMethodRepository = {
     return db.paymentMethodConfig.findMany({
       where: { isEnabled },
       orderBy: { createdAt: "asc" },
+    });
+  },
+
+  create(tx: Prisma.TransactionClient, data: Prisma.PaymentMethodConfigCreateInput) {
+    return tx.paymentMethodConfig.create({ data });
+  },
+
+  updateIfChanged(tx: Prisma.TransactionClient, input: {
+    method: PaymentMethod;
+    displayName: string;
+    accountNumber: string | null;
+    accountName: string | null;
+    bankName: string | null;
+    note: string | null;
+    isEnabled: boolean;
+    updatedByUserId: string;
+  }) {
+    const nullableChanged = (field: "accountNumber" | "accountName" | "bankName" | "note", value: string | null) =>
+      value === null ? { [field]: { not: null } } : { OR: [{ [field]: { not: value } }, { [field]: null }] };
+    return tx.paymentMethodConfig.updateMany({
+      where: {
+        method: input.method,
+        OR: [
+          { displayName: { not: input.displayName } },
+          nullableChanged("accountNumber", input.accountNumber),
+          nullableChanged("accountName", input.accountName),
+          nullableChanged("bankName", input.bankName),
+          nullableChanged("note", input.note),
+          { isEnabled: { not: input.isEnabled } },
+          { updatedByUserId: { not: input.updatedByUserId } },
+        ],
+      },
+      data: input,
     });
   },
 };

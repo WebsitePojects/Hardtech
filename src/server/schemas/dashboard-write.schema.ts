@@ -28,6 +28,16 @@ export const submitAssignmentSchema = z.object({
   submissionLink: z.string().trim().url().max(2000),
 });
 
+export const announcementWriteSchema = z.object({
+  idempotencyKey: idempotencyKeySchema,
+  title: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(10000),
+  type: z.enum(["UPDATE", "NOTICE", "INFO"]),
+  pinned: z.boolean(),
+});
+
+export const deleteAnnouncementSchema = z.object({ announcementId: idSchema });
+
 export const certificateTransitionSchema = z.object({
   certificateRequestId: idSchema,
   reason: z.string().trim().max(2000).optional(),

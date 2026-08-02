@@ -19,54 +19,43 @@
 // User relations), not this file's concern.
 
 import type { UserRole, UserStatus } from "@/../generated/prisma/enums";
+import { removeUserAction, updateUserProgramAction, updateUserRoleAction, updateUserStatusAction } from "@/app/(dashboard)/dashboard/admin/actions";
 
 export interface UpdateUserRoleInput {
   userId: string;
   role: UserRole;
+  idempotencyKey?: string;
 }
 
 export interface UpdateUserProgramInput {
   userId: string;
   programId: string;
+  idempotencyKey?: string;
 }
 
 export interface UpdateUserStatusInput {
   userId: string;
   status: UserStatus;
+  idempotencyKey?: string;
 }
 
 export interface RemoveUserInput {
   userId: string;
+  idempotencyKey?: string;
 }
 
-export async function updateUserRole(input: UpdateUserRoleInput): Promise<never> {
-  void input;
-  throw new Error(
-    "TODO(wave-4): updating a user's role is not implemented yet. " +
-      "This build stops at the disabled/pending guard on purpose.",
-  );
+export async function updateUserRole(input: UpdateUserRoleInput) {
+  return updateUserRoleAction(input);
 }
 
-export async function updateUserProgram(input: UpdateUserProgramInput): Promise<never> {
-  void input;
-  throw new Error(
-    "TODO(wave-4): updating a user's program is not implemented yet. " +
-      "This build stops at the disabled/pending guard on purpose.",
-  );
+export async function updateUserProgram(input: UpdateUserProgramInput) {
+  return updateUserProgramAction(input);
 }
 
-export async function updateUserStatus(input: UpdateUserStatusInput): Promise<never> {
-  void input;
-  throw new Error(
-    "TODO(wave-4): updating a user's status is not implemented yet. " +
-      "This build stops at the disabled/pending guard on purpose.",
-  );
+export async function updateUserStatus(input: UpdateUserStatusInput) {
+  return updateUserStatusAction(input);
 }
 
-export async function removeUser(input: RemoveUserInput): Promise<never> {
-  void input;
-  throw new Error(
-    "TODO(wave-4): removing a user is not implemented yet. " +
-      "This build stops at the disabled/pending guard on purpose.",
-  );
+export async function removeUser(input: RemoveUserInput) {
+  return removeUserAction(input);
 }

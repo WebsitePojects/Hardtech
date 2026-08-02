@@ -32,6 +32,8 @@ export async function TrainerManagementSection() {
     traineeCount: trainer.trainees.length,
     status: statusLabel(trainer.status),
     assignedTrainees: trainer.trainees.map((trainee) => ({
+      enrollmentId: trainee.enrollmentId,
+      batchId: trainee.batchId,
       name: trainee.name,
       programLabel: trainee.program,
     })),

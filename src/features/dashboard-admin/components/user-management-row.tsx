@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TableCell, TableRow } from "@/components/ui/table";
 import type { UserRole, UserStatus } from "@/../generated/prisma/enums";
 import { usePendingAction } from "../use-pending-action";
+import { useState } from "react";
 import { ADMIN_PROGRAM_OPTIONS, ADMIN_ROLE_OPTIONS, ADMIN_STATUS_OPTIONS } from "../confirmed-options";
 import {
   removeUser,
@@ -44,6 +45,7 @@ export type UserManagementItem = {
  * so an admin cannot fire a second write against the same row mid-save.
  */
 export function UserManagementRow({ user }: { user: UserManagementItem }) {
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const roleAction = usePendingAction();
   const programAction = usePendingAction();
   const statusAction = usePendingAction();
@@ -55,9 +57,10 @@ export function UserManagementRow({ user }: { user: UserManagementItem }) {
     if (!isUserRole(value)) return;
     await roleAction.run(async () => {
       try {
-        await updateUserRole({ userId: user.id, role: value });
+        const result = await updateUserRole({ userId: user.id, role: value, idempotencyKey });
+        if (!result.ok) toast.error(result.error);
       } catch {
-        toast.error("Updating a user's role isn't wired up yet in this build.");
+        toast.error("Unable to update the user's role.");
       }
     });
   }
@@ -66,9 +69,10 @@ export function UserManagementRow({ user }: { user: UserManagementItem }) {
     if (!isUserStatus(value)) return;
     await statusAction.run(async () => {
       try {
-        await updateUserStatus({ userId: user.id, status: value });
+        const result = await updateUserStatus({ userId: user.id, status: value, idempotencyKey });
+        if (!result.ok) toast.error(result.error);
       } catch {
-        toast.error("Updating a user's status isn't wired up yet in this build.");
+        toast.error("Unable to update the user's status.");
       }
     });
   }
@@ -76,19 +80,22 @@ export function UserManagementRow({ user }: { user: UserManagementItem }) {
   async function handleProgramChange(programId: string) {
     await programAction.run(async () => {
       try {
-        await updateUserProgram({ userId: user.id, programId });
+        const result = await updateUserProgram({ userId: user.id, programId, idempotencyKey });
+        if (!result.ok) toast.error(result.error);
       } catch {
-        toast.error("Updating a user's program isn't wired up yet in this build.");
+        toast.error("Unable to update the user's program.");
       }
     });
   }
 
   async function handleRemove() {
+    if (!window.confirm(`Remove ${user.name}?`)) return;
     await removeAction.run(async () => {
       try {
-        await removeUser({ userId: user.id });
+        const result = await removeUser({ userId: user.id, idempotencyKey });
+        if (!result.ok) toast.error(result.error);
       } catch {
-        toast.error("Removing a user isn't wired up yet in this build.");
+        toast.error("Unable to remove the user.");
       }
     });
   }

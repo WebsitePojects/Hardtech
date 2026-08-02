@@ -43,7 +43,7 @@ export function Foundation() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         {PILLARS.map((pillar) => (
-          <Card key={pillar.label}>
+          <Card key={pillar.label} className="bg-surface-secondary">
             <CardContent className="flex flex-col gap-3">
               <span className="inline-flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <pillar.icon className="size-5" />

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Award, CreditCard, History, UserPlus, Users } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,7 +10,7 @@ import { getAdminAnalytics, getAdminOverviewStats } from "@/server/services/dash
 import { OverviewRevenueEnrollmentsChart } from "../components/admin-analytics-charts";
 import { formatPesoCompact } from "../format-peso";
 import { DataNotConnectedNote } from "../components/data-not-connected-note";
-import { ForumModerationSection } from "./forum-moderation-section";
+import { DashboardSectionButton } from "@/components/dashboard/dashboard-section-button";
 
 /** desktop-02.md #2: 3-segment legend (green / light green / blue) — cycled
  * by index rather than hardcoded per program name, since `programMix` is
@@ -125,50 +124,48 @@ export async function OverviewSection() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <QuickLinkCard
-          href="/dashboard/admin?section=user-management"
+          section="user-management"
           icon={Users}
           heading="Manage Users"
           subtext={`${stats.totalUsers} total`}
         />
         <QuickLinkCard
-          href="/dashboard/admin?section=enrollments"
+          section="enrollments"
           icon={UserPlus}
           heading="Approve Enrolls"
           subtext={`${stats.pendingEnrollments} pending`}
         />
         <QuickLinkCard
-          href="/dashboard/admin?section=certificates"
+          section="certificates"
           icon={Award}
           heading="Approve Certs"
           subtext={`${stats.pendingCertificateRequests} pending`}
         />
         <QuickLinkCard
-          href="/dashboard/admin?section=audit-log"
+          section="audit-log"
           icon={History}
           // NOT SOURCED: dashboard.service has no audit-log count read.
           heading="Audit Log"
           subtext="— events"
         />
       </div>
-
-      <ForumModerationSection />
     </div>
   );
 }
 
 function QuickLinkCard({
-  href,
+  section,
   icon: Icon,
   heading,
   subtext,
 }: {
-  href: string;
+  section: string;
   icon: typeof Users;
   heading: string;
   subtext: string;
 }) {
   return (
-    <Link href={href}>
+    <DashboardSectionButton section={section} className="block w-full text-left">
       <Card className="flex-row items-center gap-3 p-4 transition-colors hover:bg-glass-hover">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary" aria-hidden>
           <Icon className="size-4.5" />
@@ -178,6 +175,6 @@ function QuickLinkCard({
           <p className="truncate text-xs text-muted-foreground">{subtext}</p>
         </div>
       </Card>
-    </Link>
+    </DashboardSectionButton>
   );
 }

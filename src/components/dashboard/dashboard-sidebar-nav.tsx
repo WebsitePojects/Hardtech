@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
 import { Home } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/../generated/prisma/enums";
-import { dashboardBasePath, dashboardNavItems } from "./dashboard-nav-items";
+import { dashboardNavItems } from "./dashboard-nav-items";
 import { DashboardLogoutButton } from "./dashboard-logout-button";
 import { getInitials } from "./get-initials";
 import { roleMeta } from "./role-meta";
+import { useDashboardNavigation } from "./dashboard-shell";
 
 export type DashboardSidebarNavProps = {
   role: UserRole;
@@ -58,19 +58,16 @@ export function DashboardSidebarNav({
   onNavigate,
   className,
 }: DashboardSidebarNavProps) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const { activeSection, setActiveSection } = useDashboardNavigation();
 
   const items = dashboardNavItems[role];
-  const basePath = dashboardBasePath[role];
   const meta = roleMeta[role];
-  const activeSection = searchParams.get("section") ?? items[0]?.id;
-  const displayName = userName ?? meta.fallbackDisplayName;
+  const displayName = userName ? (role === "TRAINER" ? `Mr. ${userName}` : userName) : meta.fallbackDisplayName;
   const initials = getInitials(displayName);
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
-      <div className="flex items-center gap-3 border-b border-glass-border p-4">
+      <div className="flex items-start gap-3 border-b border-glass-border p-4">
         <span
           className={cn(
             "flex size-10 shrink-0 items-center justify-center rounded-full font-heading text-sm font-semibold",
@@ -89,6 +86,9 @@ export function DashboardSidebarNav({
             {subtitle ?? meta.defaultSubtitle}
           </p>
         </div>
+        <button type="button" aria-label="Collapse sidebar" className="ml-auto flex size-7 shrink-0 items-center justify-center rounded-lg border border-glass-border text-muted-foreground hover:bg-glass-hover hover:text-foreground">
+          K
+        </button>
       </div>
 
       <p className="px-4 pt-4 pb-2 font-sub text-xs font-semibold tracking-widest text-muted-foreground uppercase">
@@ -100,15 +100,18 @@ export function DashboardSidebarNav({
         aria-label={meta.portalLabel}
       >
         {items.map((item) => {
-          const isActive = pathname === basePath && item.id === activeSection;
+          const isActive = item.id === activeSection;
           const Icon = item.icon;
           const count = badges?.[item.id];
 
           return (
-            <Link
+            <button
               key={item.id}
-              href={`${basePath}?section=${item.id}`}
-              onClick={onNavigate}
+              type="button"
+              onClick={() => {
+                setActiveSection(item.id);
+                onNavigate?.();
+              }}
               aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-foreground/80 transition-colors",
@@ -124,7 +127,7 @@ export function DashboardSidebarNav({
                   {count}
                 </span>
               ) : null}
-            </Link>
+            </button>
           );
         })}
       </nav>

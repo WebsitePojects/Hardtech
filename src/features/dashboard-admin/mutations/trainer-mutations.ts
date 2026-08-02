@@ -11,12 +11,10 @@
 export interface RemoveAssignedTraineeInput {
   enrollmentId: string;
   batchId: string;
+  idempotencyKey?: string;
 }
 
-export async function removeAssignedTrainee(input: RemoveAssignedTraineeInput): Promise<never> {
-  void input;
-  throw new Error(
-    "TODO(wave-4): removing an assigned trainee is not implemented yet. " +
-      "This build stops at the disabled/pending guard on purpose.",
-  );
+export async function removeAssignedTrainee(input: RemoveAssignedTraineeInput) {
+  return removeAssignedTraineeAction(input);
 }
+import { removeAssignedTraineeAction } from "@/app/(dashboard)/dashboard/admin/actions";

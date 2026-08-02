@@ -34,4 +34,10 @@ export const communityMembershipRepository = {
       where: { communityId_userId: { communityId, userId } },
     });
   },
+  create(data: { userId: string; communityId: string; status: "APPROVED" | "PENDING" }) {
+    return db.communityMembership.create({ data: { ...data, role: "MEMBER", joinedAt: data.status === "APPROVED" ? new Date() : null } });
+  },
+  deleteByUserAndCommunity(userId: string, communityId: string) {
+    return db.communityMembership.deleteMany({ where: { userId, communityId } });
+  },
 };

@@ -22,11 +22,11 @@ export function DashboardPageHeader({
 }: DashboardPageHeaderProps) {
   return (
     <div className={cn("space-y-1", className)}>
-      <h1 className="font-heading text-2xl font-semibold text-foreground sm:text-3xl">
+      <h1 className="font-heading text-xl font-semibold text-foreground">
         {title}
       </h1>
       {description ? (
-        <p className="text-sm text-muted-foreground sm:text-base">{description}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       ) : null}
     </div>
   );

@@ -10,7 +10,7 @@ function resolveBadgeClass(color: string | null): string { return color ? BADGE_
 
 function TestimonialCard({ testimonial, category, featured = false }: { testimonial: Testimonial; category: string | null; featured?: boolean }) {
   return (
-    <Card className={featured ? "min-h-[245px] border-primary/20" : "min-h-[270px]"}>
+    <Card className={featured ? "min-h-[245px] border-primary/20 bg-surface-secondary" : "min-h-[270px] bg-surface-secondary"}>
       <CardContent className="flex h-full flex-col gap-4">
         {featured ? <Quote className="size-12 text-brand-orange/25" fill="currentColor" /> : null}
         <Badge variant="outline" className={`w-fit ${resolveBadgeClass(testimonial.badgeColor)}`}><Award className="size-3" /> Certified</Badge>

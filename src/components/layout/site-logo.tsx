@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Cpu } from "lucide-react";
+import Image from "next/image";
 
 import { cn } from "@/lib/utils";
 
@@ -24,11 +24,18 @@ export function SiteLogo({
     >
       <span
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground",
-          size === "sm" ? "size-8" : "size-9"
+          "relative block shrink-0 overflow-hidden",
+          size === "sm" ? "size-8" : "size-10"
         )}
       >
-        <Cpu className={size === "sm" ? "size-4" : "size-5"} aria-hidden />
+        <Image
+          src="/images/brand/hardtech-logo.png"
+          alt=""
+          fill
+          sizes={size === "sm" ? "32px" : "40px"}
+          className="object-contain"
+          aria-hidden
+        />
       </span>
       <span className="flex flex-col leading-tight">
         <span

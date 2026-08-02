@@ -55,7 +55,7 @@ export function Instructors({ trainers }: { trainers: TrainerWithUser[] }) {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {trainers.map((trainer) => (
-          <Card key={trainer.id}>
+          <Card key={trainer.id} className="bg-surface-secondary">
             <CardContent className="flex flex-col gap-4">
               <Avatar size="lg" className="border border-primary/40">
                 <AvatarFallback className="bg-primary/10 text-primary">

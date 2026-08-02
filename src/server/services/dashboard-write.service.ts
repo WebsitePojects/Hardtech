@@ -40,10 +40,16 @@ export async function createAssignment(input: {
   if (!batch) return { ok: false, error: "No training batch is assigned to you." };
   const dueDate = new Date(input.dueDate);
   if (Number.isNaN(dueDate.getTime())) return { ok: false, error: "Invalid due date." };
-  await assignmentRepository.create({
+  try {
+    await assignmentRepository.create({
     batchId: batch.id, trainerId: input.trainerId, title: input.title, instructions: input.instructions,
-    dueDate, dueTime: input.dueTime, allowedSubmissionTypes: input.allowedSubmissionTypes,
-  });
+    dueDate, dueTime: input.dueTime, allowedSubmissionTypes: input.allowedSubmissionTypes, idempotencyKey: input.idempotencyKey,
+    });
+  } catch (error) {
+    if (!(typeof error === "object" && error !== null && "code" in error && error.code === "P2002")) return { ok: false, error: "Unable to create assignment." };
+    const existing = await assignmentRepository.findByIdempotencyKey(input.idempotencyKey);
+    if (!existing) return { ok: false, error: "Unable to create assignment." };
+  }
   return { ok: true };
 }
 

@@ -28,7 +28,7 @@ export function DashboardSidebar({
   return (
     <aside
       className={cn(
-        "sticky top-0 z-30 h-screen w-72 shrink-0 border-r border-glass-border bg-surface-secondary",
+        "sticky top-4 z-30 m-4 h-[calc(100vh-2rem)] w-70 shrink-0 rounded-2xl border border-glass-border bg-surface-secondary",
         className
       )}
     >

@@ -12,33 +12,11 @@ import { CalendarSection, type TrainerCalendarSessionView } from "@/features/das
 import { ModulesSection } from "@/features/dashboard-trainer/sections/modules-section";
 import { MyTraineesSection } from "@/features/dashboard-trainer/sections/my-trainees-section";
 import { OverviewSection } from "@/features/dashboard-trainer/sections/overview-section";
+import { DashboardSection } from "@/components/dashboard/dashboard-shell";
 
 export const metadata = {
   title: "Trainer Dashboard | HardTech IT Corp",
 };
-
-interface TrainerDashboardSearchParams {
-  section?: string;
-}
-
-interface TrainerDashboardPageProps {
-  searchParams: Promise<TrainerDashboardSearchParams>;
-}
-
-type TrainerSection = "overview" | "calendar" | "my-trainees" | "assignments" | "modules";
-
-function parseSection(value: string | undefined): TrainerSection {
-  switch (value) {
-    case "overview":
-    case "calendar":
-    case "my-trainees":
-    case "assignments":
-    case "modules":
-      return value;
-    default:
-      return "overview";
-  }
-}
 
 function toCalendarView(
   sessions: Awaited<ReturnType<typeof getTrainerCalendarSessions>>,
@@ -53,37 +31,25 @@ function toCalendarView(
   }));
 }
 
-export default async function TrainerDashboardPage(props: TrainerDashboardPageProps) {
+export default async function TrainerDashboardPage() {
   const session = await requireRole("TRAINER");
-  const searchParams = await props.searchParams;
-  const section = parseSection(searchParams.section);
-
-  const [user, overview] = await Promise.all([
+  const [user, overview, sessions, trainees, assignments, modules] = await Promise.all([
     getDashboardUser(session.userId),
     getTrainerOverview(session.userId),
+    getTrainerCalendarSessions(session.userId, session.role),
+    getTrainerTraineeRoster(session.userId, session.role),
+    getTrainerAssignments(session.userId, session.role),
+    getTrainerModules(session.userId, session.role),
   ]);
-  const displayName = user?.name ?? "Trainer";
+  const displayName = user?.name ? `Mr. ${user.name}` : "Trainer";
 
-  switch (section) {
-    case "calendar": {
-      const sessions = await getTrainerCalendarSessions(session.userId, session.role);
-      return <CalendarSection sessions={toCalendarView(sessions)} />;
-    }
-    case "my-trainees": {
-      const trainees = await getTrainerTraineeRoster(session.userId, session.role);
-      return <MyTraineesSection trainees={trainees} />;
-    }
-    case "assignments": {
-      const assignments = await getTrainerAssignments(session.userId, session.role);
-      return <AssignmentsSection assignments={assignments} />;
-    }
-    case "modules": {
-      const modules = await getTrainerModules(session.userId, session.role);
-      return <ModulesSection modules={modules} />;
-    }
-    case "overview":
-      return <OverviewSection displayName={displayName} overview={overview} />;
-    default:
-      return <OverviewSection displayName={displayName} overview={overview} />;
-  }
+  return (
+    <>
+      <DashboardSection section="overview"><OverviewSection displayName={displayName} overview={overview} /></DashboardSection>
+      <DashboardSection section="calendar"><CalendarSection sessions={toCalendarView(sessions)} /></DashboardSection>
+      <DashboardSection section="my-trainees"><MyTraineesSection trainees={trainees} /></DashboardSection>
+      <DashboardSection section="assignments"><AssignmentsSection assignments={assignments} /></DashboardSection>
+      <DashboardSection section="modules"><ModulesSection modules={modules} /></DashboardSection>
+    </>
+  );
 }

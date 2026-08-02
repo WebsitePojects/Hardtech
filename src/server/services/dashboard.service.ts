@@ -371,7 +371,7 @@ export async function getAdminUserList(): Promise<AdminUserListItem[]> {
 // Admin — Trainer Management (desktop-02.md #8)
 // ---------------------------------------------------------------------------
 
-export type TrainerRosterTrainee = { id: string; name: string; program: string };
+export type TrainerRosterTrainee = { id: string; enrollmentId: string; batchId: string; name: string; program: string };
 
 export type TrainerRosterItem = {
   trainerId: string;
@@ -396,6 +396,8 @@ export async function getAdminTrainerRoster(): Promise<TrainerRosterItem[]> {
         if (traineesById.has(enrollment.trainee.id)) continue;
         traineesById.set(enrollment.trainee.id, {
           id: enrollment.trainee.id,
+          enrollmentId: enrollment.id,
+          batchId: batch.id,
           name: `${enrollment.trainee.firstName} ${enrollment.trainee.lastName}`,
           program: enrollment.program.shortName,
         });

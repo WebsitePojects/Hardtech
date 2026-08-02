@@ -54,7 +54,7 @@ export function AnnouncementForm() {
   const canSubmit = title.trim().length > 0 && body.trim().length > 0 && !submit.isPending;
 
   async function handleSubmit() {
-    if (!canSubmit) return;
+    if (!canSubmit || submit.isPending) return;
 
     await submit.run(async () => {
       const mediaType = mediaFile ? mediaTypeFor(mediaFile) : null;

@@ -4,6 +4,8 @@ import { requireSession } from "@/server/auth/session";
 import { getDashboardUser } from "@/server/services/dashboard.service";
 import { DashboardMobileNav } from "@/components/dashboard/dashboard-mobile-nav";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { getAdminOverviewStats } from "@/server/services/dashboard.service";
 import type { UserRole } from "@/../generated/prisma/enums";
 import { logoutAction } from "./actions";
 
@@ -56,30 +58,32 @@ export default async function DashboardLayout({
   }
 
   const user = await getDashboardUser(session.userId);
+  const adminStats = session.role === "ADMIN" ? await getAdminOverviewStats() : null;
 
   return (
-    <div className="relative flex min-h-screen bg-surface">
-      <div
-        className="dashboard-glow pointer-events-none fixed inset-0 -z-10"
-        aria-hidden
-      />
+    <DashboardShell role={session.role}>
+      <div className="relative flex min-h-screen bg-surface">
+        <div className="dashboard-glow pointer-events-none fixed inset-0 -z-10" aria-hidden />
 
-      <DashboardSidebar
-        role={session.role}
-        userName={user?.name}
-        logoutAction={logoutAction}
-        className="hidden lg:flex"
-      />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <DashboardMobileNav
+        <DashboardSidebar
           role={session.role}
           userName={user?.name}
           logoutAction={logoutAction}
-          className="lg:hidden"
+          badges={adminStats ? { enrollments: adminStats.pendingEnrollments, certificates: adminStats.pendingCertificateRequests } : undefined}
+          className="hidden lg:flex"
         />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <DashboardMobileNav
+            role={session.role}
+            userName={user?.name}
+            logoutAction={logoutAction}
+            badges={adminStats ? { enrollments: adminStats.pendingEnrollments, certificates: adminStats.pendingCertificateRequests } : undefined}
+            className="lg:hidden"
+          />
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-6">{children}</main>
+        </div>
       </div>
-    </div>
+    </DashboardShell>
   );
 }
