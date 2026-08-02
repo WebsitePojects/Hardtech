@@ -22,7 +22,7 @@ export function ReplyForm({ postId }: { postId: string }) {
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { isPending, run } = useGuardedMutation(createReply, "Replying isn't wired up yet.");
+  const { isPending, run } = useGuardedMutation(createReply, "We could not post your reply.");
 
   async function handleSubmit() {
     if (isPending) return;

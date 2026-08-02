@@ -11,6 +11,7 @@ import { getAdminAnalytics, getAdminOverviewStats } from "@/server/services/dash
 import { OverviewRevenueEnrollmentsChart } from "../components/admin-analytics-charts";
 import { formatPesoCompact } from "../format-peso";
 import { DataNotConnectedNote } from "../components/data-not-connected-note";
+import { ForumModerationSection } from "./forum-moderation-section";
 
 /** desktop-02.md #2: 3-segment legend (green / light green / blue) — cycled
  * by index rather than hardcoded per program name, since `programMix` is
@@ -149,6 +150,8 @@ export async function OverviewSection() {
           subtext="— events"
         />
       </div>
+
+      <ForumModerationSection />
     </div>
   );
 }

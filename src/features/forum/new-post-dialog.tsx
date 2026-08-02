@@ -42,7 +42,7 @@ export function NewPostDialog() {
   const [category, setCategory] = useState<ForumCategory | "">("");
   const [hashtagsInput, setHashtagsInput] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { isPending, run } = useGuardedMutation(createPost, "Posting isn't wired up yet.");
+  const { isPending, run } = useGuardedMutation(createPost, "We could not publish your post.");
 
   async function handlePublish() {
     if (isPending) return;

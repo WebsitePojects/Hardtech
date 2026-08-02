@@ -27,7 +27,17 @@ export function useGuardedMutation<Args extends unknown[]>(
       if (isPending) return;
       setIsPending(true);
       try {
-        await action(...args);
+        const result = await action(...args);
+        if (
+          typeof result === "object" &&
+          result !== null &&
+          "ok" in result &&
+          result.ok === false &&
+          "error" in result &&
+          typeof result.error === "string"
+        ) {
+          toast.error(result.error);
+        }
         // Unreachable while every action above always throws — once wave 3
         // wires a real server action, a successful result lands here.
       } catch {

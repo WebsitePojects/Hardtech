@@ -12,6 +12,7 @@ import { StepReceipt } from "./steps/step-receipt";
 import { StepSelectPlan } from "./steps/step-select-plan";
 import { StepSignUp } from "./steps/step-sign-up";
 import { StepVerification } from "./steps/step-verification";
+import type { EnrollmentActionResult } from "@/app/(marketing)/enroll/actions";
 import type { PAYMENT_METHOD_VALUES, SignUpValues } from "./enroll.schema";
 import type { EnrollPaymentMethod, EnrollProgram } from "./types";
 
@@ -37,11 +38,8 @@ export function EnrollWizard({ programs, paymentMethods }: EnrollWizardProps) {
   const selectedPrograms = programs.filter((program) => selectedProgramIds.includes(program.id));
   const totalCentavos = sumCentavos(selectedPrograms.map((program) => program.priceCentavos));
 
-  // Always null in wave 1: nothing ever sets a paid method because
-  // submitEnrollment() always throws before Step 3 can report success (see
-  // the comment above Step 4/5 below). Typed as the real union so wave 3
-  // only has to add the setter, not restructure this.
-  const paidMethodValue: PaymentMethodValue | null = null;
+  const [paidMethodValue, setPaidMethodValue] = useState<PaymentMethodValue | null>(null);
+  const [submission, setSubmission] = useState<Extract<EnrollmentActionResult, { ok: true }> | null>(null);
   const paidMethod = paymentMethods.find((method) => method.method === paidMethodValue) ?? null;
 
   return (
@@ -81,18 +79,16 @@ export function EnrollWizard({ programs, paymentMethods }: EnrollWizardProps) {
             idempotencyKey={idempotencyKey}
             trainee={signUpValues}
             onBack={() => setStep(2)}
+            onSuccess={(result) => {
+              setSubmission(result);
+              setPaidMethodValue(result.paymentMethod);
+              setStep(4);
+            }}
           />
         ) : null}
 
-        {/*
-          Steps 4 and 5 render the full receipt / verification design so
-          wave 3 only has to wire real data, but they are unreachable through
-          user interaction in wave 1: StepPayment's submitEnrollment() call
-          always throws (see submit-enrollment.ts TODO(wave-3)), so `step`
-          never advances past 3 today. Kept here, fully typed, ready for the
-          real success callback to call setStep(4).
-        */}
-        {step === 4 && signUpValues && paidMethod ? (
+        {/* Steps 4 and 5 render after the server confirms the payment write. */}
+        {step === 4 && signUpValues && paidMethod && submission ? (
           <StepReceipt
             referenceCode={referenceCode}
             trainee={signUpValues}

@@ -1,5 +1,5 @@
 import { db } from "@/server/db";
-import type { EnrollmentStatus, Prisma } from "@/../generated/prisma/client";
+import { Prisma, type EnrollmentStatus } from "@/../generated/prisma/client";
 
 const withProgramAndBatch = {
   program: true,
@@ -8,6 +8,27 @@ const withProgramAndBatch = {
 
 /** Pure data access for Enrollment. */
 export const enrollmentRepository = {
+  findByTraineeAndTrainer(traineeId: string, trainerId: string) { return db.enrollment.findFirst({ where: { traineeId, batch: { trainerId } }, orderBy: { createdAt: "desc" } }); },
+  findByTraineeAndBatch(traineeId: string, batchId: string) { return db.enrollment.findFirst({ where: { traineeId, batchId } }); },
+  transitionByPayment(tx: Prisma.TransactionClient, paymentId: string, status: EnrollmentStatus, reason?: string) { return tx.enrollment.updateMany({ where: { paymentId, status: "PENDING_VERIFICATION" }, data: { status, rejectionReason: reason ?? null } }); },
+  findProgramsByIds(programIds: string[]) {
+    return db.program.findMany({ where: { id: { in: programIds } }, select: { id: true, priceAmount: true } });
+  },
+
+  async findOrCreateApplicant(input: { email: string; firstName: string; lastName: string; phone: string; passwordHash: string }) {
+    try {
+      return await db.user.create({
+        data: { ...input, role: "TRAINEE", status: "PENDING" },
+        select: { id: true },
+      });
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+      const existing = await db.user.findUnique({ where: { email: input.email }, select: { id: true } });
+      if (!existing) throw new Error("Applicant could not be resolved.");
+      return existing;
+    }
+  },
+
   findManyByTraineeId(traineeId: string) {
     return db.enrollment.findMany({
       where: { traineeId },

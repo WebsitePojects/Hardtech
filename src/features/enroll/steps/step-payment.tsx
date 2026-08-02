@@ -16,6 +16,7 @@ import { SelectableCard } from "../selectable-card";
 import { submitEnrollment } from "../submit-enrollment";
 import type { EnrollPaymentMethod, EnrollProgram } from "../types";
 import type { SignUpValues } from "../enroll.schema";
+import type { EnrollmentActionResult } from "@/app/(marketing)/enroll/actions";
 
 type PaymentMethodValue = (typeof PAYMENT_METHOD_VALUES)[number];
 
@@ -26,6 +27,7 @@ interface StepPaymentProps {
   idempotencyKey: string;
   trainee: SignUpValues | null;
   onBack: () => void;
+  onSuccess: (result: Extract<EnrollmentActionResult, { ok: true }> & { paymentMethod: PaymentMethodValue }) => void;
 }
 
 function copyToClipboard(value: string, label: string) {
@@ -61,6 +63,7 @@ export function StepPayment({
   idempotencyKey,
   trainee,
   onBack,
+  onSuccess,
 }: StepPaymentProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue | null>(null);
   const [proof, setProof] = useState<File | null>(null);
@@ -104,19 +107,21 @@ export function StepPayment({
 
     setIsSubmitting(true);
     try {
-      await submitEnrollment({
+      const result = await submitEnrollment({
         idempotencyKey,
         programIds: selectedPrograms.map((program) => program.id),
         trainee,
         paymentMethod: parsed.data.paymentMethod,
         proof: parsed.data.proof,
       });
-      // Unreachable in wave 1: submitEnrollment always throws (see
-      // TODO(wave-3) in submit-enrollment.ts). Once wave 3 wires a real
-      // server action, a successful result advances to Step 4 here.
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      onSuccess({ ...result, paymentMethod: parsed.data.paymentMethod });
     } catch {
-      toast.error("Enrollment submission isn't wired up yet in this build.");
-      setError("Submission is not available yet — this flow ships in a later wave.");
+      toast.error("Could not record your enrollment.");
+      setError("Could not record your enrollment. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

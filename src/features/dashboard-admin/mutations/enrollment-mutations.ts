@@ -1,3 +1,4 @@
+import { rejectPaymentAction, verifyPaymentAction } from "@/app/(dashboard)/dashboard/admin/actions";
 // TODO(wave-4): replace with real server actions once the admin mutation
 // pipeline exists. Deliberately NOT server actions and do NOT touch the
 // database — see src/features/enroll/submit-enrollment.ts for the
@@ -29,18 +30,14 @@ export interface RejectEnrollmentInput {
   reason: string;
 }
 
-export async function approveEnrollment(input: ApproveEnrollmentInput): Promise<never> {
-  void input;
-  throw new Error(
-    "TODO(wave-4): enrollment approval is not implemented yet. " +
-      "This build stops at the disabled/pending guard on purpose.",
-  );
+export async function approveEnrollment(input: ApproveEnrollmentInput) {
+  const result = await verifyPaymentAction({ paymentId: input.enrollmentId });
+  if (!result.ok) throw new Error(result.error);
+  return result;
 }
 
-export async function rejectEnrollment(input: RejectEnrollmentInput): Promise<never> {
-  void input;
-  throw new Error(
-    "TODO(wave-4): enrollment rejection is not implemented yet. " +
-      "This build stops at the disabled/pending guard on purpose.",
-  );
+export async function rejectEnrollment(input: RejectEnrollmentInput) {
+  const result = await rejectPaymentAction({ paymentId: input.enrollmentId, reason: input.reason });
+  if (!result.ok) throw new Error(result.error);
+  return result;
 }

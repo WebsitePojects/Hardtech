@@ -1,3 +1,6 @@
+import { submitAssignmentAction } from "@/app/(dashboard)/dashboard/trainee/actions";
+import type { SubmitAssignmentInput as DashboardSubmitAssignmentInput } from "@/server/schemas/dashboard-write.schema";
+
 // TODO(wave-4): replace with a real call once dashboard.service exposes a
 // trainee assignment read and a mutation pipeline exists. Must stay
 // idempotent on `idempotencyKey` (.claude/rules/00-non-negotiables.md rules
@@ -11,19 +14,10 @@
 // Deliberately NOT a server action and does NOT touch the database. It only
 // throws, so assignment-submission-form.tsx can exercise the real
 // disabled/pending/idempotency-key wiring without ever faking success.
-export interface SubmitAssignmentInput {
-  idempotencyKey: string;
-  assignmentId: string;
-  submissionLink: string;
-}
+export type SubmitAssignmentInput = DashboardSubmitAssignmentInput;
 
-export async function submitAssignmentSubmission(input: SubmitAssignmentInput): Promise<never> {
-  // Intentionally unused: this stub never reaches the database. Referenced
-  // via `void` (rather than an underscore-prefixed name) to keep the real
-  // parameter shape visible for wave 4 without an unused-var warning.
-  void input;
-  throw new Error(
-    "TODO(wave-4): assignment submission is not implemented yet. " +
-      "This build stops at the disabled/pending guard on purpose.",
-  );
+export async function submitAssignmentSubmission(input: SubmitAssignmentInput) {
+  const result = await submitAssignmentAction(input);
+  if (!result.ok) throw new Error(result.error);
+  return result;
 }

@@ -1,7 +1,9 @@
 import { db } from "@/server/db";
+import type { Prisma } from "@/../generated/prisma/client";
 
 /** Pure data access for AuthorRating. */
 export const authorRatingRepository = {
+  upsert(tx: Prisma.TransactionClient, ratedUserId: string, raterUserId: string, stars: number) { return tx.authorRating.upsert({ where: { ratedUserId_raterUserId: { ratedUserId, raterUserId } }, create: { ratedUserId, raterUserId, stars }, update: { stars } }); },
   /** Average stars + review count per rated user, across a batch of user ids. */
   async aggregateForRatedUserIds(ratedUserIds: string[]) {
     if (ratedUserIds.length === 0) return new Map<string, { average: number; count: number }>();

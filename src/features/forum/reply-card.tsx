@@ -1,6 +1,5 @@
-import { CheckCircle2, Lightbulb, ThumbsUp } from "lucide-react";
-
 import { AuthorRow } from "./author-row";
+import { ReplyReactionButton } from "./reply-reaction-button";
 import type { ForumReplySummary } from "./types";
 
 /**
@@ -15,16 +14,10 @@ export function ReplyCard({ reply }: { reply: ForumReplySummary }) {
     <div className="space-y-2 rounded-lg border-l-2 border-primary bg-surface-secondary/40 p-4">
       <AuthorRow author={reply.author} createdAt={reply.createdAt} compact />
       <p className="text-sm whitespace-pre-line text-foreground/90">{reply.body}</p>
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1">
-          <ThumbsUp className="size-3.5" aria-hidden /> {reply.counts.upvote}
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <CheckCircle2 className="size-3.5" aria-hidden /> {reply.counts.helpful}
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <Lightbulb className="size-3.5" aria-hidden /> {reply.counts.insightful}
-        </span>
+      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <ReplyReactionButton replyId={reply.id} type="UPVOTE" count={reply.counts.upvote} label="Upvote reply" />
+        <ReplyReactionButton replyId={reply.id} type="HELPFUL" count={reply.counts.helpful} label="Mark reply helpful" />
+        <ReplyReactionButton replyId={reply.id} type="INSIGHTFUL" count={reply.counts.insightful} label="Mark reply insightful" />
       </div>
     </div>
   );

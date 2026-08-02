@@ -41,12 +41,13 @@ export function ReportDialog({ postId }: { postId: string }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<ReportReason | "">("");
   const [note, setNote] = useState("");
-  const { isPending, run } = useGuardedMutation(reportPost, "Reporting isn't wired up yet.");
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const { isPending, run } = useGuardedMutation(reportPost, "We could not submit your report.");
 
   async function handleSubmit() {
     if (isPending || !reason) return;
     await run({
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey,
       postId,
       reason,
       note: note.trim() || undefined,

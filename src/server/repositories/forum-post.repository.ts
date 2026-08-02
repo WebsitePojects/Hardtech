@@ -14,6 +14,13 @@ const withAuthor = {
 } satisfies Prisma.ForumPostInclude;
 
 export const forumPostRepository = {
+  async currentTimestamp() {
+    const rows = await db.$queryRaw<{ now: Date }[]>`SELECT clock_timestamp() AS now`;
+    return rows[0]?.now ?? new Date();
+  },
+  transaction<T>(callback: (client: Prisma.TransactionClient) => Promise<T>) {
+    return db.$transaction(callback);
+  },
   findMany(
     where: Prisma.ForumPostWhereInput,
     orderBy: Prisma.ForumPostOrderByWithRelationInput[],
@@ -23,6 +30,45 @@ export const forumPostRepository = {
 
   findById(id: string) {
     return db.forumPost.findUnique({ where: { id }, include: withAuthor });
+  },
+
+  create(data: Prisma.ForumPostUncheckedCreateInput, client: Prisma.TransactionClient = db) {
+    return client.forumPost.create({ data });
+  },
+
+  updatePendingToPublished(
+    id: string,
+    moderatorId: string,
+    client: Prisma.TransactionClient = db,
+  ) {
+    return client.forumPost.updateMany({
+      where: { id, status: "PENDING_APPROVAL" },
+      data: { status: "PUBLISHED", approvedAt: new Date(), approvedByUserId: moderatorId },
+    });
+  },
+
+  updatePendingToRejected(id: string, client: Prisma.TransactionClient = db) {
+    return client.forumPost.updateMany({
+      where: { id, status: "PENDING_APPROVAL" },
+      data: { status: "REJECTED" },
+    });
+  },
+
+  findPendingWithAuthor() {
+    return db.forumPost.findMany({
+      where: { status: "PENDING_APPROVAL" },
+      include: { author: true },
+      orderBy: { createdAt: "asc" },
+    });
+  },
+
+  incrementCounter(
+    id: string,
+    counter: "upvoteCount" | "helpfulCount" | "insightfulCount" | "bookmarkCount" | "reportCount" | "replyCount",
+    delta: 1 | -1,
+    client: Prisma.TransactionClient = db,
+  ) {
+    return client.forumPost.update({ where: { id }, data: { [counter]: { increment: delta } } });
   },
 
   /** Post counts per author, scoped to one status — batched to avoid an N+1 per author. */

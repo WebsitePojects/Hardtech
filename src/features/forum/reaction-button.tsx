@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { CheckCircle2, Lightbulb, ThumbsUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -46,7 +47,8 @@ export function ReactionButton({
   postId: string;
   reactionType: ReactionType;
 }) {
-  const { isPending, run } = useGuardedMutation(voteOnPost, "Voting isn't wired up yet.");
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const { isPending, run } = useGuardedMutation(voteOnPost, "We could not update your reaction.");
   const icon = renderReactionIcon(reactionType, isPending);
 
   if (!icon) {
@@ -61,7 +63,7 @@ export function ReactionButton({
       aria-busy={isPending}
       onClick={() =>
         void run({
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey,
           postId,
           reactionType,
         })

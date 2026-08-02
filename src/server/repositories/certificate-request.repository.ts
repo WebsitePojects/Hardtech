@@ -1,8 +1,9 @@
 import { db } from "@/server/db";
-import type { CertificateStatus } from "@/../generated/prisma/client";
+import type { CertificateStatus, Prisma } from "@/../generated/prisma/client";
 
 /** Pure data access for CertificateRequest. */
 export const certificateRequestRepository = {
+  transition(tx: Prisma.TransactionClient, id: string, next: CertificateStatus, adminId: string, reason?: string) { return tx.certificateRequest.updateMany({ where: { id, status: "PENDING" }, data: next === "APPROVED" ? { status: next, approvedAt: new Date(), approvedByUserId: adminId } : { status: next, rejectionReason: reason ?? null } }).then((result) => result.count); },
   countByStatus(status: CertificateStatus) {
     return db.certificateRequest.count({ where: { status } });
   },

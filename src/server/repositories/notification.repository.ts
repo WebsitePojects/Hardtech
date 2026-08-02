@@ -30,4 +30,11 @@ export const notificationRepository = {
   ) {
     return db.notification.createMany({ data: rows });
   },
+
+  create(
+    data: { userId: string; title: string; body: string; linkUrl?: string | null; isRead?: boolean },
+    client: import("@/../generated/prisma/client").Prisma.TransactionClient = db,
+  ) {
+    return client.notification.create({ data });
+  },
 };

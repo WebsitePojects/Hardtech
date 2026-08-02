@@ -1,8 +1,47 @@
 import { db } from "@/server/db";
-import { Prisma, type EnrollmentPaymentStatus } from "@/../generated/prisma/client";
+import { randomBytes } from "node:crypto";
+
+import { Prisma, type EnrollmentPaymentStatus, type PaymentMethod } from "@/../generated/prisma/client";
 
 /** Pure data access for EnrollmentPayment. */
 export const enrollmentPaymentRepository = {
+  findById(id: string) { return db.enrollmentPayment.findUnique({ where: { id } }); },
+  transition(tx: Prisma.TransactionClient, id: string, next: EnrollmentPaymentStatus, adminId: string, reason?: string) { return tx.enrollmentPayment.updateMany({ where: { id, status: "SUBMITTED" }, data: next === "VERIFIED" ? { status: next, verifiedAt: new Date(), verifiedByUserId: adminId, rejectionReason: null } : { status: next, rejectedAt: new Date(), rejectionReason: reason ?? null } }).then((result) => result.count); },
+  createWithEnrollments(input: {
+    traineeId: string;
+    idempotencyKey: string;
+    referenceCode: string;
+    paymentMethod: PaymentMethod;
+    totalAmount: Prisma.Decimal;
+    proofImageUrl: string;
+    programs: Array<{ id: string; priceAmount: Prisma.Decimal }>;
+  }) {
+    return db.$transaction(async (tx) => tx.enrollmentPayment.create({
+      data: {
+        trainee: { connect: { id: input.traineeId } },
+        idempotencyKey: input.idempotencyKey,
+        referenceCode: input.referenceCode,
+        paymentMethod: input.paymentMethod,
+        totalAmount: input.totalAmount,
+        proofImageUrl: input.proofImageUrl,
+        enrollments: {
+          create: input.programs.map((program) => ({
+            enrollmentRef: `ENR-${randomReference()}`,
+            trainee: { connect: { id: input.traineeId } },
+            program: { connect: { id: program.id } },
+            amount: program.priceAmount,
+            status: "PENDING_VERIFICATION",
+          })),
+        },
+      },
+      include: { enrollments: true },
+    }));
+  },
+
+  findByIdempotencyKey(idempotencyKey: string) {
+    return db.enrollmentPayment.findUnique({ where: { idempotencyKey }, include: { enrollments: true } });
+  },
+
   countByStatus(status: EnrollmentPaymentStatus) {
     return db.enrollmentPayment.count({ where: { status } });
   },
@@ -54,3 +93,7 @@ export const enrollmentPaymentRepository = {
     return rows.map((row) => ({ month: row.month, total: new Prisma.Decimal(row.total) }));
   },
 };
+
+function randomReference(): string {
+  return randomBytes(8).toString("hex").toUpperCase();
+}

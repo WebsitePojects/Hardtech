@@ -1,4 +1,4 @@
-// TODO(wave-4): see enrollment-mutations.ts for the pattern this follows.
+import { approveCertificateAction, rejectCertificateAction } from "@/app/(dashboard)/dashboard/admin/actions";
 // Certificate Approvals (desktop-02.md #9) is the same shape: approve/
 // reject must be a conditional UPDATE guarded on the row's current status —
 //   UPDATE "CertificateRequest" SET status = 'APPROVED'
@@ -16,18 +16,14 @@ export interface RejectCertificateInput {
   reason: string;
 }
 
-export async function approveCertificate(input: ApproveCertificateInput): Promise<never> {
-  void input;
-  throw new Error(
-    "TODO(wave-4): certificate approval is not implemented yet. " +
-      "This build stops at the disabled/pending guard on purpose.",
-  );
+export async function approveCertificate(input: ApproveCertificateInput) {
+  const result = await approveCertificateAction(input);
+  if (!result.ok) throw new Error(result.error);
+  return result;
 }
 
-export async function rejectCertificate(input: RejectCertificateInput): Promise<never> {
-  void input;
-  throw new Error(
-    "TODO(wave-4): certificate rejection is not implemented yet. " +
-      "This build stops at the disabled/pending guard on purpose.",
-  );
+export async function rejectCertificate(input: RejectCertificateInput) {
+  const result = await rejectCertificateAction(input);
+  if (!result.ok) throw new Error(result.error);
+  return result;
 }

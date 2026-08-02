@@ -1,15 +1,10 @@
-export interface EvaluateTraineeInput {
-  idempotencyKey: string;
-  traineeId: string;
-  skill: string;
-  rating: "CERTIFIED" | "COMPETENT" | "NEEDS_IMPROVEMENT";
-  notes: string;
-}
+import { evaluateTraineeAction } from "@/app/(dashboard)/dashboard/trainer/actions";
+import type { EvaluateTraineeInput as DashboardEvaluateTraineeInput } from "@/server/schemas/dashboard-write.schema";
 
-export async function evaluateTrainee(input: EvaluateTraineeInput): Promise<never> {
-  void input;
-  throw new Error(
-    "TODO(wave-4): trainer evaluation is not implemented yet. " +
-      "This build stops at the disabled/pending guard on purpose.",
-  );
+export type EvaluateTraineeInput = DashboardEvaluateTraineeInput & { traineeId: string };
+
+export async function evaluateTrainee(input: EvaluateTraineeInput) {
+  const result = await evaluateTraineeAction(input);
+  if (!result.ok) throw new Error(result.error);
+  return result;
 }
