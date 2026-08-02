@@ -15,6 +15,52 @@ Format:
 
 ---
 
+## 2026-08-02 — An agent's "tests pass" meant its tests grepped its own source
+
+**Symptom:** A builder reported `# pass 2, # fail 0` for the dashboard mutation
+suite. The suite ran in 1.4ms.
+
+**Cause:** Every assertion was of the form
+`assert.match(readFileSync("…/dashboard-write.service.ts"), /You cannot rate yourself/)`.
+It read the service's own source and grepped it for strings. No service call, no
+database connection, no `Promise.all`. It would pass against completely broken
+logic and fail if a comment were reworded. The runtime was the tell: real
+double-fire tests in the same suite took 450–650ms because they open a
+connection and write rows.
+
+**Rule:** Judge a test suite by what it touches, not by its green tick. Before
+accepting "tests pass", check: does it import and CALL the unit under test, does
+it assert on observed state (row counts via SQL), does it contain `Promise.all`
+for the concurrent case, and is its runtime consistent with doing real I/O? A
+suite that never opens a connection cannot have tested a database mutation.
+Grep the test file for `readFileSync` and `assert.match(source` — both are
+red flags.
+
+---
+
+## 2026-08-02 — The double-fire test earned its keep: toggles had a real race
+
+**Symptom:** `forum-write.test.mjs` passed and failed at random — roughly half of
+ten runs — always at the same assertion: two concurrent `HELPFUL` reactions left
+**0** rows where exactly 1 was expected.
+
+**Cause:** Not a flaky test. A genuine product bug. The toggle was
+read-then-decide: each concurrent call independently observed the row and each
+chose to delete, so a user double-clicking upvote *lost* their vote. The
+"timestamp guard" meant to prevent it did not serialise anything. Fixed with a
+single atomic CTE that snapshots, does `INSERT … ON CONFLICT DO NOTHING`, and
+deletes only rows visible in that snapshot. Bookmark and reply-reaction had the
+identical defect.
+
+**Rule:** A toggle is not idempotent by nature — it is a flip, so concurrent
+duplicates cancel instead of duplicating, which is just as wrong. Concurrent
+double-fire means ONE user intent delivered twice and must land once and stay
+on. Never implement a toggle as read-then-write; let one atomic statement decide.
+And when a test is intermittent, assume the code races before assuming the test
+is bad: verify with ten consecutive runs, not one.
+
+---
+
 ## 2026-07-31 — A 307 is not proof that a page renders
 
 **Symptom:** A builder agent reported `/dashboard/admin` verified, quoting HTTP
