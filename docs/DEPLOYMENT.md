@@ -68,14 +68,45 @@ programs, trainers, communities, forum content and gallery photos.
 accounts. If this deployment is public, either remove them from the seed or
 change their passwords immediately after seeding.
 
-## Step 4 — Deploy
+## Step 4 — Deploy to Vercel
 
-The app is a standard Next.js 16 App Router project with no custom server and
-no webpack config, so any Node host works. Vercel needs no configuration file.
+**Target: Vercel for the app, Supabase for the database. No VPS.**
 
+This is one Next.js App Router application — the "backend" is server components
+and server actions inside the same deployment. There is no separate frontend to
+split off, so a second host would have nothing to run.
+
+Vercel auto-detects Next 16 and needs no configuration file.
+
+- Framework preset: Next.js (auto-detected)
 - Build command: `npm run build`
 - Install command: `npm install`
 - Node: 20.9+ (developed on 24.14.1)
+- Root directory: repository root
+
+Set `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET` and `AUTH_URL` in Project
+Settings → Environment Variables **before** the first deploy, or the build will
+fail when Prisma cannot resolve a connection.
+
+Do **not** set `DEMO_AUTH` in Vercel. Leaving it unset is what turns on real
+password verification.
+
+### Prisma on Vercel
+
+`generated/prisma` is gitignored, so the client must be generated during the
+build. Confirm `prisma generate` runs — either via a `postinstall` script or by
+setting the build command to `prisma generate && next build`. A build that
+skips it fails with a missing-client error at import time.
+
+Run `npx prisma migrate deploy` against `DIRECT_URL` once per release. It is not
+part of the Vercel build, and it should not be: build steps run in parallel
+across deployments and must not race on schema changes.
+
+### Lint is not part of the build
+
+`next build` does **not** lint in Next 16 — `next lint` was removed. Add
+`npm run lint` as its own CI step or lint failures ship silently.
+`npm run verify` runs typecheck, lint, tests and build together.
 
 `next build` does **not** lint in Next 16 — `next lint` was removed. CI must run
 `npm run lint` as its own step or lint failures ship silently. `npm run verify`
