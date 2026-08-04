@@ -24,17 +24,17 @@ export async function HomeHero() {
   return (
     <section className="relative overflow-hidden">
       <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 -z-10 h-[36rem]" />
-      <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-4 px-4 py-8 text-center sm:gap-6 sm:px-6 sm:py-16 lg:py-20">
+      <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-4 px-4 py-8 text-center sm:gap-6 sm:px-6 sm:py-16 lg:max-w-5xl lg:gap-7 lg:py-24">
         <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 px-3 py-1 text-xs font-semibold tracking-wide text-primary">
           <span className="size-1.5 rounded-full bg-primary" aria-hidden />
           ENROLLMENTS OPEN - 2026
         </div>
-        <h1 className="text-4xl font-bold text-balance sm:text-5xl lg:text-6xl">
+        <h1 className="text-4xl font-bold leading-[1.08] text-balance sm:text-5xl lg:text-7xl">
           Build Your Future
           <br />
           in <span className="bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent">Modern Technology</span>
         </h1>
-        <p className="max-w-2xl text-lg text-muted-foreground">
+        <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground lg:text-xl">
           Get professionally trained in Computer Hardware Servicing, Cellphone Repair, and I.T. Software Development through immersive hands-on learning.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">

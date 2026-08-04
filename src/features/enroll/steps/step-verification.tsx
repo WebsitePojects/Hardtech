@@ -36,7 +36,7 @@ export function StepVerification({ referenceCode, completedCount = 3 }: StepVeri
 
       <div className="flex justify-center">
         <div className="flex size-20 items-center justify-center rounded-full border-4 border-brand-orange/30">
-          <Loader2 className="size-8 animate-spin text-brand-orange" aria-hidden />
+          <Loader2 className="size-8 animate-spin motion-reduce:animate-none text-brand-orange" aria-hidden />
         </div>
       </div>
 
@@ -61,7 +61,7 @@ export function StepVerification({ referenceCode, completedCount = 3 }: StepVeri
               {done ? (
                 <CheckCircle2 className="size-4 shrink-0 text-primary" aria-hidden />
               ) : (
-                <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" aria-hidden />
+                <Loader2 className="size-4 shrink-0 animate-spin motion-reduce:animate-none text-muted-foreground" aria-hidden />
               )}
               <span className={cn(done ? "text-foreground" : "text-muted-foreground")}>{item}</span>
             </li>

@@ -172,7 +172,7 @@ export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProp
   );
 
   return (
-    <Card className="glass grid gap-5 overflow-hidden rounded-xl bg-surface-secondary p-5 lg:grid-cols-2 lg:p-6">
+    <Card className="glass grid gap-5 overflow-hidden rounded-xl bg-surface-secondary p-5 transition-[border-color,box-shadow] motion-reduce:transition-none lg:grid-cols-2 lg:p-7 lg:hover:border-[var(--glass-border-strong)] lg:hover:shadow-glow-md">
       <div className={cn(imageSide === "right" && "lg:order-2")}>{photo}</div>
       <div className={cn(imageSide === "right" && "lg:order-1")}>{content}</div>
     </Card>

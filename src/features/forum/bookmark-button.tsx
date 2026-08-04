@@ -37,7 +37,7 @@ export function BookmarkButton({
       className="inline-flex items-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-glass-hover hover:text-foreground disabled:opacity-60"
     >
       <Bookmark
-        className={cn("size-3.5", isBookmarked && "fill-primary text-primary", isPending && "animate-pulse")}
+        className={cn("size-3.5", isBookmarked && "fill-primary text-primary", isPending && "animate-pulse motion-reduce:animate-none")}
         aria-hidden
       />
     </button>

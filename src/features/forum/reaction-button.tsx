@@ -9,7 +9,7 @@ import { voteOnPost } from "./mutations/vote-on-post";
 import { useGuardedMutation } from "./use-guarded-mutation";
 
 function renderReactionIcon(reactionType: ReactionType, isPending: boolean) {
-  const className = cn("size-3.5", isPending && "animate-pulse");
+  const className = cn("size-3.5", isPending && "animate-pulse motion-reduce:animate-none");
 
   switch (reactionType) {
     case "UPVOTE":

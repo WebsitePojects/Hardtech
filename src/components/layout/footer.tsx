@@ -37,7 +37,7 @@ export function Footer() {
           */}
           <a
             href="#"
-            className="inline-flex w-fit items-center gap-2 rounded-full border border-glass-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-glass-hover"
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-glass-border px-4 py-2 text-sm font-medium text-foreground transition-[background-color,border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:border-[var(--glass-border-strong)] hover:bg-glass-hover hover:shadow-glow-sm motion-reduce:transition-none"
           >
             <ExternalLink className="size-4" aria-hidden />
             Follow on Facebook
@@ -53,7 +53,7 @@ export function Footer() {
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  className="text-sm text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:text-foreground motion-reduce:transition-none"
                 >
                   {link.label}
                 </Link>
@@ -73,14 +73,14 @@ export function Footer() {
             </span>
             <a
               href="tel:1234567890"
-              className="flex items-center gap-2 transition-colors hover:text-foreground"
+              className="flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:text-foreground motion-reduce:transition-none"
             >
               <Phone className="size-4 shrink-0" aria-hidden />
               (123) 456-7890
             </a>
             <a
               href="mailto:hardtechitcorp@gmail.com"
-              className="flex items-center gap-2 transition-colors hover:text-foreground"
+              className="flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:text-foreground motion-reduce:transition-none"
             >
               <Mail className="size-4 shrink-0" aria-hidden />
               hardtechitcorp@gmail.com
@@ -92,7 +92,7 @@ export function Footer() {
       <div className="border-t border-glass-border">
         <p className="mx-auto max-w-6xl px-4 py-6 text-center text-xs text-muted-foreground sm:px-6">
           © 2026 HardTech IT Corp. All rights reserved. · Powered by{" "}
-          <a href="#" className="font-medium text-neon hover:underline">
+          <a href="#" className="font-medium text-neon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:underline">
             Prince IT Solutions
           </a>
         </p>

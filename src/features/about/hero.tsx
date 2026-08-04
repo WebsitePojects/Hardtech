@@ -40,12 +40,12 @@ export function AboutHero() {
             ABOUT HARDTECH
           </Badge>
 
-          <h1 className="mt-4 text-4xl font-bold text-balance sm:text-5xl">
+          <h1 className="mt-4 text-4xl font-bold leading-[1.08] text-balance sm:text-5xl lg:text-6xl">
             Shaping the Next Generation of{" "}
             <span className="text-primary">Tech Experts</span>
           </h1>
 
-          <p className="mt-4 max-w-xl text-lg text-muted-foreground">
+          <p className="mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground lg:text-xl">
             HardTech IT Corporation is a leading provider of IT training and
             services. We specialize in delivering high-quality education and
             support to individuals and businesses.
@@ -69,7 +69,7 @@ export function AboutHero() {
 
         <div className="grid grid-cols-2 gap-4">
           {STATS.map((stat) => (
-            <Card key={stat.label}>
+            <Card key={stat.label} className="transition-[border-color,box-shadow,transform] motion-reduce:transition-none lg:hover:-translate-y-1 lg:hover:border-primary/40 lg:hover:shadow-glow-sm">
               <CardContent className="flex flex-col gap-1">
                 <p className="text-3xl font-bold text-primary sm:text-4xl">
                   {stat.value}

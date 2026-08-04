@@ -40,7 +40,7 @@ export function ContactHero() {
           <Diamond className="size-3 text-primary" />
           CONTACT &amp; LOCATION
         </Badge>
-        <h1 className="mt-5 max-w-2xl font-heading text-4xl font-bold text-balance sm:text-5xl">
+          <h1 className="mt-5 max-w-2xl font-heading text-4xl font-bold leading-[1.08] text-balance sm:text-5xl lg:text-6xl">
           Get in Touch &amp; <span className="text-primary">Find Us</span>
         </h1>
         <p className="mt-5 max-w-2xl text-muted-foreground">
@@ -50,7 +50,7 @@ export function ContactHero() {
 
         <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {CONTACT_CARDS.map(({ icon: Icon, label, value, caption }) => (
-            <Card key={label} className="bg-surface-secondary">
+            <Card key={label} className="bg-surface-secondary transition-[border-color,box-shadow,transform] motion-reduce:transition-none lg:hover:-translate-y-1 lg:hover:border-primary/40 lg:hover:shadow-glow-sm">
               <CardContent className="flex flex-col gap-2 py-5">
                 <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon className="size-4.5" />

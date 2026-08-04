@@ -96,7 +96,7 @@ export function WhyHardTech() {
 
         <div className="grid gap-3 sm:grid-cols-2">
           {FEATURES.map((feature) => (
-            <Card key={feature.title} className="bg-surface-secondary">
+            <Card key={feature.title} className="bg-surface-secondary transition-[border-color,box-shadow,transform] motion-reduce:transition-none lg:hover:-translate-y-1 lg:hover:border-[var(--glass-border-strong)] lg:hover:shadow-glow-sm">
               <CardContent className="flex flex-col gap-3">
                 <span
                   className={`inline-flex size-8 items-center justify-center rounded-lg ${feature.accentClass}`}

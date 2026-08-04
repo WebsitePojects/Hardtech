@@ -37,7 +37,7 @@ export async function Navbar() {
 
   return (
     <div className="sticky top-4 z-50 mx-auto w-full max-w-7xl px-4 sm:px-6">
-      <header className="glass mx-auto flex w-full max-w-7xl items-center justify-between gap-3 rounded-full px-4 py-2 sm:px-6">
+      <header className="glass mx-auto flex w-full max-w-7xl items-center justify-between gap-3 rounded-full px-4 py-2 transition-shadow motion-reduce:transition-none sm:px-6 lg:px-7 lg:py-3 lg:shadow-[var(--shadow-lg)]">
         <SiteLogo />
         <DesktopNav />
         <div className="flex items-center gap-2">

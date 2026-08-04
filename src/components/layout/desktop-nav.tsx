@@ -33,7 +33,7 @@ export function DesktopNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "relative rounded-full px-4 py-2 font-sub text-sm font-medium transition-colors",
+              "relative rounded-full px-4 py-2 font-sub text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none",
               isActive
                 ? "bg-primary text-primary-foreground"
                 : "text-foreground/80 hover:text-foreground"
@@ -51,10 +51,10 @@ export function DesktopNav() {
       })}
 
       <DropdownMenu>
-        <DropdownMenuTrigger className="group flex items-center gap-1 rounded-full px-4 py-2 font-sub text-sm font-medium text-foreground/80 outline-none transition-colors hover:text-foreground data-open:text-foreground">
+        <DropdownMenuTrigger className="group flex items-center gap-1 rounded-full px-4 py-2 font-sub text-sm font-medium text-foreground/80 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:text-foreground data-open:text-foreground motion-reduce:transition-none">
           Explore
           <ChevronDown
-            className="size-4 transition-transform group-data-open:rotate-180"
+            className="size-4 transition-transform motion-reduce:transition-none group-data-open:rotate-180"
             aria-hidden
           />
         </DropdownMenuTrigger>

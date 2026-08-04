@@ -48,3 +48,7 @@ next-env.d.ts
 .impeccable/
 .firecrawl/
 .gstack/
+
+# agent skill packs (installed per-developer, not shared state)
+.agents/
+.claude/skills/

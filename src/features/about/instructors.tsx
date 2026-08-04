@@ -55,7 +55,7 @@ export function Instructors({ trainers }: { trainers: TrainerWithUser[] }) {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {trainers.map((trainer) => (
-          <Card key={trainer.id} className="bg-surface-secondary">
+          <Card key={trainer.id} className="bg-surface-secondary transition-[border-color,box-shadow,transform] motion-reduce:transition-none lg:hover:-translate-y-1 lg:hover:border-[var(--glass-border-strong)] lg:hover:shadow-glow-sm">
             <CardContent className="flex flex-col gap-4">
               <Avatar size="lg" className="border border-primary/40">
                 <AvatarFallback className="bg-primary/10 text-primary">
@@ -110,7 +110,7 @@ export function Instructors({ trainers }: { trainers: TrainerWithUser[] }) {
                   href={trainer.facebookUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex w-fit items-center gap-1.5 rounded-full border border-brand-blue/40 px-3 py-1.5 text-xs font-medium text-brand-blue"
+                  className="inline-flex w-fit items-center gap-1.5 rounded-full border border-brand-blue/40 px-3 py-1.5 text-xs font-medium text-brand-blue transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:bg-brand-blue/10 motion-reduce:transition-none"
                 >
                   Facebook Profile
                   <ExternalLink className="size-3.5" />

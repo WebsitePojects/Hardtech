@@ -16,14 +16,14 @@ export function AnnouncementsCard({ announcements, mobileOnly = false, desktopOn
   const mediaUrl = announcement.mediaUrl ?? "/images/home/announcement-june-2026-batch.jpg";
 
   return (
-    <aside className={`relative right-auto top-auto z-10 mx-auto mb-8 block w-[calc(100%-1rem)] max-w-[360px] rounded-2xl border border-primary/40 bg-background/80 p-3 shadow-[0_0_20px_var(--glow-primary)] backdrop-blur-md lg:absolute lg:right-[4%] lg:top-10 lg:mx-0 lg:mb-0 lg:block lg:w-[360px] lg:p-4 ${mobileOnly ? "lg:hidden" : ""} ${desktopOnly ? "hidden lg:block" : ""}`} aria-label="Live updates">
+    <aside className={`relative right-auto top-auto z-10 mx-auto mb-8 block w-[calc(100%-1rem)] max-w-[360px] rounded-2xl border border-primary/40 bg-background/80 p-3 shadow-glow-md backdrop-blur-md lg:absolute lg:right-[4%] lg:top-10 lg:mx-0 lg:mb-0 lg:block lg:w-[360px] lg:p-5 ${mobileOnly ? "lg:hidden" : ""} ${desktopOnly ? "hidden lg:block" : ""}`} aria-label="Live updates">
       <div className="flex items-center gap-2 text-[10px] font-semibold tracking-wider text-primary">
         <span className="size-1.5 rounded-full bg-primary" aria-hidden /> LIVE UPDATES
         <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px]">{announcement.type}</span>
         <span className="ml-auto flex items-center gap-1 text-muted-foreground">
-          <button type="button" aria-label="Previous update" onClick={previous} className="rounded-full border border-glass-border p-0.5"><ChevronLeft className="size-3" /></button>
+          <button type="button" aria-label="Previous update" onClick={previous} className="rounded-full border border-glass-border p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-primary hover:text-primary motion-reduce:transition-none"><ChevronLeft className="size-3" /></button>
           <span className="h-1.5 w-3 rounded-full bg-primary" />
-          <button type="button" aria-label="Next update" onClick={next} className="rounded-full border border-glass-border p-0.5"><ChevronRight className="size-3" /></button>
+          <button type="button" aria-label="Next update" onClick={next} className="rounded-full border border-glass-border p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-primary hover:text-primary motion-reduce:transition-none"><ChevronRight className="size-3" /></button>
           <span className="ml-1">{activeIndex + 1}/{announcements.length}</span>
         </span>
       </div>

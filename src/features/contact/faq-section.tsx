@@ -29,7 +29,7 @@ export function FaqSection({ faqs }: { faqs: Faq[] }) {
           <AccordionItem
             key={faq.id}
             value={faq.id}
-            className="rounded-2xl border-b-0 bg-surface-secondary px-4 ring-1 ring-glass-border"
+            className="rounded-2xl border-b-0 bg-surface-secondary px-4 ring-1 ring-glass-border transition-[border-color,box-shadow] motion-reduce:transition-none lg:hover:ring-primary/35 lg:hover:shadow-glow-sm"
           >
             <AccordionTrigger className="py-4 text-base hover:no-underline">
               {faq.question}

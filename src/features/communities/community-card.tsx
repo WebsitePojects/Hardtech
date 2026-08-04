@@ -22,7 +22,7 @@ export function CommunityCard({ community }: { community: CommunitySummary }) {
   const TopicIcon = community.primaryTopic ? TOPIC_ICONS[community.primaryTopic] : null;
 
   return (
-    <Card className="overflow-hidden border border-glass-border bg-surface-card ring-0">
+    <Card className="overflow-hidden border border-glass-border bg-surface-card ring-0 transition-[border-color,box-shadow,transform] motion-reduce:transition-none lg:hover:-translate-y-1 lg:hover:border-[var(--glass-border-strong)] lg:hover:shadow-glow-sm">
       <div className="relative h-[92px] bg-gradient-to-br from-primary/30 via-brand-blue/20 to-brand-purple/20">
         <span className="absolute top-3 right-3">
           <Badge variant="outline" className="border-glass-border bg-glass text-foreground">

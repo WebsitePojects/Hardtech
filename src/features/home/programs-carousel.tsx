@@ -24,6 +24,13 @@ const ACCENT_CLASSES: Record<string, string> = {
   green: "border-primary text-primary bg-primary/10",
 };
 
+function fallbackImageFor(programName: string): string | undefined {
+  if (programName === "Computer Hardware Servicing") return "/images/gallery/gallery-01.jpg";
+  if (programName === "Cellphone Hardware Servicing") return "/images/gallery/gallery-08.jpg";
+  if (programName === "I.T. Software Development") return "/images/gallery/gallery-15.jpg";
+  return undefined;
+}
+
 function resolveIcon(iconName: string | null): LucideIcon { return iconName ? PROGRAM_ICONS[iconName.toLowerCase()] ?? Cpu : Cpu; }
 function resolveAccent(accentColor: string | null): string { return accentColor ? ACCENT_CLASSES[accentColor.toLowerCase()] ?? ACCENT_CLASSES.green : ACCENT_CLASSES.green; }
 
@@ -34,10 +41,10 @@ export function ProgramsCarousel({ programs }: { programs: ProgramsCarouselProgr
   const next = () => setSelectedIndex((selectedIndex + 1) % programs.length);
 
             return (
-    <div className="relative mx-auto h-[116px] w-full max-w-5xl overflow-hidden lg:h-[292px]">
-      <button type="button" aria-label="Previous program" onClick={previous} className="absolute left-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-glass-border bg-background/80 p-3 text-muted-foreground transition hover:border-primary hover:text-primary lg:block"><ChevronLeft className="size-4" /></button>
-      <button type="button" aria-label="Next program" onClick={next} className="absolute right-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-glass-border bg-background/80 p-3 text-muted-foreground transition hover:border-primary hover:text-primary lg:block"><ChevronRight className="size-4" /></button>
-      <div className="relative top-0 mx-auto h-[106px] w-full max-w-4xl [--carousel-step:112px] [perspective:1100px] lg:top-28 lg:h-[250px] lg:[--carousel-step:180px]">
+    <div className="relative mx-auto w-full max-w-5xl overflow-x-clip">
+      <button type="button" aria-label="Previous program" onClick={previous} className="absolute left-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-glass-border bg-background/80 p-3 text-muted-foreground transition-[border-color,box-shadow,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-primary hover:text-primary hover:shadow-glow-sm motion-reduce:transition-none lg:block"><ChevronLeft className="size-4" /></button>
+      <button type="button" aria-label="Next program" onClick={next} className="absolute right-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-glass-border bg-background/80 p-3 text-muted-foreground transition-[border-color,box-shadow,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-primary hover:text-primary hover:shadow-glow-sm motion-reduce:transition-none lg:block"><ChevronRight className="size-4" /></button>
+      <div className="relative top-0 mx-auto h-[106px] w-full max-w-4xl [--carousel-step:112px] [perspective:1100px] lg:top-0 lg:h-[292px] lg:[--carousel-step:180px]">
         {programs.map((program, index) => {
           const rawOffset = index - selectedIndex;
           const offset = rawOffset > programs.length / 2 ? rawOffset - programs.length : rawOffset < -programs.length / 2 ? rawOffset + programs.length : rawOffset;
@@ -47,8 +54,8 @@ export function ProgramsCarousel({ programs }: { programs: ProgramsCarouselProgr
           const visible = distance <= 2;
           const accent = resolveAccent(program.accentColor);
           return (
-            <article key={program.id} className={`absolute left-1/2 top-1/2 h-[100px] w-[190px] overflow-hidden rounded-xl border p-3 transition-all duration-500 lg:h-[220px] lg:w-[290px] lg:rounded-2xl lg:p-6 ${active ? "border-brand-blue shadow-[0_0_25px_var(--glow-brand-blue)]" : "border-glass-border"}`} style={{ transform: `translate(-50%, -50%) translateX(calc(${offset} * var(--carousel-step))) translateZ(${active ? 80 : Math.max(0, 20 - distance * 10)}px) rotateY(${offset * -22}deg) scale(${active ? 1 : distance === 1 ? 0.82 : 0.66})`, opacity: visible ? active ? 1 : distance === 1 ? 0.62 : 0.28 : 0, zIndex: 10 - distance, backgroundImage: program.imageUrl ? `linear-gradient(var(--glass), var(--glass)), url(${program.imageUrl})` : undefined, backgroundSize: "cover", backgroundPosition: "center", pointerEvents: visible ? "auto" : "none" }}>
-              <div className="absolute inset-0 bg-background/65" />
+            <article key={program.id} className={`absolute left-1/2 top-1/2 h-[100px] w-[190px] overflow-hidden rounded-xl border p-3 transition-all duration-500 motion-reduce:transition-none lg:h-[220px] lg:w-[290px] lg:rounded-2xl lg:p-6 ${active ? "border-brand-blue shadow-glow-md" : "border-glass-border"}`} style={{ transform: `translate(-50%, -50%) translateX(calc(${offset} * var(--carousel-step))) translateZ(${active ? 80 : Math.max(0, 20 - distance * 10)}px) rotateY(${offset * -22}deg) scale(${active ? 1 : distance === 1 ? 0.82 : 0.66})`, opacity: visible ? active ? 1 : distance === 1 ? 0.62 : 0.28 : 0, zIndex: 10 - distance, backgroundImage: (program.imageUrl ?? fallbackImageFor(program.name)) ? `linear-gradient(var(--glass-bg), var(--glass-bg)), url(${program.imageUrl ?? fallbackImageFor(program.name)})` : undefined, backgroundSize: "cover", backgroundPosition: "center", pointerEvents: visible ? "auto" : "none" }}>
+              <div className="absolute inset-0 bg-background/45" />
               <div className="relative flex h-full flex-col gap-3">
                 <span className={`inline-flex size-10 items-center justify-center rounded-xl ${accent}`}><Icon className="size-5" /></span>
                 <h3 className="text-base font-semibold leading-tight">{program.name}</h3>
@@ -58,8 +65,8 @@ export function ProgramsCarousel({ programs }: { programs: ProgramsCarouselProgr
           );
         })}
       </div>
-      <div className="absolute inset-x-0 bottom-0 flex justify-center gap-2">
-        {programs.map((program, index) => <button key={program.id} type="button" aria-label={`Go to ${program.name}`} onClick={() => setSelectedIndex(index)} className={`h-1.5 rounded-full transition-all ${index === selectedIndex ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/40"}`} />)}
+      <div className="mt-4 flex justify-center gap-2 lg:mt-5">
+        {programs.map((program, index) => <button key={program.id} type="button" aria-label={`Go to ${program.name}`} onClick={() => setSelectedIndex(index)} className={`h-1.5 rounded-full transition-all motion-reduce:transition-none ${index === selectedIndex ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/40"}`} />)}
       </div>
     </div>
   );

@@ -9,7 +9,7 @@ import { toggleReplyReactionAction } from "@/app/(app)/forum/actions";
 import { useGuardedMutation } from "./use-guarded-mutation";
 
 function iconFor(type: ReactionType, pending: boolean) {
-  const className = cn("size-3.5", pending && "animate-pulse");
+  const className = cn("size-3.5", pending && "animate-pulse motion-reduce:animate-none");
   switch (type) {
     case "UPVOTE":
       return <ThumbsUp className={className} aria-hidden />;
