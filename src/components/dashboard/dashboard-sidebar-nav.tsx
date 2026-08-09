@@ -62,8 +62,13 @@ export function DashboardSidebarNav({
 
   const items = dashboardNavItems[role];
   const meta = roleMeta[role];
-  const displayName = userName ? (role === "TRAINER" ? `Mr. ${userName}` : userName) : meta.fallbackDisplayName;
-  const initials = getInitials(displayName);
+  const displayName =
+    userName && !meta.alwaysUseFallbackName
+      ? role === "TRAINER"
+        ? `Mr. ${userName}`
+        : userName
+      : meta.fallbackDisplayName;
+  const initials = meta.avatarInitials ?? getInitials(displayName);
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
@@ -114,7 +119,12 @@ export function DashboardSidebarNav({
               }}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-foreground/80 transition-colors",
+                // text-left is load-bearing: a <button> carries a UA default of
+                // text-align:center, which the flex-1 label span inherits. Without
+                // it every row's label centres in its leftover space and the list
+                // reads ragged, while "Back to Landing" below — an anchor, so
+                // left-aligned by default — stays correct and hides the cause.
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-foreground/80 transition-colors",
                 isActive
                   ? "bg-primary/10 text-primary"
                   : "hover:bg-glass-hover hover:text-foreground"
@@ -123,7 +133,11 @@ export function DashboardSidebarNav({
               <Icon className="size-4 shrink-0" aria-hidden />
               <span className="flex-1 truncate">{item.label}</span>
               {typeof count === "number" && count > 0 ? (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+                // Neutral, not green. The reference badges are a translucent
+                // white chip with near-white text at 11px — measured at
+                // rgba(255,255,255,0.1) on rgb(232,237,244). A green fill reads
+                // as a call to action; these are just counts.
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/10 px-1.5 text-[11px] font-semibold text-text-primary">
                   {count}
                 </span>
               ) : null}
@@ -136,7 +150,9 @@ export function DashboardSidebarNav({
         <Link
           href="/"
           onClick={onNavigate}
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-glass-hover hover:text-foreground"
+          // The reference gives both footer rows their own outlined container,
+          // which separates them from the borderless section list above.
+          className="flex items-center gap-3 rounded-lg border border-glass-border px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-glass-hover hover:text-foreground"
         >
           <Home className="size-4" aria-hidden />
           Back to Landing

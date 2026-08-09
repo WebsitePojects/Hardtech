@@ -14,7 +14,9 @@ function LogoutSubmitButton() {
       type="submit"
       disabled={pending}
       aria-disabled={pending}
-      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-50"
+      // text-left because a <button> centres its text by default; border to
+      // match the reference, which outlines both sidebar footer rows.
+      className="flex w-full items-center gap-3 rounded-lg border border-glass-border px-3 py-2 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-50"
     >
       <LogOut className="size-4" aria-hidden />
       Logout

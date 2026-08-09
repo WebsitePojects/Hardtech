@@ -77,6 +77,7 @@
   --color-surface-card: var(--bg-card);
   --color-glass: var(--glass-bg);
   --color-glass-border: var(--glass-border);
+  --color-text-primary: var(--text-primary);
   --color-text-muted: var(--text-muted);
 
   --shadow-glow-sm: var(--glow-sm);
@@ -247,6 +248,10 @@
   --bg-secondary: #0f1419;
   --bg-card: #141a22b3;
 
+  /* The dark block defined --text-muted but never its counterpart, so any
+   * consumer of --text-primary fell through to the LIGHT value (#1a1a1a) and
+   * rendered near-black on a near-black surface. Measured off the reference. */
+  --text-primary: #e8edf4;
   --text-muted: #8a95a3;
 
   /* Dropdown / menu panels — Explore, forum sort, admin filters.

@@ -47,6 +47,20 @@ export const roleMeta: Record<
     portalLabel: string;
     defaultSubtitle: string;
     fallbackDisplayName: string;
+    /** When true the sidebar shows `fallbackDisplayName` even for a signed-in
+     * user with a real name. Admin only — verified against the reference,
+     * where signing in as each role gives:
+     *
+     *   ADMIN    AD  "Admin Console"           "Super Admin"
+     *   TRAINER  HL  "Mr. Henry Gomata Lopez"  "Owner & Lead Trainer"
+     *   TRAINEE  CR  "Carlos Reyes"            "Active Trainee"
+     *
+     * The admin rail names the console, not the operator; trainer and trainee
+     * name the person. */
+    alwaysUseFallbackName?: boolean;
+    /** Overrides initials derived from the display name. Admin reads `AD`,
+     * which `getInitials("Admin Console")` would render as `AC`. */
+    avatarInitials?: string;
     dotClassName: string;
     avatarClassName: string;
   }
@@ -55,6 +69,8 @@ export const roleMeta: Record<
     portalLabel: "ADMIN PORTAL",
     defaultSubtitle: "Super Admin",
     fallbackDisplayName: "Admin Console",
+    alwaysUseFallbackName: true,
+    avatarInitials: "AD",
     dotClassName: "bg-primary",
     avatarClassName: "bg-brand-purple/20 text-brand-purple",
   },
