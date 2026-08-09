@@ -54,7 +54,7 @@ export default async function LoginPage() {
         * footer exists but sits below the fold. Ours was 770 tall, which
         * pulled the footer into view and made the page read as a different
         * layout entirely. */}
-      <div className="relative mx-auto grid min-h-screen w-full max-w-6xl gap-8 px-4 py-10 sm:gap-10 sm:px-6 sm:py-16 lg:grid-cols-2 lg:items-center lg:py-24">
+      <div className="relative mx-auto grid min-h-screen w-full max-w-[1400px] gap-8 px-4 py-10 sm:gap-10 sm:px-8 sm:py-16 lg:grid-cols-2 lg:items-center lg:py-24">
         <div className="relative space-y-6 lg:space-y-8">
           {/* Scoped to the marketing column, matching the reference's
            * `hidden lg:flex lg:w-1/2 ... overflow-hidden` panel. */}
@@ -91,7 +91,11 @@ export default async function LoginPage() {
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-glass-border bg-glass">
                   <row.icon className="size-4 text-primary" aria-hidden />
                 </span>
-                <span className="text-sm text-foreground">{row.label}</span>
+                {/* Muted, not near-white. The reference renders these feature
+                  * rows at rgb(138,149,163) — exactly --text-muted. At
+                  * text-foreground they compete with the heading and flatten
+                  * the column's hierarchy. */}
+                <span className="text-sm text-text-muted">{row.label}</span>
               </li>
             ))}
           </ul>
