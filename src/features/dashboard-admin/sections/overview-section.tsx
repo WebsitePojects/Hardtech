@@ -7,15 +7,14 @@ import {
 } from "@/components/dashboard/dashboard-stat-card";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { getAdminAnalytics, getAdminOverviewStats } from "@/server/services/dashboard.service";
-import { OverviewRevenueEnrollmentsChart } from "../components/admin-analytics-charts";
+import {
+  OverviewRevenueEnrollmentsChart,
+  ProgramMixDonutChart,
+} from "../components/admin-analytics-charts";
 import { formatPesoCompact } from "../format-peso";
 import { DataNotConnectedNote } from "../components/data-not-connected-note";
 import { DashboardSectionButton } from "@/components/dashboard/dashboard-section-button";
-
-/** desktop-02.md #2: 3-segment legend (green / light green / blue) — cycled
- * by index rather than hardcoded per program name, since `programMix` is
- * real data whose length/order is not fixed to exactly 3. */
-const PROGRAM_MIX_TONES = ["bg-primary", "bg-primary-light", "bg-brand-blue", "bg-brand-purple", "bg-brand-orange"];
+import { PROGRAM_MIX_TONES } from "../program-mix-tones";
 
 /**
  * "System Overview" (desktop-02.md #2). The only admin section with a real
@@ -24,11 +23,21 @@ const PROGRAM_MIX_TONES = ["bg-primary", "bg-primary-light", "bg-brand-blue", "b
  */
 export async function OverviewSection() {
   const [stats, analytics] = await Promise.all([getAdminOverviewStats(), getAdminAnalytics(6)]);
-  const totalProgramMix = stats.programMix.reduce((sum, row) => sum + row.activeEnrollmentCount, 0);
+  const programMixSlices = stats.programMix.map((row) => ({
+    id: row.programId,
+    label: row.programName,
+    value: row.activeEnrollmentCount,
+  }));
+  // Presentation-only scaling: the combo chart shares one Y axis between a
+  // whole-peso revenue series and a single-digit enrollment-count series
+  // (getAdminAnalytics keeps returning whole pesos — this does not touch the
+  // service). Dividing by 1000 here matches the reference, whose own
+  // tooltip reads "revenue: 10" beside a "₱10.0k" stat card, and keeps the
+  // enrollments curve from being crushed flat against the axis.
   const chartData = analytics.enrollmentsByMonth.map((row, index) => ({
     month: row.month,
     enrollments: row.count,
-    revenue: analytics.revenueTrend[index]?.total ?? 0,
+    revenue: (analytics.revenueTrend[index]?.total ?? 0) / 1000,
   }));
 
   return (
@@ -90,29 +99,18 @@ export async function OverviewSection() {
               <DataNotConnectedNote detail="No active enrollments found." />
             ) : (
               <div className="space-y-3">
-                <div className="flex h-2.5 overflow-hidden rounded-full bg-muted">
-                  {stats.programMix.map((row, index) => (
-                    <span
-                      key={row.programId}
-                      className={PROGRAM_MIX_TONES[index % PROGRAM_MIX_TONES.length]}
-                      style={{
-                        width: `${totalProgramMix === 0 ? 0 : (row.activeEnrollmentCount / totalProgramMix) * 100}%`,
-                      }}
-                      aria-hidden
-                    />
-                  ))}
-                </div>
+                <ProgramMixDonutChart data={programMixSlices} />
                 <ul className="space-y-2">
                   {stats.programMix.map((row, index) => (
                     <li key={row.programId} className="flex items-center justify-between text-sm">
                       <span className="flex items-center gap-2 text-foreground">
                         <span
-                          className={`size-2.5 shrink-0 rounded-full ${PROGRAM_MIX_TONES[index % PROGRAM_MIX_TONES.length]}`}
+                          className={`size-2.5 shrink-0 rounded-full ${PROGRAM_MIX_TONES[index % PROGRAM_MIX_TONES.length].dotClassName}`}
                           aria-hidden
                         />
                         {row.programName}
                       </span>
-                      <span className="font-medium text-foreground">{row.activeEnrollmentCount}</span>
+                      <span className="font-medium text-primary">{row.activeEnrollmentCount}</span>
                     </li>
                   ))}
                 </ul>
@@ -166,10 +164,8 @@ function QuickLinkCard({
 }) {
   return (
     <DashboardSectionButton section={section} className="block w-full text-left">
-      <Card className="flex-row items-center gap-3 p-4 transition-colors hover:bg-glass-hover">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary" aria-hidden>
-          <Icon className="size-4.5" />
-        </span>
+      <Card className="gap-2 p-4 transition-colors hover:bg-glass-hover">
+        <Icon className="size-5 shrink-0 text-primary" aria-hidden />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-foreground">{heading}</p>
           <p className="truncate text-xs text-muted-foreground">{subtext}</p>

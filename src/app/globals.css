@@ -71,6 +71,14 @@
   --color-brand-orange: var(--accent-orange);
   --color-brand-orange-light: var(--accent-orange-light);
 
+  /* The reference's hardcoded saturated green (rgb(0,255,136)) used for the
+   * /login page's cyber-grid texture. NOT --neon (#4ade80) — see
+   * docs/research/02-reference-behavior.md §3. Registered as a solid Tailwind
+   * color (bg-cyber-green, text-cyber-green, etc, with /alpha modifiers) so
+   * other builders can consume it instead of pasting the hex. */
+  --color-cyber-green: rgb(var(--cyber-green-rgb));
+  --color-chart-blue: rgb(var(--chart-blue-rgb));
+
   /* HardTech page surfaces */
   --color-surface: var(--bg-main);
   --color-surface-secondary: var(--bg-secondary);
@@ -127,6 +135,26 @@
   --neon-dark: #15803d;
   --neon-glow: #16a34a1f;
   --neon-glow-soft: #16a34a0d;
+  /* rgb() triplet of --neon, light. The hex+alpha-suffix pattern above bakes
+   * in one fixed alpha per token; the page-texture overlays in @layer
+   * components need --neon at several different alphas, so it needs a
+   * companion in `R G B` form to feed `rgb(var(--neon-rgb) / alpha)`. */
+  --neon-rgb: 22 163 74;
+
+  /* The reference's hardcoded saturated green used only by the /login
+   * cyber-grid texture (rgb(0,255,136) — measured off the live reference,
+   * docs/research/02-reference-behavior.md §3). Deliberately NOT derived from
+   * --neon: the reference itself hardcodes a more saturated green here rather
+   * than reusing its own brand variable, and substituting --neon would be
+   * silently wrong. One value regardless of theme — the app is dark-only. */
+  --cyber-green-rgb: 0 255 136;
+
+  /* The reference's chart blue, measured at rgb(100,180,255) on the admin
+   * revenue/enrollments areas. Like --cyber-green-rgb it is hardcoded there
+   * rather than derived from a brand variable, and it is NOT --accent-blue
+   * (#60a5fa = rgb(96,165,250)) — close enough to look right in isolation,
+   * wrong side by side. Charts only; --accent-blue still owns UI chrome. */
+  --chart-blue-rgb: 100 180 255;
 
   /* brand drives primary */
   --primary: var(--neon);
@@ -226,6 +254,10 @@
   --neon-dark: #22c55e;
   --neon-glow: #4ade801f;
   --neon-glow-soft: #4ade800a;
+  /* rgb() triplet of --neon, dark — feeds .cyber-bg::before's top-edge bloom,
+   * measured off the reference at rgba(74,222,128,0.04). See the :root
+   * comment on --neon-rgb for why this needs its own companion token. */
+  --neon-rgb: 74 222 128;
 
   --primary: var(--neon);
   --primary-light: var(--neon-light);
@@ -405,5 +437,88 @@
 
   .dashboard-glow {
     background: var(--dashboard-glow);
+  }
+
+  /* Global page surface texture — measured off the live reference
+   * (docs/research/02-reference-behavior.md §3). Hangs off a root element
+   * carrying `cyber-bg` — the <body> in src/app/layout.tsx — so every route
+   * gets it, not just one page. Together the two passes are what keep flat
+   * panels from reading as pure solid fills.
+   *
+   * `position: fixed` on both pseudo-elements pins them to the viewport
+   * (matches the reference, and means they don't grow with document height).
+   * `z-index: 0` keeps them below the navbar (z-index 100000, see §1 of the
+   * same doc) and dropdown panels (z-index 999999, §2), while still layering
+   * over ordinary z-index:auto page content — that's intentional, it's what
+   * makes the grain read as a texture over the page rather than invisible
+   * underneath it. `pointer-events: none` on top of that means neither pass
+   * can ever intercept a click regardless of stacking.
+   *
+   * The alphas (0.035, 0.04) are tiny on purpose. Do not round them up. */
+  .cyber-bg {
+    position: relative;
+  }
+
+  .cyber-bg::before,
+  .cyber-bg::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* Soft green bloom hanging from the top edge. */
+  .cyber-bg::before {
+    background-image: radial-gradient(
+      80% 60% at 50% -5%,
+      rgb(var(--neon-rgb) / 0.04),
+      transparent 65%
+    );
+  }
+
+  /* The grain — a 1px dot matrix on a 28px grid. */
+  .cyber-bg::after {
+    background-image: radial-gradient(
+      circle,
+      rgb(255 255 255 / 0.035) 1px,
+      transparent 1px
+    );
+    background-size: 28px 28px;
+  }
+
+  /* /login-only technical grid, layered above `.cyber-bg`. Scoped to the
+   * marketing column (see src/app/(auth)/login/page.tsx) the same way the
+   * reference scopes it to its `hidden lg:flex lg:w-1/2 ... overflow-hidden`
+   * panel — two 1px hairline grids at 48px pitch. */
+  .login-grid-overlay {
+    background-image:
+      linear-gradient(rgb(var(--cyber-green-rgb) / 0.03) 1px, transparent 1px),
+      linear-gradient(
+        90deg,
+        rgb(var(--cyber-green-rgb) / 0.03) 1px,
+        transparent 1px
+      );
+    background-size:
+      48px 48px,
+      48px 48px;
+  }
+
+  /* /login-only soft orbs. Geometry (size, position, blur) is applied at the
+   * call site with Tailwind utilities; only the color comes from here. */
+  .login-orb-a {
+    background: radial-gradient(
+      circle,
+      rgb(var(--cyber-green-rgb) / 0.06) 0%,
+      transparent 70%
+    );
+  }
+
+  .login-orb-b {
+    background: radial-gradient(
+      circle,
+      rgb(var(--cyber-green-rgb) / 0.05) 0%,
+      transparent 70%
+    );
   }
 }

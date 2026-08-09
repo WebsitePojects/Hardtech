@@ -62,7 +62,15 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      {/*
+       * `cyber-bg` is the global page-surface texture — a grain pass and a
+       * top-edge bloom, both hung off this element's ::before/::after in
+       * globals.css. It belongs on <body> specifically because it needs to
+       * apply to every route, not just one page. See
+       * docs/research/02-reference-behavior.md §3 and .claude/lessons.md for
+       * the measured values.
+       */}
+      <body className="cyber-bg min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

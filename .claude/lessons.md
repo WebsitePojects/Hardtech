@@ -15,6 +15,30 @@ Format:
 
 ---
 
+## 2026-08-09 — A 3.5%-alpha grain texture "disappeared" in a 1x-DPI screenshot crop
+
+**Symptom:** After implementing the `.cyber-bg::after` grain overlay (a 1px dot
+matrix at `rgba(255,255,255,0.035)` on a 28px grid), a Playwright screenshot
+cropped to a flat region of `/login` showed no dots at all, while the same
+overlay was clearly visible in a crop of `/` taken the same way. Computed-style
+diffing showed the two pages' `.cyber-bg::after` were byte-identical.
+
+**Cause:** Not a rendering bug. The crop was captured at the default
+`deviceScaleFactor: 1`. At 3.5% alpha, a 1px dot is a ~9/255 luminance step,
+and at 1x scale Chromium's rasterizer + PNG encoder can flatten that step to
+nothing in some regions depending on subpixel placement — it's a rendering
+precision artifact of the capture, not the page. Re-capturing the identical
+region with `deviceScaleFactor: 2` showed the dots clearly and evenly.
+
+**Rule:** When verifying a texture or effect with alpha below roughly 5%,
+screenshot at `deviceScaleFactor: 2` (or crop and zoom) before concluding it
+is "missing" — a flat crop at 1x is not proof of absence at these alphas. This
+is the same category of mistake as trusting a green checkmark without reading
+output (`.claude/rules/00-non-negotiables.md` intent extended to visual
+verification): re-measure at higher precision before reporting a delta.
+
+---
+
 ## 2026-08-09 — I put an unmeasured spec in a brief and called it ground truth
 
 **Symptom:** The brief for the forum sort menu stated its panel used the same
