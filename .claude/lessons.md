@@ -15,6 +15,29 @@ Format:
 
 ---
 
+## 2026-08-09 — I put an unmeasured spec in a brief and called it ground truth
+
+**Symptom:** The brief for the forum sort menu stated its panel used the same
+treatment as the navbar's Explore menu — `rgb(6,10,16)`, a green
+`rgba(74,222,128,0.12)` hairline, a three-layer shadow, `z-index: 999999` — and
+told the agent those numbers were measured. The agent re-measured the live
+reference and found the sort menu is a different panel: `rgb(12,18,28)`, a
+neutral `rgba(255,255,255,0.1)` hairline, one shadow layer, `z-index: 100`.
+
+**Cause:** Only the Explore panel had actually been measured. Its values were
+generalised to "dropdowns" and written into a second brief as fact. The
+reference deliberately runs two menu surfaces — a dark green-edged mega-menu in
+the navbar and a lighter neutral-edged menu in-page — and unifying them would
+have been wrong in a way that looks tidy.
+
+**Rule:** Measure each component, not each component *category*. A value carries
+authority only for the element it was read from; reusing it elsewhere is an
+inference and must be labelled as one. Briefs should say which numbers were
+measured and which are assumed, and instruct the agent to re-measure and
+override — that instruction is the only reason this was caught.
+
+---
+
 ## 2026-08-09 — `.glass` shipped without its blur for the whole project
 
 **Symptom:** The navbar looked flat next to the reference. `src/app/globals.css`

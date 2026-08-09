@@ -58,31 +58,57 @@ export function DesktopNav() {
             aria-hidden
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="center" className="w-80 border border-glass-border p-2">
+        <DropdownMenuContent
+          align="start"
+          sideOffset={8}
+          // py-[9px]: the reference panel measures 260 tall around four 60px
+          // rows and a 1px border, which leaves 18px of vertical padding.
+          className="w-64 rounded-[16px] border-0 px-0 py-[9px] z-[999999]"
+          style={{
+            backgroundColor: "var(--menu-bg)",
+            border: "1px solid color-mix(in oklab, var(--neon) 12%, transparent)",
+            boxShadow:
+              "rgba(0, 0, 0, 0.7) 0px 8px 16px 0px, rgba(0, 0, 0, 0.9) 0px 24px 72px 0px, color-mix(in oklab, var(--neon) 4%, transparent) 0px 0px 0px 0.5px inset, color-mix(in oklab, var(--neon) 15%, transparent) 0px 1px 0px 0px inset",
+          }}
+        >
           {exploreNavItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
             return (
-              <DropdownMenuItem key={item.href} asChild>
-                <Link href={item.href} className="flex items-start gap-3 rounded-lg p-2.5">
+              <DropdownMenuItem
+                key={item.href}
+                asChild
+                className="items-center gap-3 rounded-xl px-3 py-2.5 min-h-11"
+              >
+                <Link
+                  href={item.href}
+                  className="flex transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+                >
                   <span
-                    className={cn(
-                      "flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted",
-                      isActive && "text-neon"
-                    )}
+                    className="flex size-8 shrink-0 items-center justify-center rounded-lg"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, color-mix(in oklab, var(--neon) 15%, transparent), var(--neon-glow-soft))",
+                      border:
+                        "1px solid color-mix(in oklab, var(--neon) 20%, transparent)",
+                      boxShadow: "0 2px 8px var(--neon-glow-soft) inset",
+                    }}
                   >
-                    <Icon className="size-4" aria-hidden />
+                    <Icon className="size-3.5 text-neon" aria-hidden />
                   </span>
-                  <span className="flex flex-col gap-0.5">
+                  <span className="flex flex-col">
                     <span
                       className={cn(
-                        "text-sm font-semibold",
+                        // 16px, measured off the reference. At the shadcn
+                        // default of 14px each row loses 2px and the panel
+                        // comes up 26px short overall.
+                        "text-base font-medium",
                         isActive ? "text-neon" : "text-foreground"
                       )}
                     >
                       {item.label}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-text-muted">
                       {item.description}
                     </span>
                   </span>

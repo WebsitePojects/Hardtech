@@ -249,6 +249,25 @@
 
   --text-muted: #8a95a3;
 
+  /* Dropdown / menu panels — Explore, forum sort, admin filters.
+   *
+   * Deliberately one step darker than --bg-main (#080d12). Measured off the
+   * live reference at rgb(6, 10, 16); it reads as a panel lifted off the page
+   * rather than a hole cut into it, and substituting --bg-main makes the panel
+   * disappear into the background it floats over. */
+  --menu-bg: #060a10;
+
+  /* The lighter menu surface, used by the forum sort menu and the admin
+   * filters. Measured at rgb(12, 18, 28).
+   *
+   * The reference deliberately runs TWO menu surfaces: the navbar's Explore
+   * mega-menu sits on --menu-bg (#060a10) with a green hairline, while the
+   * smaller in-page menus sit on this lighter surface with a neutral white
+   * hairline. They are not the same panel and must not be unified. */
+  --menu-bg-soft: #0c121c;
+  --menu-border: rgba(255, 255, 255, 0.1);
+  --shadow-menu: 0 16px 48px 0 rgba(0, 0, 0, 0.7);
+
   /* glass — floating navbar, forum rails, community cards */
   --glass-bg: #141a228c;
   --glass-border: rgba(255, 255, 255, 0.07);
