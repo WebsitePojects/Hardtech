@@ -48,7 +48,13 @@ export default async function LoginPage() {
         className="login-orb-b pointer-events-none absolute left-[80%] top-[60%] size-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[40px]"
       />
 
-      <div className="relative mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 sm:gap-10 sm:px-6 sm:py-16 lg:grid-cols-2 lg:items-center lg:py-24">
+      {/* min-h-screen is what keeps the global footer off this screen. The
+        * reference's login panel measures exactly one viewport tall (main
+        * height 900 at a 900px viewport, footer starting at 996), so the
+        * footer exists but sits below the fold. Ours was 770 tall, which
+        * pulled the footer into view and made the page read as a different
+        * layout entirely. */}
+      <div className="relative mx-auto grid min-h-screen w-full max-w-6xl gap-8 px-4 py-10 sm:gap-10 sm:px-6 sm:py-16 lg:grid-cols-2 lg:items-center lg:py-24">
         <div className="relative space-y-6 lg:space-y-8">
           {/* Scoped to the marketing column, matching the reference's
            * `hidden lg:flex lg:w-1/2 ... overflow-hidden` panel. */}
@@ -56,7 +62,14 @@ export default async function LoginPage() {
             aria-hidden
             className="login-grid-overlay pointer-events-none absolute inset-0 hidden lg:block"
           />
-          <Badge variant="outline" className="gap-1.5 border-primary/40 text-primary">
+          {/* Uppercase with wide tracking at 12px, transcribed from the
+            * reference — it renders "SYSTEM ONLINE · 2026 BATCHES OPEN".
+            * Applied via text-transform rather than retyping the string, so
+            * the source copy stays readable in the markup. */}
+          <Badge
+            variant="outline"
+            className="gap-1.5 border-primary/40 text-[12px] tracking-wider text-primary uppercase"
+          >
             <span className="size-1.5 rounded-full bg-primary" aria-hidden />
             System Online · 2026 Batches Open
           </Badge>
@@ -88,7 +101,12 @@ export default async function LoginPage() {
           </p>
         </div>
 
-        <Card className="glass rounded-2xl p-6 sm:p-8">
+        {/* The reference's card box measures 448px wide at a 1440 viewport and
+          * is pinned to the right of its column rather than stretched across
+          * it. Measure the card element itself, not "the smallest box
+          * containing the words Welcome Back" — that heuristic lands on an
+          * inner wrapper and reports 382. */}
+        <Card className="glass w-full max-w-[448px] justify-self-end rounded-2xl p-6 sm:p-8">
           <div className="mb-6 space-y-1.5">
             <h2 className="font-heading text-2xl font-semibold">Welcome Back</h2>
             <p className="text-sm text-muted-foreground">
