@@ -15,6 +15,69 @@ Format:
 
 ---
 
+## 2026-08-09 — `.glass` shipped without its blur for the whole project
+
+**Symptom:** The navbar looked flat next to the reference. `src/app/globals.css`
+declared `backdrop-filter: blur(16px)` and `-webkit-backdrop-filter` on `.glass`,
+and the rule was clearly applying — its `background-color` and `border` were
+visible on the element.
+
+**Cause:** Lightning CSS, which Turbopack runs over Tailwind v4, prunes a bare
+`backdrop-filter` against its default browser targets. It does so silently: the
+rule still ships, minus those two declarations. The served CSS read
+`.glass { background-color: …; border: …; box-shadow: … }`. On the same page
+`.backdrop-blur-md` computed to `blur(12px)`, because Tailwind emits its own
+backdrop utilities inside `@supports ((-webkit-backdrop-filter: …) or
+(backdrop-filter: …))`, and Lightning CSS will not prune inside that guard.
+Setting the property inline restored it, proving browser support was never the
+issue. Every glass surface in the app — navbar, forum rails, community cards —
+had been flat translucent panels with no blur.
+
+**Rule:** A declaration present in source is not necessarily present in the
+browser. When a style computes to `none` but the rule is clearly matching, read
+the **served** rule before suspecting selectors or specificity:
+`for (const r of sheet.cssRules) if (/\.your-class/.test(r.selectorText)) console.log(r.cssText)`.
+If the declaration is absent from `cssText`, the build removed it. Wrap
+`backdrop-filter` in `@supports` — that is exactly how Tailwind protects its own.
+
+---
+
+## 2026-08-09 — A four-layer Tailwind arbitrary shadow computed to nothing
+
+**Symptom:** `shadow-[0_24px_64px_0_rgba(0,0,0,0.55),0_8px_24px_0_rgba(…),inset_…,inset_…]`
+produced `box-shadow: rgba(0,0,0,0) 0px 0px 0px 0px, …` — the utility applied,
+the value was empty. The pill shipped with no shadow.
+
+**Cause:** Tailwind did not parse the multi-layer arbitrary value with commas
+and `inset` keywords. It emitted its shadow scaffolding with empty custom
+properties rather than failing loudly.
+
+**Rule:** Multi-layer shadows belong in a named CSS class, not an arbitrary
+utility. And a Tailwind variant (`data-[x=true]:`) only composes with Tailwind
+utilities — prefixing a **custom** class with one silently does nothing. Key the
+CSS off the attribute instead: `.navbar-pill[data-scrolled="true"] { … }`.
+Always confirm an arbitrary value by reading the computed style; a class that is
+present in the DOM is not proof the value survived.
+
+---
+
+## 2026-08-09 — Two agents sharing one auth file killed both
+
+**Symptom:** Two builder agents launched in parallel both died immediately:
+`Your access token could not be refreshed because your refresh token was already
+used.` Neither wrote a single file.
+
+**Cause:** Both agent homes were seeded by copying the same `auth.json`. Refresh
+tokens rotate on use, so the two processes refreshed concurrently and each
+invalidated the other's token — and the shared source credential with it.
+
+**Rule:** Credentials with rotating refresh tokens cannot be copied across
+concurrent workers. Run such agents sequentially against one home, or give each
+its own independently issued credential. When parallel workers fail *identically
+and instantly*, suspect shared mutable state before suspecting the task.
+
+---
+
 ## 2026-08-02 — An agent's "tests pass" meant its tests grepped its own source
 
 **Symptom:** A builder reported `# pass 2, # fail 0` for the dashboard mutation

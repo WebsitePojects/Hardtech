@@ -1,3 +1,4 @@
+import { NavbarShell } from "./navbar-shell";
 import { SiteLogo } from "./site-logo";
 import { DesktopNav } from "./desktop-nav";
 import { NavbarActions, type NavbarUser } from "./navbar-actions";
@@ -18,15 +19,16 @@ function roleLabel(role: "ADMIN" | "TRAINER" | "TRAINEE"): string {
 }
 
 /**
- * Floating pill-shaped glass navbar, horizontally centred and detached from
- * the viewport edge (docs/screens/desktop-01.md #1). Sticky rather than
- * fixed so it participates in normal flow and simply keeps a 1rem gap from
- * the top on scroll — the `.glass` backdrop-blur lets page content bleed
- * through underneath it, matching the mobile captures.
+ * The navbar emerges on scroll: flat and full-bleed at the top of the page,
+ * condensing into a floating glass pill once scrolled. `NavbarShell` owns that
+ * behaviour and the measured geometry behind it
+ * (docs/research/02-reference-behavior.md).
  *
- * Server component: only the two children that need interactivity
- * (`DesktopNav` for the Explore dropdown + active-route highlighting,
- * `MobileNav` for the drawer) are client components.
+ * This component stays on the server. It renders the shell's children — logo,
+ * nav, actions — and passes them down as already-rendered nodes, so only the
+ * thin shell and the two genuinely interactive children (`DesktopNav` for the
+ * Explore dropdown and active-route highlighting, `MobileNav` for the drawer)
+ * ship as client components.
  */
 export async function Navbar() {
   const session = await getSession();
@@ -36,15 +38,13 @@ export async function Navbar() {
     : null;
 
   return (
-    <div className="sticky top-4 z-50 mx-auto w-full max-w-7xl px-4 sm:px-6">
-      <header className="glass mx-auto flex w-full max-w-7xl items-center justify-between gap-3 rounded-full px-4 py-2 transition-shadow motion-reduce:transition-none sm:px-6 lg:px-7 lg:py-3 lg:shadow-[var(--shadow-lg)]">
-        <SiteLogo />
-        <DesktopNav />
-        <div className="flex items-center gap-2">
-          <NavbarActions user={user} />
-          <MobileNav user={user} />
-        </div>
-      </header>
-    </div>
+    <NavbarShell>
+      <SiteLogo />
+      <DesktopNav />
+      <div className="flex items-center gap-2">
+        <NavbarActions user={user} />
+        <MobileNav user={user} />
+      </div>
+    </NavbarShell>
   );
 }

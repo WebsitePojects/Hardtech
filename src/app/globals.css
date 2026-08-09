@@ -321,9 +321,47 @@
   .glass {
     background-color: var(--glass-bg);
     border: 1px solid var(--glass-border);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
     box-shadow: var(--shadow-lg);
+  }
+
+  /* The blur MUST stay wrapped in @supports.
+   *
+   * Declared bare, Lightning CSS (which Turbopack runs over Tailwind v4)
+   * prunes both `backdrop-filter` and its `-webkit-` twin against its default
+   * browser targets, and it does so silently — the rule still ships, just
+   * without those two lines, so `.glass` renders a flat translucent panel with
+   * no blur anywhere in the app. Tailwind's own backdrop utilities survive
+   * precisely because it emits them inside this same @supports guard.
+   *
+   * Verified in the browser: the served rule was
+   *   .glass { background-color: …; border: …; box-shadow: … }
+   * with the blur gone, while `.backdrop-blur-md` computed to blur(12px) on
+   * the same page. Setting it inline restored it, so support was never the
+   * issue — the build stripped it. */
+  @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    .glass {
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+    }
+  }
+
+  /* The scrolled navbar pill's shadow, measured off the live reference.
+   *
+   * Four layers, and all four earn their place: two ambient drops for depth,
+   * then a light inset along the top edge and a dark inset along the bottom
+   * that together make the pill read as a lit physical object rather than a
+   * flat rectangle. Collapsing them into a single shadow loses the shape.
+   *
+   * Kept here rather than as a Tailwind arbitrary value because a four-layer
+   * shadow written inline silently produced an EMPTY shadow — the utility
+   * applied but computed to `rgba(0,0,0,0) 0 0 0 0`, so the pill shipped with
+   * no shadow at all. Verified in the browser before moving it here. */
+  .navbar-pill[data-scrolled="true"] {
+    box-shadow:
+      0 24px 64px 0 rgba(0, 0, 0, 0.55),
+      0 8px 24px 0 rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 0 rgba(0, 0, 0, 0.25);
   }
 
   .glass-hover:hover {
