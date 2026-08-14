@@ -261,6 +261,7 @@ model User {
   passwordResetTokens       PasswordResetToken[]
   communityRequests         CommunityRequest[]     @relation("CommunityRequestRequester")
   communityRequestsReviewed CommunityRequest[]     @relation("CommunityRequestReviewer")
+  mediaAssetsUploaded       MediaAsset[]           @relation("MediaAssetUploader")
 
   @@index([role])
   @@index([status])
@@ -578,6 +579,8 @@ model Module {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  mediaAsset MediaAsset?
+
   @@index([programId, unitNumber])
   @@index([trainerId])
 }
@@ -601,6 +604,8 @@ model Announcement {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   idempotencyKey String?          @unique
+
+  mediaAsset MediaAsset?
 
   @@index([isPinned, createdAt])
 }
@@ -700,10 +705,11 @@ model ForumPost {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
-  replies   Reply[]
-  reactions PostReaction[]
-  bookmarks PostBookmark[]
-  reports   PostReport[]
+  replies     Reply[]
+  reactions   PostReaction[]
+  bookmarks   PostBookmark[]
+  reports     PostReport[]
+  mediaAssets MediaAsset[]
 
   @@index([category])
   @@index([communityId])
@@ -738,7 +744,8 @@ model Reply {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  reactions ReplyReaction[]
+  reactions   ReplyReaction[]
+  mediaAssets MediaAsset[]
 
   @@index([postId])
   @@index([parentReplyId])
@@ -917,6 +924,117 @@ model PasswordResetToken {
 }
 
 // ---------------------------------------------------------------------------
+// Media asset registry (Cloudinary deletion outbox)
+// ---------------------------------------------------------------------------
+//
+// Cloudinary's `public_id` is the only handle that can ever delete a file.
+// Module.fileUrl, GalleryPhoto.imageUrl, and Announcement.mediaUrl store the
+// *rendered* URL but never the public_id, so today deleting any of those
+// rows orphans the underlying Cloudinary object forever — nothing left in
+// Postgres can name it. MediaAsset is both the registry of that handle and
+// the deletion outbox required by non-negotiables rule 7 ("no fire-and-
+// forget side effects... work goes through an outbox with lease claim and
+// bounded retry to a terminal state"): an owner's delete transaction flips
+// the matching row to PENDING instead of deleting it, and a separate purge
+// worker leases PENDING rows, calls Cloudinary, and only then marks the row
+// PURGED (or FAILED after bounded retries). See media-asset.repository.ts.
+
+/// What kind of asset Cloudinary is holding — drives which Cloudinary Admin
+/// API call the purge worker issues (`image`/`video`/`raw` resource type).
+enum MediaResourceType {
+  IMAGE
+  VIDEO
+  RAW
+}
+
+/// Lifecycle of one Cloudinary object as tracked by this registry.
+/// RESERVED and PENDING are the only claimable states; PURGED and FAILED are
+/// terminal (FAILED needs a human, per rule 7's "bounded retry to a terminal
+/// state" — it is not silently retried forever).
+enum MediaPurgeState {
+  RESERVED // signature issued, upload not yet confirmed
+  ACTIVE // confirmed and referenced by an owner row
+  PENDING // owner deleted (or reservation expired) — scheduled for Cloudinary deletion
+  PURGED // terminal - confirmed gone from Cloudinary
+  FAILED // terminal after bounded retries - needs a human
+}
+
+/// One Cloudinary object and its deletion lifecycle. Every upload — a
+/// Module file, a GalleryPhoto image, an Announcement attachment, or a
+/// forum post/reply inline attachment — gets exactly one row here, created
+/// RESERVED when the upload signature is issued and flipped to ACTIVE only
+/// once the owner row is confirmed to reference it (see
+/// media-asset.repository.ts `confirm`). The owner FKs below are how the
+/// purge outbox finds "what to delete" without a service ever hand-carrying
+/// a public_id through a delete flow.
+model MediaAsset {
+  id           String            @id @default(cuid())
+  /// The Cloudinary public_id — the only string that can delete the file.
+  /// Unique because Cloudinary itself treats it as the object's identity.
+  publicId     String            @unique
+  resourceType MediaResourceType
+  folder       String
+  url          String?
+  // CHECK MediaAsset_bytes_non_negative (bytes >= 0) — migration
+  // 20260814040000_media_asset_check_constraints.
+  bytes        Int               @default(0)
+  format       String?
+  width        Int?
+  height       Int?
+  durationSec  Int?
+
+  purgeState    MediaPurgeState @default(RESERVED)
+  // CHECK MediaAsset_purge_attempts_non_negative (purgeAttempts >= 0) —
+  // same migration.
+  purgeAttempts Int             @default(0)
+  purgeNotBefore DateTime?
+  leaseOwner     String?
+  leaseExpiresAt DateTime?
+  // CHECK MediaAsset_purged_state_has_timestamp (purgeState <> 'PURGED' OR
+  // purgedAt IS NOT NULL) — a row cannot claim to be purged without proof of
+  // when, per the fail-closed rule. Same migration.
+  purgedAt       DateTime?
+  lastPurgeError String?
+
+  uploadedByUserId String?
+  uploadedBy       User?   @relation("MediaAssetUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  // Every owner FK below is `onDelete: SetNull`, never `Cascade`, on
+  // purpose: Cascade would delete this row the instant its owner is
+  // deleted, destroying the publicId at exactly the moment the purge
+  // worker needs it — the Cloudinary file would then be unreachable and
+  // undeletable forever. SetNull detaches the asset from its owner but
+  // keeps the row (and the publicId) alive so the owner's delete
+  // transaction can flip purgeState to PENDING and the outbox can still
+  // find and destroy the real file afterward.
+  moduleId       String?       @unique
+  module         Module?       @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  galleryPhotoId String?       @unique
+  galleryPhoto   GalleryPhoto? @relation(fields: [galleryPhotoId], references: [id], onDelete: SetNull)
+  announcementId String?       @unique
+  announcement   Announcement? @relation(fields: [announcementId], references: [id], onDelete: SetNull)
+  postId         String?
+  post           ForumPost?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  replyId        String?
+  reply          Reply?        @relation(fields: [replyId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Serves ForumPost attachment lookups ("what's attached to this post").
+  @@index([postId])
+  // Serves Reply attachment lookups ("what's attached to this reply").
+  @@index([replyId])
+  // Serves a per-uploader asset history ordered newest-first (e.g. an
+  // admin "my uploads" view or an abuse investigation).
+  @@index([uploadedByUserId, createdAt])
+  // The purge worker's claim scan is served by a partial index added by
+  // hand in the migration SQL (purgeState IN ('PENDING','RESERVED')) —
+  // Prisma's schema DSL has no partial-index syntax, so it cannot be
+  // declared here. See the migration.sql comment for the reasoning.
+}
+
+// ---------------------------------------------------------------------------
 // Marketing content (no admin CRUD screen observed — see ADR open questions)
 // ---------------------------------------------------------------------------
 
@@ -929,6 +1047,8 @@ model GalleryPhoto {
   // 20260729173000_author_rating_integrity.
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
+
+  mediaAsset MediaAsset?
 
   @@index([sortOrder])
 }
