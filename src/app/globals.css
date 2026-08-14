@@ -581,3 +581,184 @@
     );
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Enrollment receipt print stylesheet (src/features/enroll/steps/step-receipt.tsx).
+
+   Printing `window.print()` with no `@media print` rules at all printed the
+   whole dark-themed app: navbar, stepper, both wizard buttons, and the
+   receipt itself with light-on-dark text that browsers drop the background
+   for — landing on two nearly-blank sheets. Fixed two ways at once:
+
+   1. Isolate. `#enroll-receipt-print` (the print-only block, `hidden
+      print:block` on screen) is rendered via a React portal straight onto
+      `<body>` — see ReceiptPrintPortal in step-receipt.tsx — specifically
+      so it is a SIBLING of the navbar/page content, not nested inside them.
+      That makes the isolation rule below trivial and robust: hide `body`'s
+      other direct children outright with `display: none`, and let the
+      portaled block render as an ordinary, un-positioned element in the
+      empty flow that's left.
+
+      Two earlier versions of this rule did NOT portal and paid for it:
+        - v1 toggled `visibility: hidden` on `body *` (all descendants) and
+          re-revealed the receipt with `position: absolute`. Visibility
+          hides paint but still RESERVES the element's box in normal flow,
+          so the invisible navbar/stepper/wizard card's full original
+          height stayed intact — confirmed by rendering to PDF and reading
+          `/Count 2` out of the file. Landed on a second, blank sheet.
+        - v2 tried to also collapse `height: 0` on every hidden descendant
+          to fix that, which does zero out layout height correctly, but
+          Chromium's PRINT PAGINATION pass (not the screen compositor)
+          clips `position: absolute` descendants along the PAINT tree of a
+          collapsed ancestor even when their true CSS containing block is
+          further up — confirmed by inflating the generated PDF's content
+          stream and finding a single opaque white-fill operator with zero
+          `Tj`/`BT` text operators. The receipt was being silently clipped
+          to nothing, even though `getComputedStyle` on the live DOM still
+          reported it as visible (that check reflects the screen
+          compositor, not print pagination, so it did not catch this).
+
+      `display: none` on a true sibling has neither failure mode: it fully
+      removes the element from the render tree (zero layout height, not
+      just zero visibility) rather than collapsing-in-place, and there is
+      no out-of-flow descendant relationship left for pagination to clip.
+      Re-verified the same way as the regressions: PDF `/Count 1`, and the
+      inflated content stream contains real `BT`/`Tj` text operators.
+
+   2. Force light paper. The app is dark-only (no light-mode toggle), so
+      `.dark` tokens are always active and `--foreground`/`--bg-*` resolve to
+      near-white-on-near-black. Rather than depend on `print-color-adjust`
+      preserving that (most consumer printers and browsers ignore or
+      override it — irrelevant here anyway since backgrounds should NOT
+      print), the print block uses hard black/white/grey literals throughout,
+      not the CSS custom properties, so it renders correctly independent of
+      theme state or printer background handling.
+
+   Page size: kept `@page` at plain A4 rather than switching to A5. The
+   printer this was built for (Epson L120) is an A4 inkjet with A4 stock
+   loaded, not A5 — forcing `@page { size: A5 }` against a driver bound to A4
+   paper risks the print dialog scaling the content into a corner of the
+   sheet or prompting for a paper size that isn't loaded, which is a worse
+   failure mode than the one being fixed. Instead the printable region is a
+   narrow ~80mm receipt-proportioned column centred on the A4 sheet — the
+   "80mm-style column on A4" option — so it reads as a receipt rather than a
+   stretched application page, while guaranteeing one sheet out on whatever
+   A4 tray is loaded. The standalone downloadable HTML file
+   (receipt-download.ts) uses the identical page size and column width so it
+   prints the same way when opened offline. --------------------------------------------------------------------------- */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+
+  /* `body *` (below) only reaches DESCENDANTS — it cannot match `<body>`
+   * itself or its `::before`/`::after` pseudo-elements (the page-wide grain
+   * and glow overlay, .cyber-bg in @layer components above), since
+   * pseudo-elements and the selector's own root aren't in scope for a
+   * descendant combinator. Left alone, `body`'s own near-black
+   * `background-color` (--bg-main, set in @layer base) and the fixed,
+   * full-viewport cyber-bg gradients would still be there if the user's
+   * printer/driver has "print background graphics" enabled — which is off
+   * by default (the exact setting the bug report's "browsers drop
+   * background colours" describes) but not guaranteed off. Forced white and
+   * switched off explicitly so the page is correct either way, not by
+   * accident of that setting. */
+  html,
+  body {
+    background: #ffffff;
+  }
+
+  .cyber-bg::before,
+  .cyber-bg::after {
+    display: none;
+  }
+
+  /* #enroll-receipt-print is portaled directly onto <body> (see the header
+   * comment above), so hiding every OTHER direct child is enough to remove
+   * the navbar, page content, and both wizard buttons from print — no need
+   * to reach into their markup or descend further than one level. */
+  body > *:not(#enroll-receipt-print) {
+    display: none;
+  }
+
+  #enroll-receipt-print {
+    display: block;
+    width: 80mm;
+    margin: 0 auto;
+    padding: 0;
+    background: #ffffff;
+    color: #111111;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  #enroll-receipt-print .receipt-print-company {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0;
+    text-align: center;
+  }
+
+  #enroll-receipt-print .receipt-print-address {
+    font-size: 10px;
+    color: #444444;
+    margin: 2px 0 0;
+    text-align: center;
+  }
+
+  #enroll-receipt-print .receipt-print-title {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 10px 0;
+    border-top: 1px dashed #999999;
+    border-bottom: 1px dashed #999999;
+    padding: 6px 0;
+  }
+
+  #enroll-receipt-print table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+
+  #enroll-receipt-print th,
+  #enroll-receipt-print td {
+    text-align: left;
+    padding: 4px 0;
+    border-bottom: 1px solid #e5e5e5;
+    font-weight: 400;
+    color: #111111;
+  }
+
+  #enroll-receipt-print th {
+    color: #555555;
+    white-space: nowrap;
+    padding-right: 10px;
+  }
+
+  #enroll-receipt-print td {
+    text-align: right;
+    width: 100%;
+  }
+
+  #enroll-receipt-print td.receipt-print-emphasis {
+    font-weight: 700;
+  }
+
+  #enroll-receipt-print .receipt-print-note {
+    margin-top: 12px;
+    font-size: 9.5px;
+    line-height: 1.4;
+    color: #333333;
+  }
+
+  #enroll-receipt-print .receipt-print-footer {
+    margin-top: 10px;
+    font-size: 9px;
+    color: #777777;
+    text-align: center;
+  }
+}
