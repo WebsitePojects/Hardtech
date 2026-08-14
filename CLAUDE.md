@@ -34,6 +34,7 @@ approximating it.
 @.claude/rules/20-design-fidelity.md
 @.claude/rules/30-nextjs-16.md
 @.claude/rules/40-prisma-7.md
+@.claude/rules/50-database.md
 
 ## Lessons
 
