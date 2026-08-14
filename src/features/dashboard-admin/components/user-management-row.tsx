@@ -1,104 +1,30 @@
 "use client";
 
-import { toast } from "sonner";
-
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TableCell, TableRow } from "@/components/ui/table";
-import type { UserRole, UserStatus } from "@/../generated/prisma/enums";
-import { usePendingAction } from "../use-pending-action";
-import { useState } from "react";
 import { ADMIN_PROGRAM_OPTIONS, ADMIN_ROLE_OPTIONS, ADMIN_STATUS_OPTIONS } from "../confirmed-options";
-import {
-  removeUser,
-  updateUserProgram,
-  updateUserRole,
-  updateUserStatus,
-} from "../mutations/user-mutations";
+import { useUserManagementActions, type UserManagementItem } from "../use-user-management-actions";
 
-function isUserRole(value: string): value is UserRole {
-  return ADMIN_ROLE_OPTIONS.some((option) => option.value === value);
-}
-
-function isUserStatus(value: string): value is UserStatus {
-  return ADMIN_STATUS_OPTIONS.some((option) => option.value === value);
-}
-
-export type UserManagementItem = {
-  id: string;
-  name: string;
-  initials: string;
-  email: string;
-  role: UserRole;
-  /** null renders the "Select..." placeholder (desktop-02.md #4, "asda z" row). */
-  programLabel: string | null;
-  status: UserStatus;
-};
+export type { UserManagementItem };
 
 /**
- * One row of "User Management" (desktop-02.md #4-7, mobile-05.md #5-11).
- * Every Select's onValueChange and the "Remove" Button go through the same
- * disabled/pending/early-return guard (usePendingAction) before calling
- * the wave-4 stub in ../mutations/user-mutations.ts, which always throws.
- * All four controls disable together while one of them is in flight,
- * so an admin cannot fire a second write against the same row mid-save.
+ * One >=md `<Table>` row of "User Management" (desktop-02.md #4-7). Below
+ * `md`, `UserManagementCard` (../components/user-management-card.tsx)
+ * renders the same record as a card instead — see
+ * `useUserManagementActions` for why the mutation handlers live in one
+ * shared hook rather than being duplicated per view.
  */
 export function UserManagementRow({ user }: { user: UserManagementItem }) {
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
-  const roleAction = usePendingAction();
-  const programAction = usePendingAction();
-  const statusAction = usePendingAction();
-  const removeAction = usePendingAction();
-  const anyPending =
-    roleAction.isPending || programAction.isPending || statusAction.isPending || removeAction.isPending;
-
-  async function handleRoleChange(value: string) {
-    if (!isUserRole(value)) return;
-    await roleAction.run(async () => {
-      try {
-        const result = await updateUserRole({ userId: user.id, role: value, idempotencyKey });
-        if (!result.ok) toast.error(result.error);
-      } catch {
-        toast.error("Unable to update the user's role.");
-      }
-    });
-  }
-
-  async function handleStatusChange(value: string) {
-    if (!isUserStatus(value)) return;
-    await statusAction.run(async () => {
-      try {
-        const result = await updateUserStatus({ userId: user.id, status: value, idempotencyKey });
-        if (!result.ok) toast.error(result.error);
-      } catch {
-        toast.error("Unable to update the user's status.");
-      }
-    });
-  }
-
-  async function handleProgramChange(programId: string) {
-    await programAction.run(async () => {
-      try {
-        const result = await updateUserProgram({ userId: user.id, programId, idempotencyKey });
-        if (!result.ok) toast.error(result.error);
-      } catch {
-        toast.error("Unable to update the user's program.");
-      }
-    });
-  }
-
-  async function handleRemove() {
-    if (!window.confirm(`Remove ${user.name}?`)) return;
-    await removeAction.run(async () => {
-      try {
-        const result = await removeUser({ userId: user.id, idempotencyKey });
-        if (!result.ok) toast.error(result.error);
-      } catch {
-        toast.error("Unable to remove the user.");
-      }
-    });
-  }
+  const {
+    anyPending,
+    removeAction,
+    handleRoleChange,
+    handleStatusChange,
+    handleProgramChange,
+    handleRemove,
+  } = useUserManagementActions(user);
 
   return (
     <TableRow>

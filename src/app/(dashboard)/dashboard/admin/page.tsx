@@ -15,7 +15,12 @@ interface AdminDashboardPageProps {
   // No dynamic route params on this page, so PageProps<'/dashboard/admin'>
   // adds nothing over a hand-written shape — same call the FORUM builder
   // made for its own non-dynamic /forum page (src/app/(app)/forum/page.tsx).
-  searchParams: Promise<{ section?: string; category?: string }>;
+  //
+  // `page`/`search`/`role` are User Management's pagination + filter state
+  // (DEFECT-USER-LIST brief). Raw and untrusted here — UserManagementSection
+  // passes them straight through to getAdminUserList, which is the only
+  // place they get parsed (zod) and clamped.
+  searchParams: Promise<{ section?: string; category?: string; page?: string; search?: string; role?: string }>;
 }
 
 /**
@@ -36,13 +41,15 @@ interface AdminDashboardPageProps {
 export default async function AdminDashboardPage(props: AdminDashboardPageProps) {
   await requireRole("ADMIN");
 
-  const { category } = await props.searchParams;
+  const { category, page, search, role } = await props.searchParams;
 
   return (
     <>
       <DashboardSection section="overview"><OverviewSection /></DashboardSection>
       <DashboardSection section="enrollments"><EnrollmentsSection /></DashboardSection>
-      <DashboardSection section="user-management"><UserManagementSection /></DashboardSection>
+      <DashboardSection section="user-management">
+        <UserManagementSection page={page} search={search} role={role} />
+      </DashboardSection>
       <DashboardSection section="trainer-management"><TrainerManagementSection /></DashboardSection>
       <DashboardSection section="certificates"><CertificatesSection /></DashboardSection>
       <DashboardSection section="announcements"><AnnouncementsSection /></DashboardSection>

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { userRepository } from "@/server/repositories/user.repository";
 import { enrollmentRepository } from "@/server/repositories/enrollment.repository";
 import { enrollmentPaymentRepository } from "@/server/repositories/enrollment-payment.repository";
@@ -345,26 +346,122 @@ export type AdminUserListItem = {
   status: UserStatus;
 };
 
-/** Admin-only — see the note on `getAdminPendingEnrollmentQueue` above. Never returns `passwordHash`. */
-export async function getAdminUserList(): Promise<AdminUserListItem[]> {
-  const users = await userRepository.findManyWithProgramContext();
+// The list previously ran `findManyWithProgramContext()` with no `take` at
+// all — every row, every load (see the DEFECT-USER-LIST brief this change
+// ships under: 23 seeded users already produced 8.8 screens of scroll at
+// 390x844, and the same code path would ship ~1000 rows verbatim at that
+// scale). These are the boundary schemas for the fix. They live here rather
+// than in src/server/schemas/dashboard.schema.ts because this change's file
+// ownership is scoped to user.repository.ts / dashboard.service.ts /
+// admin/page.tsx / features/dashboard-admin/** only — the schemas file is
+// out of that scope, not because schemas belong in a service by default.
+// 6, not a rounder 10 or 20: measured against the <md mobile card layout
+// (UserManagementCard renders at 298px tall on a 390px-wide viewport, 12px
+// gap between cards). 6 cards + the page header/filters/pagination chrome
+// keeps document.scrollHeight at ~2243px on a 390x844 viewport — under the
+// 3-viewport-height (2532px) ceiling with real margin; 7 cards measured to
+// ~2553px, over budget. One page size for both breakpoints (no
+// desktop-vs-mobile branching) per KISS — the >=md table has no analogous
+// scroll constraint, so this is set by the tighter of the two layouts.
+const DEFAULT_ADMIN_USER_LIST_PAGE_SIZE = 6;
+const MAX_ADMIN_USER_LIST_PAGE_SIZE = 50;
 
-  return users.map((user) => {
-    const latestEnrollment = user.enrollmentsAsTrainee[0];
-    const program =
-      user.role === "TRAINER"
-        ? (user.trainerProfile?.primaryProgram?.shortName ?? null)
-        : (latestEnrollment?.program.shortName ?? null);
+// `.catch()` (not `.safeParse()` + a manual fallback) because an
+// out-of-range or malformed page/pageSize is a UI-recoverable input, not a
+// rejection case: a page number arriving as "abc", "-5", or "99999" must
+// clamp to a safe value rather than be trusted or 404 the whole list
+// (.claude/rules/00-non-negotiables.md rule 3, "fail closed" — for a list
+// read, closed means "the smallest safe page", not "every row").
+const adminUserListPageSchema = z.coerce.number().int().min(1).catch(1);
+const adminUserListPageSizeSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(MAX_ADMIN_USER_LIST_PAGE_SIZE) // never let a client request more than this many rows in one page
+  .catch(DEFAULT_ADMIN_USER_LIST_PAGE_SIZE);
+const adminUserListSearchSchema = z.string().trim().max(200).catch("");
+/** Strict — unlike the schemas above, an unrecognized role is NOT a typo to clamp past. See the fail-closed branch in `getAdminUserList` below. */
+const adminUserListRoleSchema = z.enum(["TRAINEE", "TRAINER", "ADMIN"]);
 
-    return {
-      id: user.id,
-      name: `${user.firstName} ${user.lastName}`,
-      email: user.email,
-      role: user.role,
-      program,
-      status: user.status,
-    };
-  });
+/** The user management role filter's "no filter" option — distinct from `undefined` only so the URL can carry it explicitly (`?role=ALL`) the same way it carries any other param. */
+const ADMIN_USER_LIST_ALL_ROLES = "ALL";
+
+export type AdminUserListParams = {
+  page?: string | number;
+  pageSize?: string | number;
+  search?: string;
+  /** Raw, untrusted query value. Anything other than a real `UserRole` or `"ALL"`/`undefined` fails closed — see below. */
+  role?: string;
+};
+
+export type AdminUserListResult = {
+  users: AdminUserListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+/**
+ * Admin-only — see the note on `getAdminPendingEnrollmentQueue` above. Never
+ * returns `passwordHash`.
+ *
+ * Server-side pagination + search/role filtering, all applied to the same
+ * `WHERE` the total count is computed against — a search for a user on
+ * page 3 works with no client-side re-fetch of "everything" first, and
+ * filtering never silently narrows to just the rows already on screen.
+ * `page` is clamped into `[1, totalPages]` *after* the filtered count is
+ * known, so a stale/forged page number from a wider result set can't
+ * request an out-of-range offset.
+ */
+export async function getAdminUserList(params: AdminUserListParams = {}): Promise<AdminUserListResult> {
+  const pageSize = adminUserListPageSizeSchema.parse(params.pageSize);
+  const requestedPage = adminUserListPageSchema.parse(params.page);
+  const search = adminUserListSearchSchema.parse(params.search ?? "");
+
+  let role: UserRole | undefined;
+  if (params.role !== undefined && params.role !== ADMIN_USER_LIST_ALL_ROLES) {
+    const parsedRole = adminUserListRoleSchema.safeParse(params.role);
+    if (!parsedRole.success) {
+      // Fail closed: an unrecognized role filter must never fall through to
+      // "show everyone" — same precedent as getAdminAuditLog's category
+      // guard above. This is a list read, not an auth gate, so the closed
+      // state is a legitimate, empty first page rather than a throw.
+      return { users: [], total: 0, page: 1, pageSize, totalPages: 1 };
+    }
+    role = parsedRole.data;
+  }
+
+  const filter = { search: search.length > 0 ? search : undefined, role };
+  const total = await userRepository.countUsersWithFilter(filter);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const skip = (page - 1) * pageSize;
+
+  const users = await userRepository.findManyWithProgramContext({ skip, take: pageSize, ...filter });
+
+  return {
+    users: users.map((user) => {
+      const latestEnrollment = user.enrollmentsAsTrainee[0];
+      const program =
+        user.role === "TRAINER"
+          ? (user.trainerProfile?.primaryProgram?.shortName ?? null)
+          : (latestEnrollment?.program.shortName ?? null);
+
+      return {
+        id: user.id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        role: user.role,
+        program,
+        status: user.status,
+      };
+    }),
+    total,
+    page,
+    pageSize,
+    totalPages,
+  };
 }
 
 // ---------------------------------------------------------------------------

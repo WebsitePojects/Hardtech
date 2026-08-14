@@ -7,18 +7,32 @@ import { certificateRequestRepository } from "@/server/repositories/certificate-
 import { enrollmentPaymentRepository } from "@/server/repositories/enrollment-payment.repository";
 import { enrollmentRepository } from "@/server/repositories/enrollment.repository";
 import { evaluationRepository } from "@/server/repositories/evaluation.repository";
+import { verifiedActor } from "@/server/services/actor-verification.service";
 
 type Result = { ok: true } | { ok: false; error: string };
 
-function hasRole(role: UserRole, expected: UserRole): boolean {
-  return role === expected;
+/**
+ * Re-verifies the caller against the database instead of trusting the
+ * argument (.claude/rules/00-non-negotiables.md #5). A demoted or suspended
+ * actor's still-validly-signed session cookie must not be enough to act.
+ */
+function verifiedAdmin(actorId: string, actorRole: UserRole): Promise<boolean> {
+  return verifiedActor(actorId, actorRole, ["ADMIN"]);
+}
+
+function verifiedTrainer(actorId: string, actorRole: UserRole): Promise<boolean> {
+  return verifiedActor(actorId, actorRole, ["TRAINER"]);
+}
+
+function verifiedTrainee(actorId: string, actorRole: UserRole): Promise<boolean> {
+  return verifiedActor(actorId, actorRole, ["TRAINEE"]);
 }
 
 export async function evaluateTrainee(input: {
   trainerId: string; trainerRole: UserRole; traineeId: string; skill: string;
   rating: EvaluationRating; notes: string; idempotencyKey: string;
 }): Promise<Result> {
-  if (!hasRole(input.trainerRole, "TRAINER")) return { ok: false, error: "Not authorized." };
+  if (!(await verifiedTrainer(input.trainerId, input.trainerRole))) return { ok: false, error: "Not authorized." };
   if (input.trainerId === input.traineeId) return { ok: false, error: "You cannot rate yourself." };
   const enrollment = await enrollmentRepository.findByTraineeAndTrainer(input.traineeId, input.trainerId);
   if (!enrollment) return { ok: false, error: "Trainee is not assigned to you." };
@@ -35,7 +49,7 @@ export async function createAssignment(input: {
   trainerId: string; trainerRole: UserRole; title: string; instructions: string;
   dueDate: string; dueTime: string; allowedSubmissionTypes: SubmissionType[]; idempotencyKey: string;
 }): Promise<Result> {
-  if (!hasRole(input.trainerRole, "TRAINER")) return { ok: false, error: "Not authorized." };
+  if (!(await verifiedTrainer(input.trainerId, input.trainerRole))) return { ok: false, error: "Not authorized." };
   const batch = await assignmentRepository.findBatchByTrainerId(input.trainerId);
   if (!batch) return { ok: false, error: "No training batch is assigned to you." };
   const dueDate = new Date(input.dueDate);
@@ -56,7 +70,7 @@ export async function createAssignment(input: {
 export async function submitAssignment(input: {
   traineeId: string; traineeRole: UserRole; assignmentId: string; submissionLink: string; idempotencyKey: string;
 }): Promise<Result> {
-  if (!hasRole(input.traineeRole, "TRAINEE")) return { ok: false, error: "Not authorized." };
+  if (!(await verifiedTrainee(input.traineeId, input.traineeRole))) return { ok: false, error: "Not authorized." };
   const assignment = await assignmentRepository.findById(input.assignmentId);
   if (!assignment) return { ok: false, error: "Assignment not found." };
   const enrollment = await enrollmentRepository.findByTraineeAndBatch(input.traineeId, assignment.batchId);
@@ -66,7 +80,7 @@ export async function submitAssignment(input: {
 }
 
 async function transitionCertificate(adminId: string, role: UserRole, id: string, next: "APPROVED" | "REJECTED", reason?: string): Promise<Result> {
-  if (!hasRole(role, "ADMIN")) return { ok: false, error: "Not authorized." };
+  if (!(await verifiedAdmin(adminId, role))) return { ok: false, error: "Not authorized." };
   const changed = await auditLogRepository.transaction(async (tx) => {
     const count = await certificateRequestRepository.transition(tx, id, next, adminId, reason);
     if (count !== 1) return false;
@@ -80,7 +94,13 @@ export const approveCertificate = (input: { adminId: string; adminRole: UserRole
 export const rejectCertificate = (input: { adminId: string; adminRole: UserRole; certificateRequestId: string; reason?: string }) => transitionCertificate(input.adminId, input.adminRole, input.certificateRequestId, "REJECTED", input.reason);
 
 async function transitionPayment(adminId: string, role: UserRole, id: string, next: "VERIFIED" | "REJECTED", reason?: string): Promise<Result> {
-  if (!hasRole(role, "ADMIN")) return { ok: false, error: "Not authorized." };
+  // Authorization is the gate: it must run before any resource-specific
+  // lookup, so an unauthorized caller sees only the generic error and can
+  // never distinguish "id doesn't exist" from "id exists" from "id is
+  // mine" by error string (.claude/rules/00-non-negotiables.md #5). The
+  // self-transaction conflict below is real business logic, evaluated only
+  // once the caller is a verified admin.
+  if (!(await verifiedAdmin(adminId, role))) return { ok: false, error: "Not authorized." };
   const payment = await enrollmentPaymentRepository.findById(id);
   if (!payment) return { ok: false, error: "Payment not found." };
   if (payment.traineeId === adminId) return { ok: false, error: "You cannot verify your own payment." };

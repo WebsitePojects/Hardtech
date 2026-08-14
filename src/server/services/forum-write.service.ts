@@ -5,6 +5,7 @@ import { postReactionRepository } from "@/server/repositories/post-reaction.repo
 import { postReportRepository } from "@/server/repositories/post-report.repository";
 import { replyRepository } from "@/server/repositories/reply.repository";
 import { userRepository } from "@/server/repositories/user.repository";
+import { verifiedActor } from "@/server/services/actor-verification.service";
 import type { Prisma, ReactionType, ReportReason, UserRole } from "@/../generated/prisma/client";
 import type {
   CreateForumPostInput,
@@ -39,14 +40,13 @@ function counterForReaction(type: ReactionType): "upvoteCount" | "helpfulCount" 
   }
 }
 
-function canModerate(role: UserRole): boolean {
-  return role === "ADMIN" || role === "TRAINER";
-}
+/** Which roles may moderate the forum — the scope decision stays here; the
+ * actual "is this actor really who they claim, and are they active" check
+ * lives in the shared actor-verification service. */
+const moderatorRoles: readonly UserRole[] = ["ADMIN", "TRAINER"];
 
-async function verifiedModerator(id: string, suppliedRole: UserRole): Promise<boolean> {
-  if (!canModerate(suppliedRole)) return false;
-  const user = await userRepository.findById(id);
-  return user?.role === suppliedRole && canModerate(user.role);
+function verifiedModerator(id: string, suppliedRole: UserRole): Promise<boolean> {
+  return verifiedActor(id, suppliedRole, moderatorRoles);
 }
 
 export async function createForumPost(input: CreateForumPostInput, authorId: string): Promise<WriteResult> {

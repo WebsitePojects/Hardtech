@@ -243,7 +243,13 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
+  /* Was oklch(0.637 0.237 25.331) — a SECOND, lighter red, used as the text
+   * colour placed on top of the --destructive fill. Backwards: foreground-on-
+   * fill needs to be near-white, not another saturated red. Fixed at the
+   * shared token (not scoped) because it has zero consumers anywhere in the
+   * codebase today — grepped for `destructive-foreground` project-wide, only
+   * hit is this declaration — so no page, public or dashboard, can regress. */
+  --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.269 0 0);
   --input: oklch(0.269 0 0);
   --ring: oklch(0.439 0 0);
@@ -347,6 +353,59 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+}
+
+/* ---------------------------------------------------------------------------
+   Dashboard-scoped surface tokens.
+
+   `/dashboard/*` shares its shadcn primitives (Button, Badge, Input, Card,
+   Alert, ...) with every public marketing page, and those primitives read
+   --secondary/--muted/--accent/--input/--border/--ring/--destructive
+   straight off the .dark block above. That block is stock shadcn: four of
+   those tokens — secondary, muted (via its background half), accent, input,
+   border — sit at the exact SAME flat grey (oklch(0.269 0 0)), so a
+   secondary button, a chip, an outline field and a hairline divider are all
+   visually the same tone and nothing separates from anything else. --ring is
+   a dim oklch(0.439 0 0), and --destructive is a muddy dark red (~1.7-2:1
+   against every dashboard surface — fails AA even for large text).
+
+   The public pages are a verified 1:1 clone of the live reference and must
+   not drift (.claude/rules/20-design-fidelity.md) — /login, /enroll and
+   /forum all consume --destructive, --border and --input through the same
+   primitives, so the shared tokens above stay exactly as measured. This
+   block re-declares them instead, scoped to `.dashboard-scope` — the wrapper
+   DashboardShell renders around every /dashboard/* route (see
+   src/components/dashboard/dashboard-shell.tsx). CSS custom properties
+   resolve through normal DOM inheritance, not per-file imports, so every
+   shadcn primitive rendered inside the dashboard picks up these values
+   automatically — including ones in src/features/dashboard-admin/**, which
+   this wave does not touch.
+
+   Scoped to `.dark` because <html> hard-sets `dark` with no toggle
+   (src/app/layout.tsx) — there is no light-mode dashboard render to cover. */
+.dark .dashboard-scope {
+  /* A monotonic 5-step ladder replacing the single 0.269 flat value, each
+   * step ~0.04-0.05L apart (perceptually distinct), ordered by how prominent
+   * the surface should read: quiet fill -> field -> hover -> button -> hairline. */
+  --muted: oklch(0.24 0 0);
+  --input: oklch(0.29 0 0);
+  --accent: oklch(0.33 0 0);
+  --secondary: oklch(0.37 0 0);
+  --border: oklch(0.42 0 0);
+
+  /* Dim oklch(0.439 0 0) computed to ~2.2-2.5:1 against dashboard surfaces —
+   * barely visible on a near-black ground. Reuses --primary (the neon green
+   * that already marks the active nav item, role-meta.ts) rather than
+   * inventing a new hue: ~10-11:1 against every dashboard surface. */
+  --ring: var(--primary);
+
+  /* "the red not so dark red" (user direction). Shared --destructive
+   * (oklch(0.396 0.141 25.723) -> #82181a) is 1.7-2:1 against Card/
+   * bg-secondary/bg-card — fails WCAG AA outright. Lifted on the same hue
+   * (25.331) to L=0.66, C=0.18 -> #ec5b56, which is 5.2-5.9:1 against every
+   * surface it actually renders on in the dashboard (computed against
+   * --card, --bg-secondary and --bg-card; see PR notes for the table). */
+  --destructive: oklch(0.66 0.18 25.331);
 }
 
 @layer base {

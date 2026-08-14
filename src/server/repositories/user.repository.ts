@@ -1,6 +1,37 @@
 import { db } from "@/server/db";
 import type { Prisma, UserRole, UserStatus } from "@/../generated/prisma/client";
 
+/**
+ * Untrusted-by-construction filter shape for the paginated User Management
+ * list. Building a `where` clause from a role/search pair is query
+ * construction, not a business rule (no eligibility, approval, or pricing
+ * `if` lives here) — see 10-architecture.md's "a repository never contains
+ * business rules" for the line this stays on the right side of. Validating
+ * the *raw* request input is the service's job (dashboard.service.ts); by
+ * the time a `UserListFilter` reaches here, `role` is already a real
+ * `UserRole` or absent, and `search` is already trimmed.
+ */
+export type UserListFilter = {
+  search?: string;
+  role?: UserRole;
+};
+
+function userListWhere(filter: UserListFilter): Prisma.UserWhereInput {
+  const clauses: Prisma.UserWhereInput[] = [];
+  if (filter.role) clauses.push({ role: filter.role });
+  if (filter.search) {
+    const term = filter.search;
+    clauses.push({
+      OR: [
+        { firstName: { contains: term, mode: "insensitive" } },
+        { lastName: { contains: term, mode: "insensitive" } },
+        { email: { contains: term, mode: "insensitive" } },
+      ],
+    });
+  }
+  return clauses.length > 0 ? { AND: clauses } : {};
+}
+
 /** Pure data access for User. No role/eligibility rules — see 10-architecture.md. */
 export const userRepository = {
   findById(id: string) {
@@ -30,9 +61,16 @@ export const userRepository = {
    * trainee's most recent enrollment (with its program) and a trainer's
    * profile (with their primary program). One query — both relations are
    * `include`d.
+   *
+   * Bounded with `skip`/`take` (offset pagination, not a cursor) plus an
+   * optional filter — see `countUsersWithFilter` for why offset was chosen
+   * over a cursor. Previously ran with no `take` at all and shipped the
+   * entire `User` table to the browser on every admin dashboard load; see
+   * the DEFECT-USER-LIST brief this change ships under.
    */
-  findManyWithProgramContext() {
+  findManyWithProgramContext(params: { skip: number; take: number } & UserListFilter) {
     return db.user.findMany({
+      where: userListWhere(params),
       include: {
         enrollmentsAsTrainee: {
           take: 1,
@@ -42,7 +80,20 @@ export const userRepository = {
         trainerProfile: { include: { primaryProgram: true } },
       },
       orderBy: { createdAt: "asc" },
+      skip: params.skip,
+      take: params.take,
     });
+  },
+
+  /**
+   * Total rows matching the same filter `findManyWithProgramContext` above
+   * will apply — the pagination UI needs this to compute `totalPages` and
+   * to disable Prev/Next at the ends. Kept separate from the unfiltered
+   * `countAll()` below, which backs the Admin Overview "Total users" stat
+   * and must stay exactly that: every user, no filter.
+   */
+  countUsersWithFilter(filter: UserListFilter) {
+    return db.user.count({ where: userListWhere(filter) });
   },
 
   /**

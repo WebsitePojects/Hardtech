@@ -6,15 +6,14 @@ import { paymentMethodRepository } from "@/server/repositories/payment-method.re
 import { programRepository } from "@/server/repositories/program.repository";
 import { trainerProfileRepository } from "@/server/repositories/trainer-profile.repository";
 import { userRepository } from "@/server/repositories/user.repository";
+import { verifiedActor } from "@/server/services/actor-verification.service";
 
 type Result = { ok: true } | { ok: false; error: string };
 const roles = new Set<UserRole>(["TRAINEE", "TRAINER", "ADMIN"]);
 const statuses = new Set<UserStatus>(["ACTIVE", "PENDING", "SUSPENDED"]);
 
-async function isAdmin(actorId: string, actorRole: UserRole): Promise<boolean> {
-  if (!roles.has(actorRole) || actorRole !== "ADMIN") return false;
-  const actor = await userRepository.findById(actorId);
-  return actor?.role === "ADMIN" && actor.status !== "SUSPENDED";
+function isAdmin(actorId: string, actorRole: UserRole): Promise<boolean> {
+  return verifiedActor(actorId, actorRole, ["ADMIN"]);
 }
 
 async function targetExists(targetId: string): Promise<boolean> {
@@ -58,17 +57,24 @@ export async function updateUserProgram(input: { actorId: string; actorRole: Use
   if (!program) return { ok: false, error: "Program not found." };
   const latestEnrollment = target.role === "TRAINEE" ? await enrollmentRepository.findLatestByTraineeId(input.userId) : null;
 
-  const changed = await auditLogRepository.transaction(async (tx) => {
+  // A program can only land on a TRAINER's profile or a TRAINEE's latest
+  // enrollment. Neither slot existing is a genuine failure, decided here —
+  // once a slot is confirmed to exist, the conditional UPDATE below can only
+  // report count 0 because the row is already at the requested program (a
+  // harmless replay), matching every sibling mutation's contract.
+  const hasAssignableSlot = target.role === "TRAINER" || (target.role === "TRAINEE" && latestEnrollment !== null);
+  if (!hasAssignableSlot) return { ok: false, error: "User has no assignable program." };
+
+  await auditLogRepository.transaction(async (tx) => {
     const result = target.role === "TRAINER"
       ? await trainerProfileRepository.updatePrimaryProgram(tx, input.userId, program.id)
-      : target.role === "TRAINEE"
-        ? latestEnrollment ? await enrollmentRepository.updateProgram(tx, latestEnrollment.id, program.id) : { count: 0 }
+      : latestEnrollment
+        ? await enrollmentRepository.updateProgram(tx, latestEnrollment.id, program.id)
         : { count: 0 };
-    if (result.count !== 1) return false;
+    if (result.count !== 1) return;
     await auditLogRepository.create(tx, { category: "USER", action: "program_update", description: `Program changed to ${program.shortName}.`, referenceId: input.userId, actorUserId: input.actorId });
-    return true;
   });
-  return changed ? { ok: true } : { ok: false, error: "User has no assignable program." };
+  return { ok: true };
 }
 
 export async function removeUser(input: { actorId: string; actorRole: UserRole; userId: string }): Promise<Result> {

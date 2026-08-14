@@ -86,17 +86,47 @@ test("dashboard writes are real, duplicate-safe mutations", async () => {
   try {
     data = await fixture(client, suffix);
 
-    const selfRating = await evaluateTrainee({
+    // A real trainee spoofing trainerRole: "TRAINER" must be stopped by the
+    // authorization gate itself, with only the generic error — never the
+    // self-rating message, which would leak business-rule detail to an
+    // unauthorized caller.
+    const spoofedSelfRating = await evaluateTrainee({
       trainerId: data.traineeId,
       trainerRole: "TRAINER",
       traineeId: data.traineeId,
       skill: "Diagnostics",
       rating: "CERTIFIED",
-      notes: "self-rating should be rejected",
-      idempotencyKey: `self-rating-${suffix}`,
+      notes: "spoofed self-rating should be rejected",
+      idempotencyKey: `spoofed-self-rating-${suffix}`,
     });
-    assert.equal(selfRating.ok, false);
-    assert.match(selfRating.error, /cannot rate yourself/i);
+    assert.equal(spoofedSelfRating.ok, false, "a spoofed non-trainer must not rate anyone");
+    assert.equal(spoofedSelfRating.error, "Not authorized.", "a spoofed non-trainer must get the generic authorization error, not the self-rating message");
+
+    // The self-rating rule exists for the real conflict-of-interest case: a
+    // genuine ACTIVE trainer who is also the trainee on record. That actor
+    // passes the authorization gate and must still be blocked, with the
+    // specific self-rating message.
+    const selfTrainerId = `test-self-trainer-${suffix}`;
+    try {
+      await client.query(
+        `INSERT INTO "User" (id, email, "passwordHash", "firstName", "lastName", role, status, "createdAt", "updatedAt")
+         VALUES ($1, $2, 'test-only', 'Self', 'Trainer', 'TRAINER', 'ACTIVE', NOW(), NOW())`,
+        [selfTrainerId, `self-trainer-${suffix}@example.com`],
+      );
+      const selfRating = await evaluateTrainee({
+        trainerId: selfTrainerId,
+        trainerRole: "TRAINER",
+        traineeId: selfTrainerId,
+        skill: "Diagnostics",
+        rating: "CERTIFIED",
+        notes: "self-rating should be rejected",
+        idempotencyKey: `self-rating-${suffix}`,
+      });
+      assert.equal(selfRating.ok, false, "a genuine trainer must still be blocked from rating themselves");
+      assert.match(selfRating.error, /cannot rate yourself/i);
+    } finally {
+      await client.query('DELETE FROM "User" WHERE id = $1', [selfTrainerId]);
+    }
 
     const ratingInput = {
       trainerId: data.trainerId,
@@ -132,9 +162,49 @@ test("dashboard writes are real, duplicate-safe mutations", async () => {
     assert.equal((await client.query('SELECT status FROM "CertificateRequest" WHERE id = $1', [data.certificateId])).rows[0].status, "APPROVED");
     assert.equal((await client.query('SELECT count(*)::int AS count FROM "AuditLog" WHERE "referenceId" = $1 AND category = $2', [data.certificateId, "CERTIFICATE"])).rows[0].count, 1);
 
-    const selfVerification = await verifyPayment({ adminId: data.traineeId, adminRole: "ADMIN", paymentId: data.paymentId });
-    assert.equal(selfVerification.ok, false);
-    assert.match(selfVerification.error, /cannot verify your own payment/i);
+    // A real trainee spoofing adminRole: "ADMIN" must be stopped by the
+    // authorization gate itself and get only the generic error — never a
+    // resource-specific message that would let a non-admin caller learn
+    // anything about the payment (id exists, whose it is) before being
+    // authorized to see it at all.
+    const spoofedVerification = await verifyPayment({ adminId: data.traineeId, adminRole: "ADMIN", paymentId: data.paymentId });
+    assert.equal(spoofedVerification.ok, false, "a spoofed non-admin must not verify a payment");
+    assert.equal(spoofedVerification.error, "Not authorized.", "a spoofed non-admin must get the generic authorization error, not a resource-specific one");
+
+    // The self-conflict rule exists for the real conflict-of-interest case:
+    // a genuine ADMIN in the database who also happens to own the payment
+    // being cleared (e.g. an admin who submitted this payment before being
+    // promoted). That actor passes the authorization gate and must still be
+    // blocked, with the specific self-conflict message.
+    const program = await one(client, 'SELECT id FROM "Program" ORDER BY "createdAt" LIMIT 1');
+    const selfAdminId = `test-self-admin-${suffix}`;
+    const selfPaymentId = `test-self-payment-${suffix}`;
+    const selfEnrollmentId = `test-self-enrollment-${suffix}`;
+    try {
+      await client.query(
+        `INSERT INTO "User" (id, email, "passwordHash", "firstName", "lastName", role, status, "createdAt", "updatedAt")
+         VALUES ($1, $2, 'test-only', 'Self', 'Admin', 'ADMIN', 'ACTIVE', NOW(), NOW())`,
+        [selfAdminId, `self-admin-${suffix}@example.com`],
+      );
+      await client.query(
+        `INSERT INTO "EnrollmentPayment" (id, "traineeId", "idempotencyKey", "referenceCode", "paymentMethod", "totalAmount", "proofImageUrl", status, "createdAt", "updatedAt")
+         VALUES ($1, $2, $3, $4, 'GCASH', 100.00, 'https://example.com/self-proof.png', 'SUBMITTED', NOW(), NOW())`,
+        [selfPaymentId, selfAdminId, `test-self-key-${suffix}`, `TEST-SELF-${suffix}`],
+      );
+      await client.query(
+        `INSERT INTO "Enrollment" (id, "enrollmentRef", "traineeId", "programId", "batchId", "paymentId", amount, status, "createdAt", "updatedAt")
+         VALUES ($1, $2, $3, $4, NULL, $5, 100.00, 'PENDING_VERIFICATION', NOW(), NOW())`,
+        [selfEnrollmentId, `TEST-SELF-ENR-${suffix}`, selfAdminId, program.id, selfPaymentId],
+      );
+      const selfVerification = await verifyPayment({ adminId: selfAdminId, adminRole: "ADMIN", paymentId: selfPaymentId });
+      assert.equal(selfVerification.ok, false, "a genuine admin must still be blocked from clearing their own payment");
+      assert.match(selfVerification.error, /cannot verify your own payment/i);
+    } finally {
+      await client.query('DELETE FROM "Enrollment" WHERE id = $1', [selfEnrollmentId]);
+      await client.query('DELETE FROM "EnrollmentPayment" WHERE id = $1', [selfPaymentId]);
+      await client.query('DELETE FROM "User" WHERE id = $1', [selfAdminId]);
+    }
+
     const paymentApprovals = await Promise.all([
       verifyPayment({ adminId: data.adminId, adminRole: "ADMIN", paymentId: data.paymentId }),
       verifyPayment({ adminId: data.adminId, adminRole: "ADMIN", paymentId: data.paymentId }),

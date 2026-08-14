@@ -71,7 +71,17 @@ export function DashboardSidebarNav({
   const initials = meta.avatarInitials ?? getInitials(displayName);
 
   return (
-    <div className={cn("flex h-full flex-col", className)}>
+    // w-full is load-bearing: DashboardLayout (src/app/(dashboard)/layout.tsx)
+    // passes the desktop rail `className="hidden lg:flex"`, so at `lg`+ the
+    // <aside> itself is `display:flex` (row) — a responsive show/hide toggle,
+    // not a deliberate row layout. That makes this div a flex ITEM of a row
+    // container with the default flex-grow:0, so with no width of its own it
+    // shrank to its content's natural size (220px measured) inside a 278px
+    // aside, leaving a ~59px dead column. w-full gives it an explicit basis
+    // so it fills the row instead of shrink-to-fitting. Harmless in the
+    // mobile Sheet, where the parent is a column flex container that already
+    // stretches children to full width by default.
+    <div className={cn("flex h-full w-full flex-col", className)}>
       <div className="flex items-start gap-3 border-b border-glass-border p-4">
         <span
           className={cn(
