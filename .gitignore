@@ -30,9 +30,18 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — NO exceptions, and that includes .env.example
+#
+# The negation that used to sit here (!.env.example) is why a seed password
+# reached a public repo. The argument for committing an example file is that
+# it holds names, not values; in practice it drifts, and someone adds a
+# default or quotes a real credential in a comment. Ours ended up naming the
+# seed password for admin@gmail.com, in a file whose own comment said "never
+# use this value in production" — and production was seeded with it.
+#
+# Variable names are documented in docs/DEPLOY-VERCEL.md instead, in prose,
+# where nobody is tempted to paste a working value next to the name.
 .env*
-!.env.example
 
 # prisma 7 generates the client here, not into node_modules
 /generated/prisma
