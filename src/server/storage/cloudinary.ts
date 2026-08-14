@@ -19,6 +19,73 @@ import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
  * embedded in an error message (non-negotiable rule 6).
  */
 
+/**
+ * Hard limits of the account plan, verified against the Cloudinary console.
+ *
+ * These are enforced BEFORE upload so a user gets a sentence they can act on
+ * ("that image is 14 MB, the limit is 10 MB") instead of an opaque provider
+ * rejection after waiting for the transfer to finish.
+ *
+ * Keep these in sync with the plan. Raising the plan without raising these
+ * only means we reject things the provider would have accepted; letting them
+ * drift the other way means users hit provider errors we promised to catch.
+ */
+export const STORAGE_LIMITS = {
+  /** Images: 10 MB. */
+  maxImageBytes: 10 * 1024 * 1024,
+  /** Video: 100 MB. */
+  maxVideoBytes: 100 * 1024 * 1024,
+  /** Raw files (PDF, docs): 10 MB. */
+  maxRawBytes: 10 * 1024 * 1024,
+  /** Single image: 25 megapixels. Cloudinary enforces this; we surface it. */
+  maxImageMegapixels: 25,
+  /**
+   * Admin API allowance is 500 requests per hour on this plan, and it is a
+   * SHARED bucket across the whole deployment.
+   *
+   * Uploading and destroying go through the Upload API, which is unlimited —
+   * so the ordinary write path is safe. What is NOT safe is listing, searching
+   * or fetching resource metadata in a loop: those are Admin API calls, and a
+   * bulk reconciliation job over a few hundred assets can exhaust the hour's
+   * budget in one run and lock out the rest of the application.
+   *
+   * Rule for this codebase: never call the Admin API per-row. Persist the
+   * public_id at write time (we do) so cleanup and delivery never need to ask
+   * Cloudinary what exists.
+   */
+  adminApiRequestsPerHour: 500,
+} as const;
+
+export class FileTooLargeError extends Error {
+  constructor(actualBytes: number, limitBytes: number, kind: string) {
+    const mb = (n: number) => `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    super(`This ${kind} is ${mb(actualBytes)}. The maximum is ${mb(limitBytes)}.`);
+    this.name = "FileTooLargeError";
+  }
+}
+
+/** Byte ceiling for a resource kind, from the plan limits above. */
+export function maxBytesFor(resourceType: "image" | "video" | "raw"): number {
+  if (resourceType === "video") return STORAGE_LIMITS.maxVideoBytes;
+  if (resourceType === "raw") return STORAGE_LIMITS.maxRawBytes;
+  return STORAGE_LIMITS.maxImageBytes;
+}
+
+/**
+ * Reject oversized payloads before the network call.
+ *
+ * Throws rather than returning a flag: an upload that exceeds the plan cannot
+ * proceed, and a caller that forgets to check a boolean would otherwise send
+ * it anyway (fail closed).
+ */
+export function assertWithinSizeLimit(
+  bytes: number,
+  resourceType: "image" | "video" | "raw",
+): void {
+  const limit = maxBytesFor(resourceType);
+  if (bytes > limit) throw new FileTooLargeError(bytes, limit, resourceType);
+}
+
 export type StoredAsset = {
   /** Cloudinary's `public_id`. This is the delete handle — persist it on the
    *  owning row or the asset becomes an orphan nobody can reclaim. */
@@ -107,10 +174,22 @@ export async function uploadAsset(input: {
   bytes: Buffer;
   folder: string;
   publicId?: string;
-  /** Cloudinary infers this for images; set "raw" for PDFs and documents. */
-  resourceType?: "image" | "raw" | "auto";
+  /**
+   * Cloudinary infers this for images. Set it explicitly for anything else:
+   * "raw" for PDFs and documents, "video" for video.
+   *
+   * The choice decides which size ceiling applies — 10 MB for image and raw,
+   * 100 MB for video — so it is not merely a hint.
+   */
+  resourceType?: "image" | "raw" | "video" | "auto";
 }): Promise<StoredAsset> {
   const api = client();
+
+  // Enforced here, not only at the call site, so no future caller can bypass
+  // the plan's ceiling by forgetting to check first.
+  const sizeKind =
+    input.resourceType === "video" ? "video" : input.resourceType === "raw" ? "raw" : "image";
+  assertWithinSizeLimit(input.bytes.byteLength, sizeKind);
 
   return new Promise<StoredAsset>((resolve, reject) => {
     const stream = api.uploader.upload_stream(
@@ -127,8 +206,28 @@ export async function uploadAsset(input: {
       (error, result) => {
         if (error) {
           // Never surface the provider's raw error object — it can carry
-          // request signatures. Keep the message generic and typed.
-          reject(new Error(`Upload failed: ${error.message}`));
+          // request signatures. Translate the plan limits we know about into
+          // sentences a user can act on, and keep everything else generic.
+          const raw = error.message ?? "";
+          if (/megapixel/i.test(raw)) {
+            reject(
+              new Error(
+                `This image is too large to process. The maximum is ${STORAGE_LIMITS.maxImageMegapixels} megapixels — try resizing it.`,
+              ),
+            );
+            return;
+          }
+          if (/file size|too large|maximum.*size/i.test(raw)) {
+            reject(new Error("This file exceeds the maximum size allowed."));
+            return;
+          }
+          if (/rate limit|too many requests/i.test(raw)) {
+            reject(
+              new Error("Storage is temporarily rate limited. Please try again shortly."),
+            );
+            return;
+          }
+          reject(new Error("Upload failed. Please try again."));
           return;
         }
         if (!result) {
