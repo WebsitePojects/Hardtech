@@ -13,6 +13,56 @@ export const enrollmentRepository = {
   findLatestByTraineeId(traineeId: string) { return db.enrollment.findFirst({ where: { traineeId }, orderBy: { createdAt: "desc" } }); },
   transitionByPayment(tx: Prisma.TransactionClient, paymentId: string, status: EnrollmentStatus, reason?: string) { return tx.enrollment.updateMany({ where: { paymentId, status: "PENDING_VERIFICATION" }, data: { status, rejectionReason: reason ?? null } }); },
   updateProgram(tx: Prisma.TransactionClient, enrollmentId: string, programId: string) { return tx.enrollment.updateMany({ where: { id: enrollmentId, programId: { not: programId } }, data: { programId } }); },
+
+  /**
+   * Move a trainee's progress. Only an ACTIVE enrollment advances — a
+   * completed or rejected one is terminal, so the guard lives in the WHERE
+   * clause rather than in a read-then-write the caller could race.
+   *
+   * Returns rows changed: 0 means the enrollment was not ACTIVE, or already
+   * sat at exactly this percentage (an idempotent replay).
+   */
+  setProgress(enrollmentId: string, progressPercent: number) {
+    return db.enrollment
+      .updateMany({
+        where: { id: enrollmentId, status: "ACTIVE", progressPercent: { not: progressPercent } },
+        data: { progressPercent },
+      })
+      .then((result) => result.count);
+  },
+
+  /**
+   * ACTIVE -> COMPLETED, inside the caller's transaction.
+   *
+   * Conditional on the current status so two trainers clicking "complete" at
+   * the same moment cannot both win — exactly one gets count 1, and only that
+   * one goes on to create the certificate request. This is the
+   * state-transition half of non-negotiable rule 2.
+   */
+  complete(tx: Prisma.TransactionClient, enrollmentId: string) {
+    return tx.enrollment
+      .updateMany({
+        where: { id: enrollmentId, status: "ACTIVE" },
+        data: { status: "COMPLETED", progressPercent: 100 },
+      })
+      .then((result) => result.count);
+  },
+
+  /** The fields needed to decide whether an enrollment may be completed and
+   *  to build its certificate request. */
+  findForCompletion(enrollmentId: string) {
+    return db.enrollment.findUnique({
+      where: { id: enrollmentId },
+      select: {
+        id: true,
+        status: true,
+        progressPercent: true,
+        traineeId: true,
+        batch: { select: { trainerId: true } },
+        certificateRequests: { select: { id: true }, take: 1 },
+      },
+    });
+  },
   findProgramsByIds(programIds: string[]) {
     return db.program.findMany({ where: { id: { in: programIds } }, select: { id: true, priceAmount: true } });
   },
