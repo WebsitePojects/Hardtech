@@ -8,6 +8,7 @@ import { enrollmentPaymentRepository } from "@/server/repositories/enrollment-pa
 import { enrollmentRepository } from "@/server/repositories/enrollment.repository";
 import { evaluationRepository } from "@/server/repositories/evaluation.repository";
 import { verifiedActor } from "@/server/services/actor-verification.service";
+import { issueCertificate } from "@/server/services/certificate-issue.service";
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -87,7 +88,28 @@ async function transitionCertificate(adminId: string, role: UserRole, id: string
     await auditLogRepository.create(tx, { category: "CERTIFICATE", action: next === "APPROVED" ? "approve" : "reject", description: reason ?? null, referenceId: id, actorUserId: adminId });
     return true;
   });
-  return changed ? { ok: true } : { ok: false, error: "Certificate request is no longer pending." };
+  if (!changed) return { ok: false, error: "Certificate request is no longer pending." };
+
+  if (next === "APPROVED") {
+    // Render and upload AFTER the transaction commits, never inside it — the
+    // upload is a network round trip to Cloudinary and must not hold a
+    // Postgres connection open for its duration.
+    //
+    // A failure here is not an approval failure. The approval is real and
+    // committed; only the document is missing, and the row is still
+    // discoverable via findAwaitingIssuance (status APPROVED, publicId NULL),
+    // so `reissuePendingCertificates` can complete it later. Reporting failure
+    // to the admin would be wrong — it would invite a second approval attempt
+    // against a request that is no longer PENDING, which now correctly fails.
+    const issued = await issueCertificate(id);
+    if (!issued.ok) {
+      console.error(
+        `[certificate] approved ${id} but issuance failed: ${issued.error}. Awaiting retry.`,
+      );
+    }
+  }
+
+  return { ok: true };
 }
 
 export const approveCertificate = (input: { adminId: string; adminRole: UserRole; certificateRequestId: string }) => transitionCertificate(input.adminId, input.adminRole, input.certificateRequestId, "APPROVED");
