@@ -14,7 +14,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { SiteLogo } from "./site-logo";
 import type { NavbarUser } from "./navbar-actions";
 import { exploreNavItems, primaryNavItems } from "./nav-items";
 
@@ -49,10 +48,24 @@ export function MobileNav({ user }: { user: NavbarUser | null }) {
         side="right"
         className="flex flex-col gap-0 border-glass-border bg-surface p-0"
       >
-        <SheetHeader className="border-b border-glass-border p-4">
-          <SheetTitle asChild>
-            <SiteLogo size="sm" />
-          </SheetTitle>
+        {/*
+          No SiteLogo here. The outer fixed Navbar (navbar-shell.tsx, z-100000)
+          stays visible and rendered above this drawer's own z-50 content the
+          whole time it's open — see the stacking-scale comment in
+          navbar-shell.tsx. Rendering a second logo in this header used to
+          show two overlapping "HardTech / IT CORP." lockups side by side
+          (measured: outer logo at x:17-141, this header's at x:114.5-374,
+          same y range). SheetTitle is required by radix for a11y even
+          without a visible logo, so it stays as a screen-reader-only label.
+
+          pt-20 (80px): with the logo gone this header collapsed to just
+          padding, which pulled the first nav row up to y:49 — inside the
+          outer navbar's y:0-68 row (h-[68px] in navbar-shell.tsx), clipping
+          the top of the "Home" pill under the logo's bounding box. Same
+          80px clearance value used for the same reason in hero.tsx.
+        */}
+        <SheetHeader className="border-b border-glass-border px-4 pt-20 pb-4">
+          <SheetTitle className="sr-only">Site navigation</SheetTitle>
           {user && (
             <div className="mt-3 flex items-center gap-2 rounded-full bg-glass px-3 py-2 text-left">
               <span className="flex size-7 items-center justify-center rounded-full bg-primary/15 font-sub text-xs font-semibold text-neon">

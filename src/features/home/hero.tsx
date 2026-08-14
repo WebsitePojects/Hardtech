@@ -24,7 +24,18 @@ export async function HomeHero() {
   return (
     <section className="relative overflow-hidden">
       <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 -z-10 h-[36rem]" />
-      <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-4 px-4 py-8 text-center sm:gap-6 sm:px-6 sm:py-16 lg:max-w-5xl lg:gap-7 lg:py-24">
+      {/*
+        pt-20 (80px): the navbar is `fixed` (navbar-shell.tsx) and reserves no
+        flow space, so this section starts at viewport y=0 — directly behind
+        the bar's own h-[68px] row. Below lg the hero's status badge is the
+        first child here; measured at 390px it used to render at y:32-58,
+        fully inside the navbar's y:0-68 opaque-logo strip (logo box measured
+        at y:15-55) and both were visible through each other. pt-20 puts the
+        badge at y:80, 12px clear of the navbar. Unchanged at lg+ (pt-24),
+        where the badge already cleared (measured at 768px: badge top 64 vs
+        navbar bottom 55).
+      */}
+      <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-4 px-4 pt-20 pb-8 text-center sm:gap-6 sm:px-6 sm:pb-16 lg:max-w-5xl lg:gap-7 lg:pt-24 lg:pb-24">
         <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 px-3 py-1 text-xs font-semibold tracking-wide text-primary">
           <span className="size-1.5 rounded-full bg-primary" aria-hidden />
           ENROLLMENTS OPEN - 2026

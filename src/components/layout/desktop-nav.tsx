@@ -63,6 +63,9 @@ export function DesktopNav() {
           sideOffset={8}
           // py-[9px]: the reference panel measures 260 tall around four 60px
           // rows and a 1px border, which leaves 18px of vertical padding.
+          // z-[999999]: top of the app-wide stacking scale documented in
+          // navbar-shell.tsx — this menu is attached to the navbar and must
+          // render above the navbar's own z-[100000].
           className="w-64 rounded-[16px] border-0 px-0 py-[9px] z-[999999]"
           style={{
             backgroundColor: "var(--menu-bg)",

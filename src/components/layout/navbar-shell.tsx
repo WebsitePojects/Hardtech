@@ -3,6 +3,25 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 /**
+ * App-wide z-index scale. Every stacking value in the layout/home tree
+ * follows from this list — do not invent a new number ad hoc; place it here
+ * first and reference this comment from the component that uses it.
+ *
+ *   999999  DesktopNav "Explore" mega-menu (desktop-nav.tsx). A menu attached
+ *           to the navbar must render above the navbar itself.
+ *   100000  This fixed navbar shell. Always above ordinary page content AND
+ *           above the mobile Sheet drawer overlay (radix default z-50, see
+ *           components/ui/sheet.tsx), so the persistent header — including
+ *           its logo — stays visible and interactive while the drawer is
+ *           open. That is also why the drawer must not render its own copy
+ *           of the logo: this bar's logo is the single visible instance,
+ *           full stop (see mobile-nav.tsx).
+ *      50   Mobile Sheet drawer overlay + content (shadcn default, unowned).
+ *      30   Floating decorative page-level cards, e.g. the home hero's Live
+ *           Updates announcement card (announcements-card.tsx). Above page
+ *           content/glow, below all navigation chrome.
+ *    auto   Ordinary in-flow page content.
+ *
  * The navbar's scroll behaviour.
  *
  * At the top of the page the bar is flat and full-bleed. Once scrolled it
