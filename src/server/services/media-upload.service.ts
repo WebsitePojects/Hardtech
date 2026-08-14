@@ -138,6 +138,59 @@ function uploadWebhookUrl(): string {
   return `${origin}/api/uploads/webhook`;
 }
 
+/**
+ * Whether `claimedPublicId` could plausibly be the object Cloudinary
+ * created for the ticket this server signed.
+ *
+ * An exact match of `${folder}/${mintedPublicId}` covers image and video:
+ * Cloudinary reports back exactly that string. A match of
+ * `${folder}/${mintedPublicId}.<something>` additionally covers
+ * `resource_type: "raw"`, which folds the file's extension into the
+ * object's own identity and never reports a separate `format` (2026-08-14
+ * lesson — a live probe confirmed a PDF comes back as
+ * `<folder>/<mintedId>.pdf`). Anything else — a different folder, a
+ * different id, no extension separator, or an empty extension — is
+ * rejected.
+ *
+ * This is the entire tamper-protection boundary for confirmUpload: it is
+ * what stops a client from pointing a valid ticket's confirmation at some
+ * other Cloudinary object, so on anything it cannot positively match it
+ * must reject, never default to permissive (rule 3: fail closed).
+ */
+export function isAuthenticReturnedPublicId(
+  claimedPublicId: string,
+  folder: string,
+  mintedPublicId: string,
+): boolean {
+  const expected = `${folder}/${mintedPublicId}`;
+  if (claimedPublicId === expected) return true;
+  return (
+    claimedPublicId.startsWith(`${expected}.`) && claimedPublicId.length > expected.length + 1
+  );
+}
+
+/**
+ * Strip a known folder prefix and any single trailing `.<ext>` Cloudinary
+ * may have appended, to recover the bare id this server originally minted
+ * (see `requestUploadTicket`: always a `randomUUID()`, which never contains
+ * a `.`). Used only by the webhook path below to find a row that is still
+ * RESERVED — i.e. one `confirmUpload` has not yet promoted to its
+ * authoritative id — so the notification's own lookup does not depend on
+ * `confirmUpload` having already run. Bounded to this registry's small
+ * fixed folder set; never a scan, never an Admin API call (see
+ * cloudinary.ts's Admin API budget note).
+ */
+function candidateMintedIdFromFolder(claimedPublicId: string): string | null {
+  for (const folder of Object.values(FOLDER_BY_CATEGORY)) {
+    const prefix = `${folder}/`;
+    if (!claimedPublicId.startsWith(prefix)) continue;
+    const withoutFolder = claimedPublicId.slice(prefix.length);
+    const dotIndex = withoutFolder.indexOf(".");
+    return dotIndex > 0 ? withoutFolder.slice(0, dotIndex) : withoutFolder;
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // requestUploadTicket
 // ---------------------------------------------------------------------------
@@ -254,7 +307,38 @@ export async function confirmUpload(input: ConfirmUploadInput): Promise<ConfirmU
   // Only the actor who reserved this upload may confirm it — otherwise one
   // user could confirm (and thereby activate) another user's reservation.
   if (asset.uploadedByUserId !== input.actorId) return { ok: false, error: NOT_AUTHORIZED };
-  if (asset.publicId !== input.publicId) return { ok: false, error: NOT_AUTHORIZED };
+
+  if (asset.purgeState === "RESERVED") {
+    // First confirmation for this row: `asset.publicId` is still the bare
+    // id minted at reservation time (nothing has promoted it yet) —
+    // exactly the value `isAuthenticReturnedPublicId` needs as
+    // `mintedPublicId`. A straight equality check here (the pre-2026-08-14
+    // behaviour) rejected every raw upload, because Cloudinary legitimately
+    // returns that id with the folder folded in and, for raw, an extension
+    // appended. A client-sent value is input to validate, not a fact (rule
+    // 4) — reject anything that does not match the prefix rule before
+    // trusting it for anything else.
+    if (!isAuthenticReturnedPublicId(input.publicId, asset.folder, asset.publicId)) {
+      return { ok: false, error: NOT_AUTHORIZED };
+    }
+
+    // Promote the row to the id Cloudinary actually used BEFORE flipping to
+    // ACTIVE, so a later purge reads the one id capable of deleting the
+    // file (the fix for the raw-upload leak in the 2026-08-14 lesson).
+    // Guarded to RESERVED-only inside the repository.
+    await mediaAssetRepository.updatePublicId(asset.id, input.publicId);
+  } else if (asset.publicId !== input.publicId) {
+    // The row has already been promoted — by an earlier call to this same
+    // function, or by the webhook winning the race — so `asset.publicId`
+    // is now the SETTLED authoritative id, and a legitimate replay (the
+    // client resending the same report) carries that exact value. Re-run
+    // the prefix rule here would break: it would treat the now-authoritative
+    // `asset.publicId` as a bare minted id and double-prefix the folder,
+    // rejecting every genuine replay. A claim that does not match the
+    // settled id is not a replay of this upload, so it is rejected rather
+    // than silently accepted.
+    return { ok: false, error: NOT_AUTHORIZED };
+  }
 
   const placeholderFacts: MediaAssetConfirmFacts = {
     url: null,
@@ -343,12 +427,40 @@ function factsFromWebhookPayload(payload: CloudinaryWebhookPayload): MediaAssetC
 }
 
 /**
+ * Locate the row a webhook delivery is about.
+ *
+ * Tries an exact match first — this is what fires for a duplicate delivery
+ * (confirm already ran, or a previous webhook already promoted the row) and
+ * is the common case, since `confirmUpload` typically runs synchronously
+ * right after the browser's direct upload, before this async notification
+ * ever arrives. Falls back to `candidateMintedIdFromFolder` for the race
+ * where the webhook wins and arrives first, while the row is still keyed by
+ * the bare minted id. Both are single point lookups on the unique `publicId`
+ * index — never a scan, never a per-row Admin API call.
+ */
+async function findAssetForWebhook(claimedPublicId: string): Promise<MediaAsset | null> {
+  const exact = await mediaAssetRepository.findByPublicId(claimedPublicId);
+  if (exact) return exact;
+
+  const candidateMintedId = candidateMintedIdFromFolder(claimedPublicId);
+  if (!candidateMintedId) return null;
+  return mediaAssetRepository.findByPublicId(candidateMintedId);
+}
+
+/**
  * Apply a signature-verified Cloudinary upload notification — the
  * authoritative confirmation, as opposed to `confirmUpload`'s optimistic
  * one above. The caller (the /api/uploads/webhook route) has already
  * verified the signature over the exact raw body before this runs; this
  * function does no authentication of its own because there is no actor
  * here, only a trusted provider callback.
+ *
+ * Persists `payload.public_id` as the row's authoritative publicId, same as
+ * `confirmUpload` — but with no authenticity check first, because Cloudinary
+ * itself is the source of this value (the signature already proved that),
+ * unlike a client's own claim. `updatePublicId` is guarded to RESERVED-only,
+ * so once a prior confirm/webhook has already promoted the row this is a
+ * harmless no-op, not a re-write.
  *
  * Idempotent by construction, not by a check added here: `confirm` is
  * guarded to RESERVED-only, so a duplicate delivery (Cloudinary retries
@@ -361,8 +473,9 @@ export async function applyUploadWebhook(payload: CloudinaryWebhookPayload): Pro
   const publicId = payload.public_id;
   if (!publicId) return;
 
-  const asset = await mediaAssetRepository.findByPublicId(publicId);
+  const asset = await findAssetForWebhook(publicId);
   if (!asset) return;
 
+  await mediaAssetRepository.updatePublicId(asset.id, publicId);
   await mediaAssetRepository.confirm(asset.id, factsFromWebhookPayload(payload));
 }

@@ -347,6 +347,17 @@ export async function uploadAsset(input: {
  * Returns false only when the provider refused for some other reason, so the
  * caller can decide whether to retry or record an orphan.
  *
+ * IMPORTANT — what a `true` return does and does NOT prove (2026-08-14
+ * lesson): it proves only that Cloudinary now reports nothing exists at
+ * `publicId`. It is NOT proof this call is what deleted anything, and it is
+ * NOT proof `publicId` was ever a real object's id in the first place — a
+ * WRONG public_id (e.g. the raw-upload id-mismatch defect this lesson
+ * describes) reads back identically as `true`, because "not found" and
+ * "deleted" collapse to the same goal-state answer on purpose. A caller
+ * that treats `true` as a deletion receipt rather than a goal-state check
+ * can silently leak a file forever while reporting success. See
+ * media-purge.service.ts for where that distinction actually matters.
+ *
  * `resourceType` must match what the asset was uploaded as — Cloudinary scopes
  * `public_id` per resource type, so destroying a video with the default
  * `"image"` silently targets the wrong (nonexistent) resource and reports

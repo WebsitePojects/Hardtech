@@ -246,6 +246,34 @@ export const mediaAssetRepository = {
   },
 
   /**
+   * Overwrites a RESERVED row's publicId with the value Cloudinary actually
+   * reports back, once the caller has verified it is authentic (see
+   * media-upload.service.ts's prefix check). Necessary because the id
+   * minted at reservation time and signed into the upload ticket (see
+   * signed-upload.ts) is only ever the LEAF this server chose — Cloudinary
+   * is free to fold the `folder` param into the object's identity and, for
+   * `resource_type: "raw"`, append the file's extension too. The value this
+   * app must persist in order to ever delete the file again is whichever
+   * one Cloudinary actually created the object under, not the one this
+   * server asked for (2026-08-14 lesson).
+   *
+   * Guarded on `purgeState = 'RESERVED'` for the same idempotency reason as
+   * `confirm`: once a row has moved past RESERVED its publicId is settled,
+   * and a replayed/duplicate call must not resurrect or rewrite it (in
+   * particular, must never rewrite a row that has since been PURGED).
+   * Returns the affected row count so the caller can tell a genuine write
+   * from a harmless replay.
+   */
+  updatePublicId(id: string, publicId: string) {
+    return db.mediaAsset
+      .updateMany({
+        where: { id, purgeState: "RESERVED" },
+        data: { publicId },
+      })
+      .then((result) => result.count);
+  },
+
+  /**
    * PENDING (leased) -> PURGED, terminal. Guarded on `purgeState = 'PENDING'
    * AND leaseOwner = <caller's lease>` — both, not just the state. The state
    * alone is not enough: if this worker's lease expired mid-destroy (slow
