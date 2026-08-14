@@ -1,8 +1,23 @@
+import { isDemoAuthEnabled } from "@/server/auth/demo-credentials";
+
 /**
  * The "TEST CREDENTIALS" box below the sign-in form
  * (docs/screens/desktop-02.md #1, docs/screens/mobile-04.md #12). Every
- * email address and the helper line are transcribed verbatim — do not
- * paraphrase or invent an address (.claude/rules/20-design-fidelity.md).
+ * email address is transcribed verbatim — do not paraphrase or invent an
+ * address (.claude/rules/20-design-fidelity.md).
+ *
+ * The helper line is the one piece that cannot be transcribed blindly. The
+ * reference site runs with demo auth on, so "Password: any value" is true
+ * there. Here it is only true when `isDemoAuthEnabled()` agrees — which in
+ * production means `DEMO_AUTH=true` exactly. Printing it unconditionally told
+ * every visitor to type anything, watched them fail, and made a working login
+ * look broken.
+ *
+ * The real password is deliberately NOT rendered. These accounts exist on a
+ * live site holding trainee records and payment references; a password shown
+ * on the sign-in page is the same hole as leaving demo auth on, just spelled
+ * differently. Whoever is demonstrating the system reads it from the
+ * gitignored `.env.demo-accounts` file instead.
  *
  * Static server component: nothing here is interactive.
  */
@@ -13,6 +28,8 @@ const DEMO_ACCOUNTS = [
 ] as const;
 
 export function TestCredentialsCard() {
+  const anyPasswordWorks = isDemoAuthEnabled();
+
   return (
     <div className="rounded-xl border border-glass-border bg-surface-secondary/60 p-4">
       <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
@@ -28,7 +45,9 @@ export function TestCredentialsCard() {
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-xs text-muted-foreground">Password: any value</p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        {anyPasswordWorks ? "Password: any value" : "Ask an administrator for the password."}
+      </p>
     </div>
   );
 }

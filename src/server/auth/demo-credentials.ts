@@ -95,7 +95,7 @@ export function verifyPassword(password: string, encoded: string): boolean {
  *     which only makes sense for a public marketing/staging demo of this
  *     exact product, never for handling real trainee data.
  */
-function isDemoAuthEnabled(): boolean {
+export function isDemoAuthEnabled(): boolean {
   if (process.env.NODE_ENV !== "production") return true;
   return process.env.DEMO_AUTH === "true";
 }
