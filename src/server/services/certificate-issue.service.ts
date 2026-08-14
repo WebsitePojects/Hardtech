@@ -29,11 +29,19 @@ type IssueResult =
   | { ok: true; publicId: string; alreadyIssued: boolean }
   | { ok: false; error: string };
 
-/** Cloudinary public_id for a certificate code. Deterministic on purpose:
- *  the same code always maps to the same asset, which is what makes a retry a
- *  replace rather than a duplicate. */
+/**
+ * The public_id LEAF for a certificate code — deliberately without the folder.
+ *
+ * Cloudinary concatenates `folder` and `public_id`, so passing a leaf that
+ * already contains the folder produces
+ * `hardtech/certificates/hardtech/certificates/CRT-1004`. Keep the folder in
+ * exactly one place: the `folder` option.
+ *
+ * Deterministic on purpose — the same code always maps to the same asset,
+ * which is what makes a retry a replace rather than a duplicate.
+ */
 export function certificatePublicIdFor(certificateCode: string): string {
-  return `${CERTIFICATE_FOLDER}/${certificateCode}`;
+  return certificateCode;
 }
 
 function fullName(trainee: { firstName: string; lastName: string }): string {
