@@ -15,6 +15,50 @@ Format:
 
 ---
 
+## 2026-08-14 — Cloudinary appends the file extension to `public_id` for raw, and our "delete" reported success against nothing
+
+**Symptom:** A live probe of the new signed direct-upload path uploaded a PDF
+with a server-minted `public_id` of `probe-raw-1786691760108`. Cloudinary stored
+it as `hardtech/_probe/probe-raw-1786691760108**.pdf**`. Calling
+`destroyAsset("hardtech/_probe/probe-raw-1786691760108", "raw")` — the handle we
+would have persisted — returned **`true`**. The same probe run for an image
+returned an identical `public_id` with no suffix, so the defect is invisible
+unless raw is tested specifically.
+
+**Cause:** Two mechanisms compounding.
+
+For `resource_type: raw`, Cloudinary treats the extension as part of the
+identity and appends it to `public_id` (its `format` field comes back
+`undefined`). For `image` and `video` the extension is stripped and reported
+separately in `format`, so the id we mint and the id Cloudinary stores are
+identical — which is why every image test passed. Raw is the training-module
+path: PDF and DOCX.
+
+The second mechanism is what made it silent. `destroyAsset` deliberately maps
+Cloudinary's `not found` result to success, because a cleanup path must be safe
+to retry and "already gone" satisfies the goal state. That is correct for
+retries and exactly wrong as a correctness signal: destroying a `public_id` that
+never existed is indistinguishable from destroying one that did. The purge
+worker would have marked rows `PURGED`, with `purgedAt` set and the CHECK
+constraint satisfied, while every PDF and DOCX stayed in Cloudinary forever.
+The outbox would have reported a clean drain against a growing leak.
+
+**Rule:** The authoritative `public_id` is the one the provider **returns**,
+never the one we minted. Persist the returned value at confirm/webhook time,
+and verify it is prefixed by the folder and id we signed — that keeps the
+tamper protection (a client still cannot redirect the upload) without assuming
+the provider echoes our id unchanged.
+
+More generally: an idempotent delete that treats "absent" as success cannot also
+serve as proof the delete worked. Prove storage cleanup by observing the object
+is gone through a second channel — a `HEAD` on the delivery URL — not by the
+destroy call's own return value. And test every resource type against the live
+API before trusting a path; `image` passing says nothing about `raw`, and the
+difference here is invisible to any unit test because it lives entirely in the
+provider's naming behaviour.
+
+---
+
 ## 2026-08-09 — A 3.5%-alpha grain texture "disappeared" in a 1x-DPI screenshot crop
 
 **Symptom:** After implementing the `.cyber-bg::after` grain overlay (a 1px dot

@@ -41,6 +41,10 @@ export type ClaimedMediaAsset = {
   publicId: string;
   resourceType: MediaResourceType;
   folder: string;
+  /** Failures recorded before this claim — the purge worker needs this to
+   *  decide retry-with-backoff vs. terminal abandonment without a second
+   *  round trip. */
+  purgeAttempts: number;
 };
 
 /** Claimable rows sit in the PENDING/RESERVED sliver the partial index covers
@@ -103,6 +107,61 @@ export const mediaAssetRepository = {
       .updateMany({
         where: { id, purgeState: "RESERVED" },
         data: { purgeState: "ACTIVE", ...facts },
+      })
+      .then((result) => result.count);
+  },
+
+  /**
+   * RESERVED -> ACTIVE's sibling for the owner side: binds a confirmed
+   * asset to the row that now references it. Guarded on `purgeState =
+   * 'ACTIVE'` (an asset that never got confirmed, or one already detached
+   * and scheduled for deletion, must not be attachable) AND the target
+   * owner column still being NULL. That second guard is what makes a
+   * replayed attach safe: the first call wins and binds the column: any
+   * retry of the SAME attach finds the column already NULL->non-null and
+   * affects zero rows rather than re-writing it, and a call trying to
+   * attach an asset already bound to a DIFFERENT owner is rejected the same
+   * way instead of stealing it. Returns the affected row count so the
+   * service can tell a genuine conflict from a harmless replay by reading
+   * the row back (see media-upload.service.ts `attachUpload`).
+   */
+  attachToOwner(id: string, owner: MediaAssetOwnerRef, tx: Prisma.TransactionClient = db) {
+    if ("moduleId" in owner) {
+      return tx.mediaAsset
+        .updateMany({
+          where: { id, purgeState: "ACTIVE", moduleId: null },
+          data: { moduleId: owner.moduleId },
+        })
+        .then((result) => result.count);
+    }
+    if ("galleryPhotoId" in owner) {
+      return tx.mediaAsset
+        .updateMany({
+          where: { id, purgeState: "ACTIVE", galleryPhotoId: null },
+          data: { galleryPhotoId: owner.galleryPhotoId },
+        })
+        .then((result) => result.count);
+    }
+    if ("announcementId" in owner) {
+      return tx.mediaAsset
+        .updateMany({
+          where: { id, purgeState: "ACTIVE", announcementId: null },
+          data: { announcementId: owner.announcementId },
+        })
+        .then((result) => result.count);
+    }
+    if ("postId" in owner) {
+      return tx.mediaAsset
+        .updateMany({
+          where: { id, purgeState: "ACTIVE", postId: null },
+          data: { postId: owner.postId },
+        })
+        .then((result) => result.count);
+    }
+    return tx.mediaAsset
+      .updateMany({
+        where: { id, purgeState: "ACTIVE", replyId: null },
+        data: { replyId: owner.replyId },
       })
       .then((result) => result.count);
   },
@@ -182,29 +241,42 @@ export const mediaAssetRepository = {
         LIMIT ${limit}
         FOR UPDATE SKIP LOCKED
       )
-      RETURNING "id", "publicId", "resourceType", "folder"
+      RETURNING "id", "publicId", "resourceType", "folder", "purgeAttempts"
     `;
   },
 
-  /** PENDING (leased) -> PURGED, terminal. Guarded on `purgeState = 'PENDING'`
-   *  so a straggling worker that finishes after its lease expired and got
-   *  reclaimed cannot overwrite a row another worker has already finished. */
-  markPurged(id: string) {
+  /**
+   * PENDING (leased) -> PURGED, terminal. Guarded on `purgeState = 'PENDING'
+   * AND leaseOwner = <caller's lease>` — both, not just the state. The state
+   * alone is not enough: if this worker's lease expired mid-destroy (slow
+   * Cloudinary call) and `claimPurgeBatch` handed the row to a second
+   * worker, the row is still PENDING while that second worker holds it, so
+   * a state-only guard would let the straggler overwrite whatever the new
+   * owner does next. Requiring `leaseOwner` to still match this worker's own
+   * id is what actually prevents that — the previous version of this method
+   * guarded on state only and its comment claimed otherwise; it did not.
+   */
+  markPurged(id: string, leaseOwner: string) {
     return db.mediaAsset
       .updateMany({
-        where: { id, purgeState: "PENDING" },
+        where: { id, purgeState: "PENDING", leaseOwner },
         data: { purgeState: "PURGED", purgedAt: new Date(), leaseOwner: null, leaseExpiresAt: null },
       })
       .then((result) => result.count);
   },
 
-  /** One failed attempt: stays PENDING (still retryable), records a bounded,
-   *  non-secret error string, releases the lease, and pushes the next
-   *  attempt out to `nextAttemptAt` so the claim scan skips it until then. */
-  markPurgeFailed(id: string, error: string, nextAttemptAt: Date) {
+  /**
+   * One failed attempt: stays PENDING (still retryable), records a bounded,
+   * non-secret error string, releases the lease, and pushes the next
+   * attempt out to `nextAttemptAt` so the claim scan skips it until then.
+   * Guarded on `purgeState = 'PENDING' AND leaseOwner = <caller's lease>`
+   * for the same reason as `markPurged` above: state alone does not prove
+   * this caller still holds the row, only that nobody has finished it yet.
+   */
+  markPurgeFailed(id: string, leaseOwner: string, error: string, nextAttemptAt: Date) {
     return db.mediaAsset
       .updateMany({
-        where: { id, purgeState: "PENDING" },
+        where: { id, purgeState: "PENDING", leaseOwner },
         data: {
           purgeAttempts: { increment: 1 },
           lastPurgeError: truncatePurgeError(error),
@@ -216,11 +288,16 @@ export const mediaAssetRepository = {
       .then((result) => result.count);
   },
 
-  /** Bounded retries exhausted: PENDING -> FAILED, terminal, needs a human. */
-  markPurgeAbandoned(id: string, error: string) {
+  /**
+   * Bounded retries exhausted: PENDING -> FAILED, terminal, needs a human.
+   * Same `purgeState = 'PENDING' AND leaseOwner = <caller's lease>` guard as
+   * `markPurged`/`markPurgeFailed` — a lease-expired straggler must not be
+   * able to abandon a row a different worker is now actively retrying.
+   */
+  markPurgeAbandoned(id: string, leaseOwner: string, error: string) {
     return db.mediaAsset
       .updateMany({
-        where: { id, purgeState: "PENDING" },
+        where: { id, purgeState: "PENDING", leaseOwner },
         data: {
           purgeState: "FAILED",
           lastPurgeError: truncatePurgeError(error),

@@ -1,4 +1,5 @@
 import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
+import { z } from "zod";
 
 /**
  * The only module that configures or talks to Cloudinary.
@@ -20,41 +21,91 @@ import { v2 as cloudinary, type UploadApiResponse } from "cloudinary";
  */
 
 /**
- * Hard limits of the account plan, verified against the Cloudinary console.
+ * Free-tier defaults, verified against the Cloudinary console. Used whenever
+ * an env override below is absent or malformed.
  *
- * These are enforced BEFORE upload so a user gets a sentence they can act on
- * ("that image is 14 MB, the limit is 10 MB") instead of an opaque provider
- * rejection after waiting for the transfer to finish.
- *
- * Keep these in sync with the plan. Raising the plan without raising these
- * only means we reject things the provider would have accepted; letting them
- * drift the other way means users hit provider errors we promised to catch.
+ * These MUST be kept at or below the actual plan limits. Setting them higher
+ * than the plan allows does not unlock anything — it only lets a user wait
+ * through a long upload that Cloudinary then rejects at the end, which is
+ * strictly worse than rejecting it up front.
  */
-export const STORAGE_LIMITS = {
-  /** Images: 10 MB. */
-  maxImageBytes: 10 * 1024 * 1024,
-  /** Video: 100 MB. */
-  maxVideoBytes: 100 * 1024 * 1024,
-  /** Raw files (PDF, docs): 10 MB. */
-  maxRawBytes: 10 * 1024 * 1024,
-  /** Single image: 25 megapixels. Cloudinary enforces this; we surface it. */
-  maxImageMegapixels: 25,
-  /**
-   * Admin API allowance is 500 requests per hour on this plan, and it is a
-   * SHARED bucket across the whole deployment.
-   *
-   * Uploading and destroying go through the Upload API, which is unlimited —
-   * so the ordinary write path is safe. What is NOT safe is listing, searching
-   * or fetching resource metadata in a loop: those are Admin API calls, and a
-   * bulk reconciliation job over a few hundred assets can exhaust the hour's
-   * budget in one run and lock out the rest of the application.
-   *
-   * Rule for this codebase: never call the Admin API per-row. Persist the
-   * public_id at write time (we do) so cleanup and delivery never need to ask
-   * Cloudinary what exists.
-   */
-  adminApiRequestsPerHour: 500,
+const DEFAULT_LIMITS_MB = {
+  image: 10,
+  video: 100,
+  raw: 10,
 } as const;
+const DEFAULT_MAX_IMAGE_MEGAPIXELS = 25;
+
+/**
+ * Admin API allowance is 500 requests per hour on this plan, and it is a
+ * SHARED bucket across the whole deployment.
+ *
+ * Uploading and destroying go through the Upload API, which is unlimited —
+ * so the ordinary write path is safe. What is NOT safe is listing, searching
+ * or fetching resource metadata in a loop: those are Admin API calls, and a
+ * bulk reconciliation job over a few hundred assets can exhaust the hour's
+ * budget in one run and lock out the rest of the application.
+ *
+ * Rule for this codebase: never call the Admin API per-row. Persist the
+ * public_id at write time (we do) so cleanup and delivery never need to ask
+ * Cloudinary what exists.
+ *
+ * Not env-overridable — this is a fact about the plan's Admin API tier, not
+ * a knob we want raised as a side effect of someone bumping a storage limit.
+ */
+const ADMIN_API_REQUESTS_PER_HOUR = 500;
+
+/** A positive integer, or the value is treated as absent (rule 3: fail
+ *  closed — a malformed override must never be read as "unlimited"). */
+const positiveIntEnv = z.coerce.number().int().positive();
+
+/**
+ * Read one plan-limit override from the environment.
+ *
+ * Reads `process.env` on every call rather than once at module load — see
+ * the file header. A missing var falls back to the safe default; a present
+ * but malformed one (non-numeric, zero, negative, fractional) also falls
+ * back to the default rather than being treated as "no limit". Silently
+ * accepting garbage as unlimited would violate fail-closed for the sake of a
+ * typo in a dashboard env var.
+ */
+function envOverrideMb(name: string, fallbackMb: number): number {
+  const raw = process.env[name];
+  if (raw === undefined) return fallbackMb;
+  const parsed = positiveIntEnv.safeParse(raw);
+  return parsed.success ? parsed.data : fallbackMb;
+}
+
+export type StorageLimits = {
+  maxImageBytes: number;
+  maxVideoBytes: number;
+  maxRawBytes: number;
+  maxImageMegapixels: number;
+  adminApiRequestsPerHour: number;
+};
+
+/**
+ * Resolve the account's plan limits, applying env overrides over the
+ * free-tier defaults.
+ *
+ * A config change (setting `CLOUDINARY_MAX_VIDEO_MB` etc. in the host's
+ * dashboard) is enough to raise a limit after a plan upgrade — no code
+ * change or redeploy required. Exported so the UI can show a user the
+ * ceiling before they pick a file, rather than after a failed upload.
+ */
+export function storageLimits(): StorageLimits {
+  const mb = (n: number) => n * 1024 * 1024;
+  return {
+    maxImageBytes: mb(envOverrideMb("CLOUDINARY_MAX_IMAGE_MB", DEFAULT_LIMITS_MB.image)),
+    maxVideoBytes: mb(envOverrideMb("CLOUDINARY_MAX_VIDEO_MB", DEFAULT_LIMITS_MB.video)),
+    maxRawBytes: mb(envOverrideMb("CLOUDINARY_MAX_RAW_MB", DEFAULT_LIMITS_MB.raw)),
+    maxImageMegapixels: envOverrideMb(
+      "CLOUDINARY_MAX_IMAGE_MEGAPIXELS",
+      DEFAULT_MAX_IMAGE_MEGAPIXELS,
+    ),
+    adminApiRequestsPerHour: ADMIN_API_REQUESTS_PER_HOUR,
+  };
+}
 
 export class FileTooLargeError extends Error {
   constructor(actualBytes: number, limitBytes: number, kind: string) {
@@ -66,9 +117,10 @@ export class FileTooLargeError extends Error {
 
 /** Byte ceiling for a resource kind, from the plan limits above. */
 export function maxBytesFor(resourceType: "image" | "video" | "raw"): number {
-  if (resourceType === "video") return STORAGE_LIMITS.maxVideoBytes;
-  if (resourceType === "raw") return STORAGE_LIMITS.maxRawBytes;
-  return STORAGE_LIMITS.maxImageBytes;
+  const limits = storageLimits();
+  if (resourceType === "video") return limits.maxVideoBytes;
+  if (resourceType === "raw") return limits.maxRawBytes;
+  return limits.maxImageBytes;
 }
 
 /**
@@ -150,6 +202,48 @@ export function isStorageConfigured(): boolean {
   );
 }
 
+/**
+ * The public half of the Cloudinary configuration — safe to hand to a
+ * browser or embed in a signed-upload ticket. `signed-upload.ts` (the direct
+ * browser-upload feature) calls this instead of touching `process.env`
+ * itself, so this file stays the only place that decides which env vars are
+ * required and the only place that ever holds the secret.
+ */
+export function publicConfig(): { cloudName: string; apiKey: string } {
+  const { cloudName, apiKey } = requiredEnv();
+  return { cloudName, apiKey };
+}
+
+/**
+ * Sign a set of upload parameters for a direct-to-Cloudinary browser upload.
+ *
+ * This is the only function in the codebase that calls
+ * `cloudinary.utils.api_sign_request`, and therefore the only function that
+ * ever holds the API secret for this purpose. `signed-upload.ts` decides
+ * WHAT gets signed (folder, public_id, timestamp, notification_url) and
+ * calls this to sign it; the secret itself never crosses that boundary.
+ */
+export function signParams(paramsToSign: Record<string, string | number>): string {
+  const api = client();
+  const { apiSecret } = requiredEnv();
+  return api.utils.api_sign_request(paramsToSign, apiSecret);
+}
+
+/**
+ * Compute the hash Cloudinary signs webhook deliveries with:
+ * `SHA1(rawBody + timestamp + api_secret)`.
+ *
+ * Delegates to the SDK's own `utils.webhook_signature`, which reads the
+ * secret from this module's configured client rather than from an argument
+ * — so, like `signParams`, this is the only place the secret is touched.
+ * `signed-upload.ts` supplies the exact raw request body and timestamp and
+ * gets back a hash to compare; it never sees the secret.
+ */
+export function computeWebhookSignature(rawBody: string, timestampSeconds: number): string {
+  const api = client();
+  return api.utils.webhook_signature(rawBody, timestampSeconds);
+}
+
 function toStoredAsset(res: UploadApiResponse): StoredAsset {
   return {
     publicId: res.public_id,
@@ -212,7 +306,7 @@ export async function uploadAsset(input: {
           if (/megapixel/i.test(raw)) {
             reject(
               new Error(
-                `This image is too large to process. The maximum is ${STORAGE_LIMITS.maxImageMegapixels} megapixels — try resizing it.`,
+                `This image is too large to process. The maximum is ${storageLimits().maxImageMegapixels} megapixels — try resizing it.`,
               ),
             );
             return;
@@ -252,10 +346,16 @@ export async function uploadAsset(input: {
  *
  * Returns false only when the provider refused for some other reason, so the
  * caller can decide whether to retry or record an orphan.
+ *
+ * `resourceType` must match what the asset was uploaded as — Cloudinary scopes
+ * `public_id` per resource type, so destroying a video with the default
+ * `"image"` silently targets the wrong (nonexistent) resource and reports
+ * `not found` instead of actually deleting anything. The purge worker deletes
+ * video assets and needs `"video"` to be a valid choice here.
  */
 export async function destroyAsset(
   publicId: string,
-  resourceType: "image" | "raw" = "image",
+  resourceType: "image" | "raw" | "video" = "image",
 ): Promise<boolean> {
   const api = client();
   const result = await api.uploader.destroy(publicId, {
