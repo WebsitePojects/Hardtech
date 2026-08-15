@@ -2,15 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Send, WifiOff } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AttachmentPicker, type StagedAttachment } from "./attachment-picker";
-import { devSimulateUpload } from "./dev-fixtures";
 import { validateAttachmentBatch } from "./file-validation";
 import { sendMessageSchema } from "./messaging.schema";
 import { sendMessage } from "./mutations/send-message";
+import { uploadMessageAttachment } from "./upload-client";
 
 /**
  * Message composer: body textarea, attachment tray, send button.
@@ -68,7 +67,8 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
   }, []);
 
   const uploadFile = useCallback((localId: string, file: File) => {
-    const { promise } = devSimulateUpload(file, (percent) => {
+    setStaged((current) => current.map((item) => item.localId === localId ? { ...item, status: "uploading" } : item));
+    const promise = uploadMessageAttachment(file, (percent) => {
       setStaged((current) =>
         current.map((item) => (item.localId === localId ? { ...item, status: "uploading", progress: percent } : item)),
       );
@@ -79,10 +79,12 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
           current.map((item) => (item.localId === localId ? { ...item, status: "done", progress: 100, remote } : item)),
         );
       })
-      .catch(() => {
+      .catch((uploadError: unknown) => {
         setStaged((current) =>
           current.map((item) =>
-            item.localId === localId ? { ...item, status: "error", error: "Upload failed. Remove it and try again." } : item,
+            item.localId === localId
+              ? { ...item, status: "error", error: uploadError instanceof Error ? uploadError.message : "Upload failed. Remove it or retry." }
+              : item,
           ),
         );
       });
@@ -100,9 +102,6 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
     // the only place the message appears.
     if (rejections.length > 0) {
       setError(rejections[0].reason);
-      for (const rejection of rejections.slice(1)) {
-        toast.error(rejection.reason);
-      }
     } else {
       setError(null);
     }
@@ -123,6 +122,13 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
 
   function handleRemove(localId: string) {
     setStaged((current) => current.filter((item) => item.localId !== localId));
+  }
+
+  function handleRetry(localId: string) {
+    const item = staged.find((candidate) => candidate.localId === localId);
+    if (!item || isPending) return;
+    setError(null);
+    uploadFile(localId, item.file);
   }
 
   const hasUploadingAttachment = staged.some((item) => item.status === "pending" || item.status === "uploading");
@@ -204,7 +210,7 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
         </p>
       ) : null}
 
-      <AttachmentPicker staged={staged} disabled={isPending} onFilesSelected={handleFilesSelected} onRemove={handleRemove} />
+      <AttachmentPicker staged={staged} disabled={isPending} onFilesSelected={handleFilesSelected} onRemove={handleRemove} onRetry={handleRetry} />
 
       {error ? (
         <p role="alert" aria-live="polite" className="text-xs text-destructive">

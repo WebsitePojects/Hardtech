@@ -39,11 +39,24 @@ function AttachmentThumb({ attachment }: { attachment: MessageView["attachments"
     );
   }
 
+  if (attachment.kind === "VIDEO") {
+    return (
+      <video
+        src={attachment.url}
+        controls
+        preload="metadata"
+        className="max-h-72 max-w-full rounded-md border border-glass-border bg-black object-contain"
+        aria-label="Attached video"
+      />
+    );
+  }
+
   return (
     <a
       href={attachment.url}
       target="_blank"
       rel="noreferrer"
+      download
       className="flex items-center gap-2 rounded-md border border-glass-border bg-background/40 px-2.5 py-2 text-xs hover:bg-background/70"
     >
       <FileIcon className="size-4 shrink-0" aria-hidden />

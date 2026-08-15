@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { AlertCircle, File as FileIcon, Paperclip, X } from "lucide-react";
+import { AlertCircle, File as FileIcon, Paperclip, RotateCcw, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -32,11 +32,13 @@ export function AttachmentPicker({
   disabled,
   onFilesSelected,
   onRemove,
+  onRetry,
 }: {
   staged: StagedAttachment[];
   disabled: boolean;
   onFilesSelected: (files: File[]) => void;
   onRemove: (localId: string) => void;
+  onRetry: (localId: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -69,10 +71,13 @@ export function AttachmentPicker({
                 <Progress value={item.progress} className="h-1" />
               ) : null}
               {item.status === "error" ? (
-                <span className="flex items-center gap-1 text-[10px] text-destructive">
+                <div className="flex items-start gap-1 text-[10px] text-destructive">
                   <AlertCircle className="size-3 shrink-0" aria-hidden />
-                  {item.error}
-                </span>
+                  <span className="min-w-0 flex-1">{item.error}</span>
+                  <button type="button" onClick={() => onRetry(item.localId)} aria-label={`Retry ${item.file.name}`} className="shrink-0 text-primary hover:text-primary/80">
+                    <RotateCcw className="size-3" aria-hidden />
+                  </button>
+                </div>
               ) : null}
             </div>
           ))}
@@ -103,6 +108,7 @@ export function AttachmentPicker({
         >
           <Paperclip className="size-4" aria-hidden />
         </Button>
+        <p className="mt-1 text-[10px] text-muted-foreground">Images, video, PDF, or DOCX · 10 MB max each</p>
       </div>
     </div>
   );

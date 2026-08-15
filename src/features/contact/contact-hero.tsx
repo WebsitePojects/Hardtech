@@ -2,6 +2,7 @@ import { Building2, Diamond, Mail, Phone, MapPin } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { OFFICES } from "@/features/contact/offices";
 
 const CONTACT_CARDS = [
@@ -48,9 +49,9 @@ export function ContactHero() {
           locations or reach out through any of our contact channels.
         </p>
 
-        <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {CONTACT_CARDS.map(({ icon: Icon, label, value, caption }) => (
-            <Card key={label} className="bg-surface-secondary transition-[border-color,box-shadow,transform] motion-reduce:transition-none lg:hover:-translate-y-1 lg:hover:border-primary/40 lg:hover:shadow-glow-sm">
+        <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
+          {CONTACT_CARDS.map(({ icon: Icon, label, value, caption }, index) => (
+            <Card key={label} className={cn("bg-surface-secondary transition-[border-color,box-shadow,transform] motion-reduce:transition-none lg:hover:-translate-y-1 lg:hover:border-primary/40 lg:hover:shadow-glow-sm", index === 0 ? "lg:col-span-5" : index === 1 ? "lg:col-span-7" : "lg:col-span-6")}>
               <CardContent className="flex flex-col gap-2 py-5">
                 <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon className="size-4.5" />

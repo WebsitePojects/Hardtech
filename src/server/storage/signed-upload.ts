@@ -40,6 +40,7 @@ export type SignedUploadTicket = {
   resourceType: UploadResourceType;
   uploadUrl: string;
   maxBytes: number;
+  notificationUrl?: string;
 };
 
 /**
@@ -89,6 +90,7 @@ export function createSignedUploadTicket(input: {
     // Lets the browser reject an oversized file locally before starting a
     // long upload it would only have rejected by Cloudinary at the end.
     maxBytes: maxBytesFor(input.resourceType),
+    notificationUrl: input.notificationUrl,
   };
 }
 

@@ -40,6 +40,11 @@ export const metadata: Metadata = {
   title: "HardTech IT Corp",
   description:
     "Comprehensive training in computer and cellphone hardware servicing and IT software development, featuring online enrollment, interactive dashboards, and a sleek, futuristic design.",
+  icons: {
+    icon: "/images/brand/hardtech-logo.png",
+    shortcut: "/images/brand/hardtech-logo.png",
+    apple: "/images/brand/hardtech-logo.png",
+  },
 };
 
 export default function RootLayout({

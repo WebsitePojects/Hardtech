@@ -47,7 +47,7 @@ export async function Navbar() {
       <SiteLogo />
       <DesktopNav />
       <div className="flex items-center gap-2">
-        <NavbarActions user={user} />
+        <NavbarActions user={user} logoutAction={logoutAction} />
         <MobileNav user={user} logoutAction={logoutAction} />
       </div>
     </NavbarShell>
