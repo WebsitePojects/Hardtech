@@ -4,6 +4,7 @@ import { testimonialRepository } from "@/server/repositories/testimonial.reposit
 import { galleryPhotoRepository } from "@/server/repositories/gallery-photo.repository";
 import { faqRepository } from "@/server/repositories/faq.repository";
 import { paymentMethodRepository } from "@/server/repositories/payment-method.repository";
+import { announcementRepository } from "@/server/repositories/announcement.repository";
 import { programShortNameSchema } from "@/server/schemas/marketing.schema";
 import type {
   Program,
@@ -15,6 +16,7 @@ import type {
   Faq,
   PaymentMethodConfig,
 } from "@/../generated/prisma/client";
+import type { AnnouncementType, MediaType } from "@/../generated/prisma/enums";
 
 /**
  * The one module route builders are allowed to import for marketing content
@@ -28,6 +30,18 @@ export type ProgramWithCurriculum = Program & {
   curriculumTopics: ProgramCurriculumTopic[];
 };
 export type TrainerWithUser = TrainerProfile & { user: User };
+export type PublicAnnouncement = {
+  id: string; title: string; body: string; type: AnnouncementType;
+  mediaUrl: string | null; mediaType: MediaType | null; isPinned: boolean;
+  postedByName: string; createdAt: Date;
+};
+
+export async function getPublicAnnouncement(id: string): Promise<PublicAnnouncement | null> {
+  if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id)) return null;
+  const row = await announcementRepository.findById(id);
+  if (!row) return null;
+  return { id: row.id, title: row.title, body: row.body, type: row.type, mediaUrl: row.mediaUrl, mediaType: row.mediaType, isPinned: row.isPinned, postedByName: `${row.postedBy.firstName} ${row.postedBy.lastName}`, createdAt: row.createdAt };
+}
 
 export function getPrograms(): Promise<ProgramWithCurriculum[]> {
   return programRepository.findAll();

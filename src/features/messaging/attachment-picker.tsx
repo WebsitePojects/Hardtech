@@ -73,8 +73,8 @@ export function AttachmentPicker({
               {item.status === "error" ? (
                 <div className="flex items-start gap-1 text-[10px] text-destructive">
                   <AlertCircle className="size-3 shrink-0" aria-hidden />
-                  <span className="min-w-0 flex-1">{item.error}</span>
-                  <button type="button" onClick={() => onRetry(item.localId)} aria-label={`Retry ${item.file.name}`} className="shrink-0 text-primary hover:text-primary/80">
+                  <span className="min-w-0 flex-1">Upload failed</span>
+                  <button type="button" onClick={() => onRetry(item.localId)} aria-label={`Retry ${item.file.name}`} title={item.error} className="shrink-0 text-primary hover:text-primary/80">
                     <RotateCcw className="size-3" aria-hidden />
                   </button>
                 </div>

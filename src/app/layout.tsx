@@ -3,6 +3,7 @@ import { Geist_Mono, Inter, Manrope, Teachers } from "next/font/google";
 import "./globals.css";
 import { CustomCursor } from "@/components/motion/custom-cursor";
 import { SmoothScrollProvider } from "@/components/motion/smooth-scroll-provider";
+import { Toaster } from "@/components/ui/sonner";
 
 /**
  * The design system declares three families (docs/research/01-design-source.md):
@@ -80,6 +81,7 @@ export default function RootLayout({
       <body className="cyber-bg min-h-full flex flex-col">
         <SmoothScrollProvider>
           <CustomCursor />
+          <Toaster position="top-right" closeButton richColors />
           {children}
         </SmoothScrollProvider>
       </body>

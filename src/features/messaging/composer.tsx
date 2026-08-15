@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Send, WifiOff } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,7 +45,6 @@ import { uploadMessageAttachment } from "./upload-client";
 export function Composer({ conversationId, onSent }: { conversationId: string; onSent?: () => void }) {
   const [body, setBody] = useState("");
   const [staged, setStaged] = useState<StagedAttachment[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const idempotencyKeyRef = useRef(crypto.randomUUID());
   const [isOffline, setIsOffline] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -80,6 +80,7 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
         );
       })
       .catch((uploadError: unknown) => {
+        toast.error(uploadError instanceof Error ? uploadError.message : "Upload failed. Remove it or retry.");
         setStaged((current) =>
           current.map((item) =>
             item.localId === localId
@@ -101,9 +102,8 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
     // mixed batch (e.g. 2 of 5 files rejected for different reasons), never
     // the only place the message appears.
     if (rejections.length > 0) {
-      setError(rejections[0].reason);
+      for (const rejection of rejections) toast.error(rejection.reason);
     } else {
-      setError(null);
     }
 
     if (accepted.length === 0) return;
@@ -127,7 +127,6 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
   function handleRetry(localId: string) {
     const item = staged.find((candidate) => candidate.localId === localId);
     if (!item || isPending) return;
-    setError(null);
     uploadFile(localId, item.file);
   }
 
@@ -141,15 +140,15 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
     // checked before anything else, on top of the `disabled` attribute below.
     if (isPending) return;
     if (isOffline) {
-      setError("You're offline. Reconnect to send this message.");
+      toast.error("You're offline. Reconnect to send this message.");
       return;
     }
     if (hasUploadingAttachment) {
-      setError("Wait for attachments to finish uploading.");
+      toast.error("Wait for attachments to finish uploading.");
       return;
     }
     if (hasErroredAttachment) {
-      setError("Remove the failed attachment before sending.");
+      toast.error("Remove the failed attachment before sending.");
       return;
     }
 
@@ -161,11 +160,10 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
       attachmentIds,
     });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Write a message first.");
+      toast.error(parsed.error.issues[0]?.message ?? "Write a message first.");
       return;
     }
 
-    setError(null);
     setIsPending(true);
     try {
       const result = await sendMessage(parsed.data);
@@ -179,7 +177,7 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
       ) {
         // Reported failure, not a thrown one — same "keep the draft, reuse
         // the key" recovery path as the catch block below.
-        setError((result as { error: string }).error);
+        toast.error((result as { error: string }).error);
         return;
       }
 
@@ -195,7 +193,7 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
       // reused so pressing send again replays this intent instead of
       // minting a new one that could double-post if the first attempt
       // actually landed server-side.
-      setError("We could not send your message. Check your connection and try again.");
+      toast.error("We could not send your message. Check your connection and try again.");
     } finally {
       setIsPending(false);
     }
@@ -211,12 +209,6 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
       ) : null}
 
       <AttachmentPicker staged={staged} disabled={isPending} onFilesSelected={handleFilesSelected} onRemove={handleRemove} onRetry={handleRetry} />
-
-      {error ? (
-        <p role="alert" aria-live="polite" className="text-xs text-destructive">
-          {error}
-        </p>
-      ) : null}
 
       <div className="flex items-end gap-2">
         <Textarea

@@ -15,6 +15,38 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
+   Responsive density calibration.
+
+   The compact layout is not a second visual language; it is the same system
+   stepped down to the space a thumb and a narrow reading column provide.
+   Rem-based Tailwind sizes therefore scale together across marketing, auth,
+   dashboards, forum, enrollment, and messages. Pixel-sized icons and borders
+   stay crisp, while headings, gaps, card padding, and controls gain enough
+   room to avoid the oversized desktop composition on a phone.
+   --------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  html {
+    font-size: 93.75%;
+  }
+
+  body {
+    line-height: 1.48;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+@media (max-width: 390px) {
+  html {
+    font-size: 87.5%;
+  }
+}
+
+/* ---------------------------------------------------------------------------
    HardTech design tokens.
 
    Values transcribed from the shipped Figma Make stylesheet
