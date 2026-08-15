@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import type { ProgramWithCurriculum } from "@/server/services/marketing.service";
 
 import { decimalToCentavos, formatCentavos } from "./format-currency";
-import { renderProgramIcon, resolveAccent } from "./program-visuals";
+import { renderProgramIcon, resolveAccent, resolveProgramImagery } from "./program-visuals";
 import { ProgramPhoto } from "./program-photo";
 
 interface ProgramCardProps {
@@ -51,17 +51,7 @@ function InfoTile({
 }
 
 export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProps) {
-  const marketingImage =
-    program.name === "Computer Hardware Servicing"
-      ? "/images/gallery/gallery-01.jpg"
-      : program.name === "Cellphone Hardware Servicing"
-        ? "/images/gallery/gallery-08.jpg"
-        : program.name === "I.T. Software Development"
-          ? "/images/gallery/gallery-15.jpg"
-          : null;
-
-  if (!marketingImage) return null;
-
+  const imagery = resolveProgramImagery(program);
   const accent = resolveAccent(program.accentColor);
   const priceCentavos = decimalToCentavos(program.priceAmount);
 
@@ -78,13 +68,28 @@ export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProp
 
   const photo = (
     <div className="relative aspect-4/3 w-full overflow-hidden rounded-2xl lg:aspect-auto lg:h-full">
-      {/*
-        Plain <img>, not next/image: next.config.ts (images.remotePatterns) is
-        orchestrator-owned and Program.imageUrl is DATA-seeded, so the host is
-        not guaranteed to be allow-listed. next/image would throw at runtime
-        for an unconfigured domain.
-      */}
-      <ProgramPhoto src={marketingImage} alt={program.name} />
+      {imagery.kind === "photo" ? (
+        // Plain <img>, not next/image: next.config.ts (images.remotePatterns)
+        // is orchestrator-owned and Program.imageUrl is DATA-seeded, so the
+        // host is not guaranteed to be allow-listed. next/image would throw
+        // at runtime for an unconfigured domain.
+        <ProgramPhoto src={imagery.src!} alt={program.name} />
+      ) : (
+        // Deliberate fallback: no gallery photo genuinely depicts this
+        // program's training (see program-visuals.tsx), so an accent-tinted
+        // icon panel stands in rather than a void or a misleading photo.
+        <div
+          className={cn(
+            "flex size-full flex-col items-center justify-center gap-3",
+            accent.bg,
+          )}
+        >
+          {renderProgramIcon(program.iconName, cn("size-14", accent.text))}
+          <span className={cn("px-4 text-center text-sm font-medium", accent.text)}>
+            {program.name}
+          </span>
+        </div>
+      )}
       {program.badgeLabel ? (
         <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground">
           {program.badgeLabel}

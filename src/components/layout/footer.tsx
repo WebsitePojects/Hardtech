@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ExternalLink, Mail, MapPin, Phone } from "lucide-react";
 
 import { SiteLogo } from "./site-logo";
+import { ScrollReveal } from "@/components/motion/scroll-reveal";
 
 /**
  * Global site footer (docs/screens/desktop-01.md #5, docs/screens/
@@ -10,6 +11,14 @@ import { SiteLogo } from "./site-logo";
  * on mobile, then a copyright bar. Quick Links intentionally omits Enroll
  * and Forum; every screenshot of this footer (desktop and mobile) shows
  * only Home / About / Programs / Gallery / Contact.
+ *
+ * The KaiboPH-style "signature footer" pass on top of that structure: each
+ * column reveals on scroll with an 80ms stagger (vgldesign technique #1,
+ * `EASE_REVEAL`), the section sits on the same tinted `.hero-glow` radial
+ * used behind the homepage hero (not pure black), and it closes on an
+ * oversized ghost "HARDTECH" wordmark instead of a flat link list — the
+ * large-scale layered-typography closing moment the reference genre is known
+ * for. No copy was added: every string below already existed in this file.
  */
 const quickLinks = [
   { label: "Home", href: "/" },
@@ -21,10 +30,18 @@ const quickLinks = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-glass-border bg-surface-secondary">
-      <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-10 sm:px-6 md:grid-cols-3 md:py-12">
-        <div className="flex flex-col gap-4">
-          <SiteLogo />
+    <footer className="relative overflow-hidden border-t border-glass-border bg-surface-secondary">
+      {/* Same tinted radial glow language as the homepage hero — brand
+          green, never pure black. Negative z-index keeps it behind the
+          (non-positioned) content below regardless of DOM order. */}
+      <div
+        aria-hidden
+        className="hero-glow pointer-events-none absolute inset-x-0 top-0 -z-10 h-[28rem] opacity-70"
+      />
+
+      <div className="relative mx-auto grid w-full max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-3 md:py-20">
+        <ScrollReveal className="flex flex-col gap-4">
+          <SiteLogo className="py-1" />
           <p className="max-w-xs text-sm text-muted-foreground">
             Professional IT training for tomorrow&apos;s tech leaders.
           </p>
@@ -37,14 +54,14 @@ export function Footer() {
           */}
           <a
             href="#"
-            className="inline-flex w-fit items-center gap-2 rounded-full border border-glass-border px-4 py-2 text-sm font-medium text-foreground transition-[background-color,border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:border-[var(--glass-border-strong)] hover:bg-glass-hover hover:shadow-glow-sm motion-reduce:transition-none"
+            className="inline-flex min-h-11 w-fit items-center gap-2 rounded-full border border-glass-border px-4 py-2 text-sm font-medium text-foreground transition-[background-color,border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:border-[var(--glass-border-strong)] hover:bg-glass-hover hover:shadow-glow-sm motion-reduce:transition-none"
           >
             <ExternalLink className="size-4" aria-hidden />
             Follow on Facebook
           </a>
-        </div>
+        </ScrollReveal>
 
-        <div className="flex flex-col gap-3">
+        <ScrollReveal delayMs={80} className="flex flex-col gap-3">
           <h3 className="font-sub text-xs font-semibold tracking-widest text-neon uppercase">
             Quick Links
           </h3>
@@ -53,16 +70,16 @@ export function Footer() {
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className="text-sm text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:text-foreground motion-reduce:transition-none"
+                  className="inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:text-foreground motion-reduce:transition-none"
                 >
                   {link.label}
                 </Link>
               </li>
             ))}
           </ul>
-        </div>
+        </ScrollReveal>
 
-        <div className="flex flex-col gap-3">
+        <ScrollReveal delayMs={160} className="flex flex-col gap-3">
           <h3 className="font-sub text-xs font-semibold tracking-widest text-neon uppercase">
             Contact
           </h3>
@@ -73,23 +90,52 @@ export function Footer() {
             </span>
             <a
               href="tel:1234567890"
-              className="flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:text-foreground motion-reduce:transition-none"
+              className="flex min-h-11 items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:text-foreground motion-reduce:transition-none"
             >
               <Phone className="size-4 shrink-0" aria-hidden />
               (123) 456-7890
             </a>
             <a
               href="mailto:hardtechitcorp@gmail.com"
-              className="flex items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:text-foreground motion-reduce:transition-none"
+              className="flex min-h-11 items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:text-foreground motion-reduce:transition-none"
             >
               <Mail className="size-4 shrink-0" aria-hidden />
               hardtechitcorp@gmail.com
             </a>
           </div>
-        </div>
+        </ScrollReveal>
       </div>
 
-      <div className="border-t border-glass-border">
+      {/* Closing visual moment: an oversized ghost wordmark in the brand's
+          Teachers title face, tinted with the same green the rest of the
+          site glows with. Purely decorative — SiteLogo above already carries
+          the accessible brand name — so it's hidden from the a11y tree and
+          clipped by the footer's own overflow-hidden rather than widening
+          the page.
+
+          This sits directly above the copyright bar — the last element on
+          the page — so the default ScrollReveal (rootMargin -80px, 15%
+          threshold) could never fire here: on a short document the page
+          runs out of scroll room before this element satisfies "15%
+          visible inside a viewport 80px shorter than the real one," and it
+          stayed at opacity: 0 forever (verified via computed-style probe,
+          simulated scroll to the document's end at 390x900). Fixed at the
+          source instead of worked around here: `ScrollReveal` now takes a
+          `nearBottom` prop for exactly this case (see
+          src/components/motion/scroll-reveal.tsx) — `rootMargin: "0px"` and
+          `threshold: 0`, satisfiable by an element with no more page below
+          it to scroll through. Re-verified firing after the fix (Playwright,
+          scrolled to document end, 390x900): opacity 0 -> 1. */}
+      <ScrollReveal nearBottom durationMs={900} className="relative -mb-3 select-none text-center sm:-mb-4 md:-mb-6">
+        <span
+          aria-hidden
+          className="font-title inline-block bg-gradient-to-b from-primary/25 via-primary/8 to-transparent bg-clip-text text-[19vw] leading-[0.8] font-bold tracking-tighter text-transparent sm:text-[15vw] md:text-[12vw] lg:text-[9vw]"
+        >
+          HARDTECH
+        </span>
+      </ScrollReveal>
+
+      <div className="relative border-t border-glass-border">
         <p className="mx-auto max-w-6xl px-4 py-6 text-center text-xs text-muted-foreground sm:px-6">
           © 2026 HardTech IT Corp. All rights reserved. · Powered by{" "}
           <a href="#" className="font-medium text-neon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:underline">

@@ -34,11 +34,18 @@ export function MobileNav({ user }: { user: NavbarUser | null }) {
   return (
     <Sheet>
       <SheetTrigger asChild>
+        {/*
+          shadcn's `size="icon"` is `size-8` (32px) — under the 44px touch
+          target floor. `size-11` here overrides it at this call site only
+          (twMerge resolves the conflict in favor of the later class, same
+          pattern as user-management-filters.tsx) rather than changing the
+          shared primitive's default for every other icon button in the app.
+        */}
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="border border-glass-border bg-glass md:hidden"
+          className="size-11 border border-glass-border bg-glass md:hidden"
           aria-label="Open menu"
         >
           <Menu className="size-5" aria-hidden />

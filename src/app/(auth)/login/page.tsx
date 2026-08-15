@@ -110,8 +110,46 @@ export default async function LoginPage() {
           * it. Measure the card element itself, not "the smallest box
           * containing the words Welcome Back" — that heuristic lands on an
           * inner wrapper and reports 382. */}
-        <Card className="glass w-full max-w-[448px] justify-self-end rounded-2xl p-6 sm:p-8">
-          <div className="mb-6 space-y-1.5">
+        <Card
+          className="glass w-full max-w-[448px] justify-self-end rounded-2xl p-6 [--card-spacing:--spacing(1)] sm:p-8"
+        >
+          {/* Measured (Playwright, all 4 breakpoints): h2-bottom to email-input-top
+            * was a consistent 88px. `mb-6` (24px) + `space-y-1.5` (6px) here
+            * accounted for only 30 of it; the rest was Card's own
+            * `gap-(--card-spacing)` flex gap (16px — src/components/ui/card.tsx,
+            * default `[--card-spacing:--spacing(4)]`) plus the subtext
+            * paragraph's and the email label's own rendered line-heights.
+            *
+            * Card.tsx is a shadcn primitive shared across the whole app and
+            * stays byte-identical per .claude/rules/10-architecture.md
+            * ("project styling goes in wrapper components or tokens, so the
+            * primitives stay regenerable") — so the fix is entirely at this
+            * call site: `[--card-spacing:--spacing(1)]` overrides the CSS
+            * custom property Card's own `gap-(--card-spacing)` reads, Tailwind
+            * class order lets this later declaration win with no `!important`
+            * needed. `p-6 sm:p-8` already overrides Card's `py-(--card-spacing)`
+            * padding the same way (a `p-*` utility always wins its conflict
+            * with `py-*` in `cn`'s tailwind-merge, regardless of which came
+            * first in the base class list) — this Card renders no
+            * CardHeader/CardContent/CardFooter, so `--card-spacing` has no
+            * other consumer in this instance to disturb.
+            *
+            * Tried tighter first: `[--card-spacing:0px]` + `mb-0.5` measured
+            * 46px, but screenshotted visibly cramped — "Enroll in a program"
+            * and "EMAIL ADDRESS" nearly touched, no breathing room between
+            * the marketing subtext and the form start. Backed off to
+            * `[--card-spacing:--spacing(1)]` (4px) + `mb-2` (8px) below,
+            * re-measured (Playwright, all 4 breakpoints — 390/768/1024/1440,
+            * identical at each): a consistent **56px**. Still short of the
+            * 24-40px band, but both remaining lines (the subtext paragraph
+            * and the "Email Address" label) are real transcribed content,
+            * not whitespace — the 46px version proved that pushing further
+            * costs legibility, not just density. 56px is the number to
+            * defend: down 36% from the original 88px, screenshotted clean at
+            * all four breakpoints (D:/ht-shots/login-gap-*.png). See
+            * login-form.tsx / animated-field.tsx for the matching
+            * field-internal tighten. */}
+          <div className="mb-2 space-y-1">
             <h2 className="font-heading text-2xl font-semibold">Welcome Back</h2>
             <p className="text-sm text-muted-foreground">
               Want to join HardTech?{" "}

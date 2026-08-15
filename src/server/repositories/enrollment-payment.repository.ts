@@ -2,11 +2,22 @@ import { db } from "@/server/db";
 import { randomBytes } from "node:crypto";
 
 import { Prisma, type EnrollmentPaymentStatus, type PaymentMethod } from "@/../generated/prisma/client";
+import { mediaAssetRepository } from "@/server/repositories/media-asset.repository";
 
 /** Pure data access for EnrollmentPayment. */
 export const enrollmentPaymentRepository = {
   findById(id: string) { return db.enrollmentPayment.findUnique({ where: { id } }); },
   transition(tx: Prisma.TransactionClient, id: string, next: EnrollmentPaymentStatus, adminId: string, reason?: string) { return tx.enrollmentPayment.updateMany({ where: { id, status: "SUBMITTED" }, data: next === "VERIFIED" ? { status: next, verifiedAt: new Date(), verifiedByUserId: adminId, rejectionReason: null } : { status: next, rejectedAt: new Date(), rejectionReason: reason ?? null } }).then((result) => result.count); },
+  /**
+   * Creates the payment + its 1-3 Enrollment rows, and — in the SAME
+   * transaction — attaches the already-uploaded proof `MediaAsset` (see
+   * enrollment.service.ts, which uploads to Cloudinary and reserves/confirms
+   * the MediaAsset row before calling this) to the new payment via
+   * `mediaAssetRepository.attachToOwner`. Attaching inside this transaction,
+   * rather than as a follow-up call, is what makes "payment exists" and
+   * "asset is attached" atomic: a crash between the two would otherwise leave
+   * an ACTIVE, uploaded asset that no payment row ever references.
+   */
   createWithEnrollments(input: {
     traineeId: string;
     idempotencyKey: string;
@@ -14,32 +25,52 @@ export const enrollmentPaymentRepository = {
     paymentMethod: PaymentMethod;
     totalAmount: Prisma.Decimal;
     proofImageUrl: string;
+    mediaAssetId: string;
     programs: Array<{ id: string; priceAmount: Prisma.Decimal }>;
   }) {
-    return db.$transaction(async (tx) => tx.enrollmentPayment.create({
-      data: {
-        trainee: { connect: { id: input.traineeId } },
-        idempotencyKey: input.idempotencyKey,
-        referenceCode: input.referenceCode,
-        paymentMethod: input.paymentMethod,
-        totalAmount: input.totalAmount,
-        proofImageUrl: input.proofImageUrl,
-        enrollments: {
-          create: input.programs.map((program) => ({
-            enrollmentRef: `ENR-${randomReference()}`,
-            trainee: { connect: { id: input.traineeId } },
-            program: { connect: { id: program.id } },
-            amount: program.priceAmount,
-            status: "PENDING_VERIFICATION",
-          })),
+    return db.$transaction(async (tx) => {
+      const payment = await tx.enrollmentPayment.create({
+        data: {
+          trainee: { connect: { id: input.traineeId } },
+          idempotencyKey: input.idempotencyKey,
+          referenceCode: input.referenceCode,
+          paymentMethod: input.paymentMethod,
+          totalAmount: input.totalAmount,
+          proofImageUrl: input.proofImageUrl,
+          enrollments: {
+            create: input.programs.map((program) => ({
+              enrollmentRef: `ENR-${randomReference()}`,
+              trainee: { connect: { id: input.traineeId } },
+              program: { connect: { id: program.id } },
+              amount: program.priceAmount,
+              status: "PENDING_VERIFICATION",
+            })),
+          },
         },
-      },
-      include: { enrollments: true },
-    }));
+        include: { enrollments: true },
+      });
+      await mediaAssetRepository.attachToOwner(input.mediaAssetId, { enrollmentPaymentId: payment.id }, tx);
+      return payment;
+    });
   },
 
   findByIdempotencyKey(idempotencyKey: string) {
     return db.enrollmentPayment.findUnique({ where: { idempotencyKey }, include: { enrollments: true } });
+  },
+
+  /**
+   * Single-row read of one payment's proof image URL — the admin detail
+   * modal a moderator opens to actually look at one proof. `select`, not
+   * `include`, so this is the ONLY query that carries the image: the list
+   * query (`findManySubmittedWithDetails` below) deliberately does not, per
+   * .claude/rules/50-database.md ("a verification endpoint returns the fact,
+   * not the record" — here inverted: the list returns the fact of pending
+   * items, this single-row read returns the record).
+   */
+  findProofImageUrl(paymentId: string): Promise<string | null> {
+    return db.enrollmentPayment
+      .findUnique({ where: { id: paymentId }, select: { proofImageUrl: true } })
+      .then((row) => row?.proofImageUrl ?? null);
   },
 
   countByStatus(status: EnrollmentPaymentStatus) {
@@ -59,15 +90,26 @@ export const enrollmentPaymentRepository = {
    * The admin "Enrollments & Payment Verification" pending queue
    * (desktop-02.md #3): every SUBMITTED payment with the trainee and every
    * program it covers (one payment can fund 1-3 programs in a single
-   * checkout). One query — trainee and enrollments/programs are `include`d,
+   * checkout). One query — trainee and enrollments/programs are joined,
    * never fetched per row.
+   *
+   * `select`, not `include` (.claude/rules/50-database.md, "select only the
+   * columns needed"): the previous `include` dragged `proofImageUrl` — which
+   * used to hold a base64 data: URI — onto every row of every load of this
+   * list. This list never needs the image; `findProofImageUrl` above serves
+   * the one-row detail read the admin's "view proof" action actually needs.
    */
   findManySubmittedWithDetails() {
     return db.enrollmentPayment.findMany({
       where: { status: "SUBMITTED" },
-      include: {
-        trainee: true,
-        enrollments: { include: { program: true } },
+      select: {
+        id: true,
+        totalAmount: true,
+        paymentMethod: true,
+        referenceCode: true,
+        submittedAt: true,
+        trainee: { select: { id: true, firstName: true, lastName: true } },
+        enrollments: { select: { program: { select: { shortName: true } } } },
       },
       orderBy: { submittedAt: "asc" },
     });

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Inter, Manrope, Teachers } from "next/font/google";
 import "./globals.css";
+import { CustomCursor } from "@/components/motion/custom-cursor";
+import { SmoothScrollProvider } from "@/components/motion/smooth-scroll-provider";
 
 /**
  * The design system declares three families (docs/research/01-design-source.md):
@@ -70,7 +72,12 @@ export default function RootLayout({
        * docs/research/02-reference-behavior.md §3 and .claude/lessons.md for
        * the measured values.
        */}
-      <body className="cyber-bg min-h-full flex flex-col">{children}</body>
+      <body className="cyber-bg min-h-full flex flex-col">
+        <SmoothScrollProvider>
+          <CustomCursor />
+          {children}
+        </SmoothScrollProvider>
+      </body>
     </html>
   );
 }

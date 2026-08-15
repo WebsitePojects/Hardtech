@@ -36,19 +36,44 @@ export async function HomeHero() {
         navbar bottom 55).
       */}
       <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-4 px-4 pt-20 pb-8 text-center sm:gap-6 sm:px-6 sm:pb-16 lg:max-w-5xl lg:gap-7 lg:pt-24 lg:pb-24">
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 px-3 py-1 text-xs font-semibold tracking-wide text-primary">
+        {/*
+          vgldesign hero load choreography (globals.css, "hero load
+          choreography" block): fires once on mount, on its own timeline —
+          not the scroll-reveal system. Each headline line masks up from
+          translateY(100%); the badge and CTA row slide in from the left.
+          Staggered via inline --reveal-delay custom properties (badge 0.1s,
+          headline lines 0.3s/0.5s, subtext 0.9s, CTAs 1.1s) so the eye
+          finishes reading before the button asks for a click, matching the
+          measured cadence in vgldesign technique #2. Pure CSS — no
+          "use client" needed, this stays a Server Component.
+        */}
+        <div
+          className="hero-fade-slide inline-flex items-center gap-1.5 rounded-full border border-primary/40 px-3 py-1 text-xs font-semibold tracking-wide text-primary"
+          style={{ "--reveal-delay": "0.1s" } as React.CSSProperties}
+        >
           <span className="size-1.5 rounded-full bg-primary" aria-hidden />
           ENROLLMENTS OPEN - 2026
         </div>
         <h1 className="text-4xl font-bold leading-[1.08] text-balance sm:text-5xl lg:text-7xl">
-          Build Your Future
-          <br />
-          in <span className="bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent">Modern Technology</span>
+          <span className="hero-reveal-line block">
+            <span style={{ "--reveal-delay": "0.3s" } as React.CSSProperties}>Build Your Future</span>
+          </span>
+          <span className="hero-reveal-line block">
+            <span style={{ "--reveal-delay": "0.5s" } as React.CSSProperties}>
+              in <span className="bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent">Modern Technology</span>
+            </span>
+          </span>
         </h1>
-        <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground lg:text-xl">
+        <p
+          className="hero-fade-slide max-w-2xl text-lg leading-relaxed text-muted-foreground lg:text-xl"
+          style={{ "--reveal-delay": "0.9s" } as React.CSSProperties}
+        >
           Get professionally trained in Computer Hardware Servicing, Cellphone Repair, and I.T. Software Development through immersive hands-on learning.
         </p>
-        <div className="flex flex-col gap-3 sm:flex-row">
+        <div
+          className="hero-fade-slide flex flex-col gap-3 sm:flex-row"
+          style={{ "--reveal-delay": "1.1s" } as React.CSSProperties}
+        >
           <Button asChild size="lg"><Link href="/enroll">Enroll Now<ArrowRight /></Link></Button>
           <Button asChild size="lg" variant="outline"><Link href="/programs">Explore Programs<ChevronRight /></Link></Button>
         </div>

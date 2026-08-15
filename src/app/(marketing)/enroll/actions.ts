@@ -18,10 +18,10 @@ export async function submitEnrollmentAction(rawInput: unknown): Promise<Enrollm
   if (session && session.role !== "TRAINEE") return { ok: false, error: "Only trainee accounts may enroll." };
 
   try {
-    const proofBytes = Buffer.from(await parsed.data.proof.arrayBuffer()).toString("base64");
+    const proofBytes = Buffer.from(await parsed.data.proof.arrayBuffer());
     const result = await submitEnrollmentService({
       ...parsed.data,
-      proofImageUrl: `data:${parsed.data.proof.type};base64,${proofBytes}`,
+      proof: { bytes: proofBytes, mimeType: parsed.data.proof.type },
     });
     updateTag("enrollments");
     updateTag("enrollment-payments");

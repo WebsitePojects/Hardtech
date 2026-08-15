@@ -5,7 +5,10 @@ import {
   DashboardStatCard,
   DashboardStatGrid,
 } from "@/components/dashboard/dashboard-stat-card";
-import { getAdminPendingEnrollmentQueue } from "@/server/services/dashboard.service";
+import {
+  getAdminPendingEnrollmentQueue,
+  getPaymentProofUrl,
+} from "@/server/services/dashboard.service";
 import {
   EnrollmentReviewCard,
   type EnrollmentReviewItem,
@@ -25,7 +28,21 @@ function formatPeso(amount: number): string {
  * #1/#3).
  */
 export async function EnrollmentsSection() {
-  const pendingEnrollments: EnrollmentReviewItem[] = (await getAdminPendingEnrollmentQueue()).map((item) => ({
+  const queue = await getAdminPendingEnrollmentQueue();
+
+  // The queue itself deliberately no longer carries the proof image: it used
+  // to be a base64 data URI stored in a Postgres column, so every pending row
+  // dragged the whole picture onto the page on every load. The proof now
+  // lives in Cloudinary and is read one payment at a time.
+  //
+  // These reads are issued in parallel rather than in a loop with an await
+  // inside it, which would be a serial waterfall. The list is the ADMIN'S
+  // PENDING QUEUE — bounded by how many payments are awaiting review, and an
+  // admin's job is to empty it — so N stays small. If it ever does not, the
+  // fix is a batched lookup in the service, not a loop here.
+  const proofUrls = await Promise.all(queue.map((item) => getPaymentProofUrl(item.paymentId)));
+
+  const pendingEnrollments: EnrollmentReviewItem[] = queue.map((item, index) => ({
     id: item.paymentId,
     traineeName: item.trainee.name,
     enrollmentRef: item.referenceCode,
@@ -33,7 +50,9 @@ export async function EnrollmentsSection() {
     paymentMethod: item.paymentMethod,
     amountLabel: formatPeso(item.amount),
     dateLabel: formatDate(item.submittedAt),
-    receiptUrl: item.proofImageUrl,
+    // null when the payment was actioned by another admin between the queue
+    // read and this one — the card renders "no receipt" rather than breaking.
+    receiptUrl: proofUrls[index],
   }));
 
   return (

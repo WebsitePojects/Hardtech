@@ -6,9 +6,9 @@ import { Eye, EyeOff, LogIn } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { AnimatedField } from "./animated-field";
 import { loginAction } from "./actions";
 
 /**
@@ -51,44 +51,37 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-      <div className="space-y-1.5">
-        <Label htmlFor="login-email" className="text-xs tracking-wider text-muted-foreground uppercase">
-          Email Address
-        </Label>
-        <Input
-          id="login-email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          placeholder="you@gmail.com"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          disabled={isPending}
-          required
-        />
-      </div>
+      <AnimatedField
+        id="login-email"
+        name="email"
+        type="email"
+        label="Email Address"
+        autoComplete="email"
+        placeholder="you@gmail.com"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        disabled={isPending}
+        error={Boolean(error)}
+        required
+      />
 
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="login-password" className="text-xs tracking-wider text-muted-foreground uppercase">
-            Password
-          </Label>
+      <AnimatedField
+        id="login-password"
+        name="password"
+        type={showPassword ? "text" : "password"}
+        label="Password"
+        labelExtra={
           <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
             Forgot password?
           </Link>
-        </div>
-        <div className="relative">
-          <Input
-            id="login-password"
-            name="password"
-            type={showPassword ? "text" : "password"}
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            disabled={isPending}
-            required
-            className="pr-9"
-          />
+        }
+        autoComplete="current-password"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        disabled={isPending}
+        error={Boolean(error)}
+        required
+        rightAdornment={
           <button
             type="button"
             onClick={() => setShowPassword((current) => !current)}
@@ -98,8 +91,8 @@ export function LoginForm() {
           >
             {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
           </button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="flex items-center gap-2">
         <Checkbox

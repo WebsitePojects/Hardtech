@@ -580,6 +580,161 @@
       transparent 70%
     );
   }
+
+  /*
+   * CustomCursor (src/components/motion/custom-cursor.tsx) mounts these two
+   * elements and toggles [data-hidden]/[data-hover]/[data-active] on them,
+   * but shipped with no matching CSS anywhere — the component rendered two
+   * unstyled divs with zero size, so the "signature cursor" was invisible
+   * the entire time it was mounted. The component itself already gates on
+   * `(pointer: fine)` and reduced motion and only sets the
+   * `data-custom-cursor` attribute when enabled, so hiding the native cursor
+   * here is scoped to exactly those sessions.
+   */
+  html[data-custom-cursor="true"],
+  html[data-custom-cursor="true"] * {
+    cursor: none;
+  }
+
+  .custom-cursor-dot,
+  .custom-cursor-ring {
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 9999;
+    border-radius: 9999px;
+    transition:
+      opacity 200ms var(--ease-ui, cubic-bezier(0.4, 0, 0.2, 1)),
+      width 200ms var(--ease-ui, cubic-bezier(0.4, 0, 0.2, 1)),
+      height 200ms var(--ease-ui, cubic-bezier(0.4, 0, 0.2, 1)),
+      background-color 200ms var(--ease-ui, cubic-bezier(0.4, 0, 0.2, 1));
+  }
+
+  .custom-cursor-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--neon);
+    box-shadow: 0 0 8px rgb(var(--neon-rgb) / 0.8);
+  }
+
+  .custom-cursor-ring {
+    width: 32px;
+    height: 32px;
+    margin: -13px 0 0 -13px; /* offsets the dot's own -50% centering transform */
+    border: 1.5px solid rgb(var(--neon-rgb) / 0.5);
+    background: transparent;
+  }
+
+  .custom-cursor-ring[data-hover="true"] {
+    width: 52px;
+    height: 52px;
+    margin: -23px 0 0 -23px;
+    background: rgb(var(--neon-rgb) / 0.1);
+    border-color: var(--neon);
+  }
+
+  .custom-cursor-ring[data-active="true"] {
+    width: 26px;
+    height: 26px;
+    margin: -10px 0 0 -10px;
+    background: rgb(var(--neon-rgb) / 0.18);
+  }
+
+  .custom-cursor-dot[data-hidden="true"],
+  .custom-cursor-ring[data-hidden="true"] {
+    opacity: 0;
+  }
+
+  /*
+   * vgldesign technique #9 — themed scrollbar and text selection. Firefox
+   * gets the `scrollbar-color` pair on :root; WebKit/Blink get the
+   * ::-webkit-scrollbar rule set. Both read the brand token, not a pasted
+   * hex, so light/dark mode stay correct automatically.
+   */
+  ::selection {
+    background: rgb(var(--neon-rgb) / 0.28);
+    color: var(--foreground);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--neon-rgb) / 0.45);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--neon-rgb) / 0.7);
+    background-clip: padding-box;
+  }
+}
+
+@layer base {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--neon-rgb) / 0.45) transparent;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   vgldesign technique #2 — hero load choreography (src/features/home/hero.tsx).
+   Fires once on page load, on its own timeline — NOT the IntersectionObserver
+   scroll-reveal system (src/components/motion/scroll-reveal.tsx) — so it is
+   pure CSS with no client component required; hero.tsx stays a Server
+   Component. EASE_DRAMA (cubic-bezier(0.77,0,0.175,1), see
+   src/components/motion/easing.ts) is reserved for "hero + curtain only,
+   sparingly" and this is exactly that use.
+
+   Per impeccable's motion rule ("reveal animations must enhance an
+   already-visible default, never gate visibility on a class-triggered
+   transition"): the base state below is the FINAL, fully visible state.
+   Only inside `@media (prefers-reduced-motion: no-preference)` do the
+   pre-trigger transform/opacity and the animation get applied — so a
+   reduced-motion session, a headless renderer, or plain unstyled HTML all
+   render the hero correctly with zero JS and zero risk of a stuck-invisible
+   element. `--reveal-delay` is set per-element at the call site so one pair
+   of keyframes serves the whole stagger.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-reveal-line {
+    overflow: hidden;
+  }
+
+  .hero-reveal-line > span {
+    display: block;
+    transform: translateY(100%);
+    animation: hero-reveal-text 1.1s cubic-bezier(0.77, 0, 0.175, 1) var(--reveal-delay, 0s)
+      forwards;
+  }
+
+  .hero-fade-slide {
+    opacity: 0;
+    transform: translateX(-24px);
+    animation: hero-slide-in 0.9s cubic-bezier(0.77, 0, 0.175, 1) var(--reveal-delay, 0s) forwards;
+  }
+}
+
+@keyframes hero-reveal-text {
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-slide-in {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* ---------------------------------------------------------------------------

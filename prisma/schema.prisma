@@ -262,6 +262,9 @@ model User {
   communityRequests         CommunityRequest[]     @relation("CommunityRequestRequester")
   communityRequestsReviewed CommunityRequest[]     @relation("CommunityRequestReviewer")
   mediaAssetsUploaded       MediaAsset[]           @relation("MediaAssetUploader")
+  conversationsParticipating ConversationParticipant[] @relation("ConversationParticipantUser")
+  messagesSent              Message[]              @relation("MessageSender")
+  messagesDeleted           Message[]              @relation("MessageDeletedBy")
 
   @@index([role])
   @@index([status])
@@ -437,6 +440,7 @@ model EnrollmentPayment {
   updatedAt        DateTime                @updatedAt
 
   enrollments Enrollment[]
+  mediaAsset  MediaAsset?
 
   @@index([traineeId])
   @@index([status])
@@ -642,7 +646,16 @@ model AuditLog {
 
   @@index([category, createdAt])
   @@index([referenceId])
-  @@index([actorUserId])
+  // Upgraded from a bare actorUserId index: serves both "this actor's
+  // history" and "this actor's history, newest first" without a separate
+  // in-memory sort — the admin audit log needs to filter and sort by actor
+  // as well as by category.
+  @@index([actorUserId, createdAt])
+  // Serves "sort by newest, no category filter" — the admin audit log's
+  // default view. Without this, an unfiltered sorted read falls back to
+  // [category, createdAt], which cannot serve a query with no category
+  // predicate.
+  @@index([createdAt])
 }
 
 /// One bell-icon notification. mobile-04 help ("Reading Your
@@ -1017,6 +1030,16 @@ model MediaAsset {
   post           ForumPost?    @relation(fields: [postId], references: [id], onDelete: SetNull)
   replyId        String?
   reply          Reply?        @relation(fields: [replyId], references: [id], onDelete: SetNull)
+  /// One payment proof image per checkout. Unique — same 1:1 shape as
+  /// Module/GalleryPhoto/Announcement above, added so `/enroll`'s proof
+  /// upload routes through this registry (and its purge outbox) instead of
+  /// a base64 data: URI in EnrollmentPayment.proofImageUrl.
+  enrollmentPaymentId String?            @unique
+  enrollmentPayment   EnrollmentPayment? @relation(fields: [enrollmentPaymentId], references: [id], onDelete: SetNull)
+  /// Not unique: a Message may carry up to 5 attachments (private
+  /// messaging), same many-per-owner shape as postId/replyId above.
+  messageId      String?
+  message        Message?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1025,6 +1048,8 @@ model MediaAsset {
   @@index([postId])
   // Serves Reply attachment lookups ("what's attached to this reply").
   @@index([replyId])
+  // Serves Message attachment lookups ("what's attached to this message").
+  @@index([messageId])
   // Serves a per-uploader asset history ordered newest-first (e.g. an
   // admin "my uploads" view or an abuse investigation).
   @@index([uploadedByUserId, createdAt])
@@ -1032,6 +1057,124 @@ model MediaAsset {
   // hand in the migration SQL (purgeState IN ('PENDING','RESERVED')) —
   // Prisma's schema DSL has no partial-index syntax, so it cannot be
   // declared here. See the migration.sql comment for the reasoning.
+}
+
+// ---------------------------------------------------------------------------
+// Private messaging (direct, any role <-> any role)
+// ---------------------------------------------------------------------------
+//
+// Direct (1:1) only — no group conversations, no calls, no video, no
+// reactions, no editing (see src/server/services/messaging.service.ts, the
+// fixed interface this schema backs). Delivery has exactly three states:
+// SENT (row exists) -> DELIVERED (the recipient's client has fetched it) ->
+// SEEN (the recipient explicitly read up to it). Because a direct
+// conversation has exactly one recipient per message, `deliveredAt`/`readAt`
+// live directly on Message rather than needing a per-recipient join table —
+// that would only be needed for group chat, which is out of scope.
+//
+// GROWTH SHAPE: Message is expected to be this schema's largest table by a
+// wide margin — every DM, forever. A row is small (~200-400 bytes: two FKs,
+// a timestamp, a short body; attachments live in Cloudinary via MediaAsset,
+// never inline). RETENTION PLAN: keep forever. At 10M rows that is a few GB,
+// affordable on Postgres and cheap to index; if it ever becomes a real cost,
+// archive conversations inactive for 2+ years to cold storage as a follow-up
+// — not needed at this product's scale today. Conversation and
+// ConversationParticipant are small by comparison (one row per pair of
+// users who have ever messaged, two participant rows per conversation).
+
+/// Lifecycle of one message's delivery to its one recipient (direct
+/// conversations only — see the section note above).
+enum MessageDeliveryState {
+  SENT
+  DELIVERED
+  SEEN
+}
+
+/// One direct (1:1) conversation between two users of any role. `directKey`
+/// is the two participant user ids sorted and joined
+/// (`"${minId}:${maxId}"`), computed and unique so `getOrCreateDirectConversation`
+/// can be a single `INSERT ... ON CONFLICT (directKey) DO NOTHING` — the
+/// concrete duplicate-submit guard for two concurrent "message this user"
+/// clicks racing to create the same conversation (non-negotiables rule 2).
+/// `lastMessageAt` is denormalized from the newest Message row and bumped in
+/// the same transaction that creates it, so the conversation list can sort
+/// without a correlated subquery per row.
+model Conversation {
+  id            String   @id @default(cuid())
+  directKey     String   @unique
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+}
+
+/// One user's membership row in one conversation. `lastReadMessageId` /
+/// `lastReadAt` are this participant's own read watermark — set only by
+/// `markConversationRead` for THIS user, never by the other participant's
+/// activity. `unreadCount` and `lastMessageAt` are both denormalized onto
+/// this row (mirrored from Conversation/Message in the same transaction as
+/// the write that changes them) specifically so `getUnreadTotal` and
+/// `listConversations` never scan Message: see the repository's doc
+/// comments for the exact transactional discipline that keeps this counter
+/// from drifting the way ForumPost's reaction counters were found to (see
+/// .claude/lessons.md, 2026-08-15 entry) — every mutation of `unreadCount`
+/// happens in the same transaction as the Message row change that causes
+/// it, and moderation deletes correct it explicitly rather than bypassing it.
+model ConversationParticipant {
+  id                String       @id @default(cuid())
+  conversationId    String
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User         @relation("ConversationParticipantUser", fields: [userId], references: [id], onDelete: Cascade)
+  // CHECK ConversationParticipant_unread_count_non_negative (unreadCount >= 0)
+  unreadCount       Int          @default(0)
+  lastMessageAt     DateTime     @default(now())
+  lastReadMessageId String?
+  lastReadAt        DateTime?
+  joinedAt          DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+  // Serves listConversations: "this user's conversations, newest activity
+  // first" — a covering index, no join-then-sort against Conversation.
+  @@index([userId, lastMessageAt])
+}
+
+/// One message in one direct conversation. `idempotencyKey` is minted once
+/// per send intent (not per attempt) so a retried `sendMessage` replays
+/// instead of duplicating (non-negotiables rule 1/2) — same pattern as
+/// EnrollmentPayment.idempotencyKey. Soft-deleted by admin moderation
+/// (`isDeleted`/`deletedAt`/`deletedByUserId`) rather than hard-deleted, so
+/// the other participant sees "message removed" instead of a silent gap and
+/// the audit trail survives.
+model Message {
+  id              String               @id @default(cuid())
+  conversationId  String
+  conversation    Conversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId        String
+  sender          User                 @relation("MessageSender", fields: [senderId], references: [id], onDelete: Restrict)
+  body            String
+  idempotencyKey  String               @unique
+  deliveryState   MessageDeliveryState @default(SENT)
+  deliveredAt     DateTime?
+  readAt          DateTime?
+  isDeleted       Boolean              @default(false)
+  deletedAt       DateTime?
+  deletedByUserId String?
+  deletedBy       User?                @relation("MessageDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime             @default(now())
+
+  attachments MediaAsset[]
+
+  // Serves listMessages: one conversation's messages, newest/oldest via
+  // cursor on this pair.
+  @@index([conversationId, createdAt])
+  // Serves the opportunistic "mark delivered on fetch" bulk update and the
+  // unread-reconciliation fallback query, both scoped to one conversation.
+  @@index([conversationId, readAt])
+  // Serves moderation ("messages sent by this user").
+  @@index([senderId])
 }
 
 // ---------------------------------------------------------------------------

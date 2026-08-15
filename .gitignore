@@ -61,3 +61,11 @@ next-env.d.ts
 # agent skill packs (installed per-developer, not shared state)
 .agents/
 .claude/skills/
+
+# scratch left behind by agent tooling — worktrees, harness caches, and
+# throwaway investigation scripts. Never shared state, and a stray one showing
+# up in `git status` makes it harder to see whether a real file contract was
+# respected.
+.claude/worktrees/
+.codex/
+.scratch-*/

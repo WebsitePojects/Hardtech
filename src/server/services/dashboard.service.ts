@@ -302,7 +302,6 @@ export type PendingEnrollmentQueueItem = {
   /** Whole pesos. Converted from `Decimal` once, at this terminal read, same as `AdminOverviewStats.revenueMtd`. */
   amount: number;
   paymentMethod: PaymentMethod;
-  proofImageUrl: string;
   referenceCode: string;
   submittedAt: Date;
 };
@@ -313,6 +312,15 @@ export type PendingEnrollmentQueueItem = {
  * route/proxy layer is responsible for gating `/dashboard/admin/*` to ADMIN
  * sessions before this ever runs, per .claude/rules/00-non-negotiables.md
  * "Role checks are server-side").
+ *
+ * NOTE: `proofImageUrl` was removed from this list's output (2026-08-15
+ * fix). The repository's list query (`findManySubmittedWithDetails`) no
+ * longer selects that column — .claude/rules/50-database.md: "a
+ * verification endpoint returns the fact, not the record", and dragging a
+ * base64-or-Cloudinary image onto every pending payment on every load does
+ * not scale. Fetch a single payment's proof on demand via
+ * `getPaymentProofUrl` below (e.g. when an admin opens a "view proof" modal
+ * for one queue item) instead of embedding it in this list.
  */
 export async function getAdminPendingEnrollmentQueue(): Promise<PendingEnrollmentQueueItem[]> {
   const payments = await enrollmentPaymentRepository.findManySubmittedWithDetails();
@@ -326,10 +334,23 @@ export async function getAdminPendingEnrollmentQueue(): Promise<PendingEnrollmen
     programs: payment.enrollments.map((enrollment) => enrollment.program.shortName),
     amount: Number(payment.totalAmount),
     paymentMethod: payment.paymentMethod,
-    proofImageUrl: payment.proofImageUrl,
     referenceCode: payment.referenceCode,
     submittedAt: payment.submittedAt,
   }));
+}
+
+/**
+ * Single-payment proof-image read for the admin "view proof" action —
+ * see the note on `getAdminPendingEnrollmentQueue` above for why this is a
+ * separate, on-demand call rather than a field on the list. Admin-only by
+ * the same convention as `getAdminPendingEnrollmentQueue` — no viewer
+ * scoping needed, the route/proxy layer gates `/dashboard/admin/*` before
+ * this ever runs. Returns `null` when the payment does not exist rather than
+ * throwing, so a stale queue row (payment already actioned by another admin)
+ * degrades to "no proof to show" instead of a 500.
+ */
+export async function getPaymentProofUrl(paymentId: string): Promise<string | null> {
+  return enrollmentPaymentRepository.findProofImageUrl(paymentId);
 }
 
 // ---------------------------------------------------------------------------

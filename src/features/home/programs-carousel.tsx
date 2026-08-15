@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Camera, ChevronLeft, ChevronRight, Code2, Cpu, Network, Smartphone } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { resolveProgramImagery } from "@/features/programs/program-visuals";
 
 export interface ProgramsCarouselProgram {
   id: string;
@@ -23,13 +24,6 @@ const ACCENT_CLASSES: Record<string, string> = {
   purple: "border-brand-purple text-brand-purple bg-brand-purple/10",
   green: "border-primary text-primary bg-primary/10",
 };
-
-function fallbackImageFor(programName: string): string | undefined {
-  if (programName === "Computer Hardware Servicing") return "/images/gallery/gallery-01.jpg";
-  if (programName === "Cellphone Hardware Servicing") return "/images/gallery/gallery-08.jpg";
-  if (programName === "I.T. Software Development") return "/images/gallery/gallery-15.jpg";
-  return undefined;
-}
 
 function resolveIcon(iconName: string | null): LucideIcon { return iconName ? PROGRAM_ICONS[iconName.toLowerCase()] ?? Cpu : Cpu; }
 function resolveAccent(accentColor: string | null): string { return accentColor ? ACCENT_CLASSES[accentColor.toLowerCase()] ?? ACCENT_CLASSES.green : ACCENT_CLASSES.green; }
@@ -53,8 +47,18 @@ export function ProgramsCarousel({ programs }: { programs: ProgramsCarouselProgr
           const active = offset === 0;
           const visible = distance <= 2;
           const accent = resolveAccent(program.accentColor);
+          // Deliberate fallback (see features/programs/program-visuals.tsx
+          // resolveProgramImagery): no gallery photo genuinely depicts
+          // "Networking Basics" or "CCTV Installation", so those cards get
+          // an accent-tinted panel with a large watermark icon instead of a
+          // photo — never a blank/void card.
+          const imagery = resolveProgramImagery(program);
+          const accentBgClass = accent.match(/bg-\S+/)?.[0] ?? "bg-primary/10";
           return (
-            <article key={program.id} className={`absolute left-1/2 top-1/2 h-[100px] w-[190px] overflow-hidden rounded-xl border p-3 transition-all duration-500 motion-reduce:transition-none lg:h-[220px] lg:w-[290px] lg:rounded-2xl lg:p-6 ${active ? "border-brand-blue shadow-glow-md" : "border-glass-border"}`} style={{ transform: `translate(-50%, -50%) translateX(calc(${offset} * var(--carousel-step))) translateZ(${active ? 80 : Math.max(0, 20 - distance * 10)}px) rotateY(${offset * -22}deg) scale(${active ? 1 : distance === 1 ? 0.82 : 0.66})`, opacity: visible ? active ? 1 : distance === 1 ? 0.62 : 0.28 : 0, zIndex: 10 - distance, backgroundImage: (program.imageUrl ?? fallbackImageFor(program.name)) ? `linear-gradient(var(--glass-bg), var(--glass-bg)), url(${program.imageUrl ?? fallbackImageFor(program.name)})` : undefined, backgroundSize: "cover", backgroundPosition: "center", pointerEvents: visible ? "auto" : "none" }}>
+            <article key={program.id} className={`absolute left-1/2 top-1/2 h-[100px] w-[190px] overflow-hidden rounded-xl border p-3 transition-all duration-500 motion-reduce:transition-none lg:h-[220px] lg:w-[290px] lg:rounded-2xl lg:p-6 ${active ? "border-brand-blue shadow-glow-md" : "border-glass-border"} ${imagery.kind === "icon" ? accentBgClass : ""}`} style={{ transform: `translate(-50%, -50%) translateX(calc(${offset} * var(--carousel-step))) translateZ(${active ? 80 : Math.max(0, 20 - distance * 10)}px) rotateY(${offset * -22}deg) scale(${active ? 1 : distance === 1 ? 0.82 : 0.66})`, opacity: visible ? active ? 1 : distance === 1 ? 0.62 : 0.28 : 0, zIndex: 10 - distance, backgroundImage: imagery.kind === "photo" ? `linear-gradient(var(--glass-bg), var(--glass-bg)), url(${imagery.src})` : undefined, backgroundSize: "cover", backgroundPosition: "center", pointerEvents: visible ? "auto" : "none" }}>
+              {imagery.kind === "icon" ? (
+                <Icon className={`absolute -right-3 -bottom-3 size-24 opacity-[0.08] ${accent.split(" ").find((c) => c.startsWith("text-")) ?? ""}`} aria-hidden />
+              ) : null}
               <div className="absolute inset-0 bg-background/45" />
               <div className="relative flex h-full flex-col gap-3">
                 <span className={`inline-flex size-10 items-center justify-center rounded-xl ${accent}`}><Icon className="size-5" /></span>
@@ -65,8 +69,17 @@ export function ProgramsCarousel({ programs }: { programs: ProgramsCarouselProgr
           );
         })}
       </div>
-      <div className="mt-4 flex justify-center gap-2 lg:mt-5">
-        {programs.map((program, index) => <button key={program.id} type="button" aria-label={`Go to ${program.name}`} onClick={() => setSelectedIndex(index)} className={`h-1.5 rounded-full transition-all motion-reduce:transition-none ${index === selectedIndex ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/40"}`} />)}
+      {/*
+        Visible glyph stays a compact 6px/24px dot — a 44px-tall pagination
+        row here would be visually heavier than the carousel it controls —
+        but the tap TARGET is widened to 44px with an invisible ::after
+        hit-slop, the same accessible-touch-target technique already used on
+        the home Live Updates card's prev/next buttons (see
+        features/home/announcements-card.tsx). Measured before: 6x6px via
+        Playwright boundingBox(), well under the 44px minimum.
+      */}
+      <div className="mt-4 flex justify-center gap-3 lg:mt-5">
+        {programs.map((program, index) => <button key={program.id} type="button" aria-label={`Go to ${program.name}`} onClick={() => setSelectedIndex(index)} className={`relative h-1.5 rounded-full transition-all after:absolute after:-inset-3.5 after:content-[''] motion-reduce:transition-none ${index === selectedIndex ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/40"}`} />)}
       </div>
     </div>
   );

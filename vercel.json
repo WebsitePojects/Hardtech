@@ -1,4 +1,16 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["hnd1"]
+  "regions": [
+    "hnd1"
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/purge-assets",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/reap-uploads",
+      "schedule": "0 4 * * *"
+    }
+  ]
 }

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, CheckCircle2, ExternalLink, Wallet, XCircle } from "lucide-react";
+import { Calendar, CheckCircle2, ImageIcon, Wallet, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ImageLightbox } from "@/components/image-lightbox";
 import type { PaymentMethod } from "@/../generated/prisma/enums";
 import { usePendingAction } from "../use-pending-action";
 import { approveEnrollment, rejectEnrollment } from "../mutations/enrollment-mutations";
@@ -34,6 +35,7 @@ export function EnrollmentReviewCard({ item }: { item: EnrollmentReviewItem }) {
   const approve = usePendingAction();
   const reject = usePendingAction();
   const [resolved, setResolved] = useState<"approved" | "rejected" | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const anyPending = approve.isPending || reject.isPending;
 
   async function handleApprove() {
@@ -80,15 +82,34 @@ export function EnrollmentReviewCard({ item }: { item: EnrollmentReviewItem }) {
             </span>
           </div>
           {item.receiptUrl ? (
-            <a
-              href={item.receiptUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-            >
-              <ExternalLink className="size-3.5" aria-hidden />
-              View uploaded receipt
-            </a>
+            <>
+              {/*
+                Opens the receipt in the app's shared ImageLightbox instead
+                of a raw browser tab — this was the owner's explicit
+                complaint (payment proof used to open as a bare data:/
+                storage URL via <a target="_blank">). See
+                src/components/image-lightbox.tsx.
+              */}
+              <button
+                type="button"
+                onClick={() => setReceiptOpen(true)}
+                className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <ImageIcon className="size-3.5" aria-hidden />
+                View uploaded receipt
+              </button>
+              <ImageLightbox
+                open={receiptOpen}
+                onOpenChange={setReceiptOpen}
+                index={0}
+                images={[
+                  {
+                    src: item.receiptUrl,
+                    alt: `Payment receipt uploaded by ${item.traineeName} for ${item.enrollmentRef}`,
+                  },
+                ]}
+              />
+            </>
           ) : null}
         </div>
 

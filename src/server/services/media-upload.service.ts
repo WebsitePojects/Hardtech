@@ -52,13 +52,14 @@ const UNSUPPORTED_FILE_TYPE = "That file type is not supported here.";
  * so the folder and the allowed-role list for a given destination are
  * defined exactly once (DRY: the same two facts, reused, not duplicated).
  */
-type MediaCategory = "MODULE" | "GALLERY" | "ANNOUNCEMENT" | "FORUM";
+type MediaCategory = "MODULE" | "GALLERY" | "ANNOUNCEMENT" | "FORUM" | "MESSAGE";
 
 const FOLDER_BY_CATEGORY: Record<MediaCategory, string> = {
   MODULE: "hardtech/modules",
   GALLERY: "hardtech/gallery",
   ANNOUNCEMENT: "hardtech/announcements",
   FORUM: "hardtech/forum",
+  MESSAGE: "hardtech/messages",
 };
 
 const ALLOWED_ROLES_BY_CATEGORY: Record<MediaCategory, readonly UserRole[]> = {
@@ -66,6 +67,7 @@ const ALLOWED_ROLES_BY_CATEGORY: Record<MediaCategory, readonly UserRole[]> = {
   GALLERY: ["ADMIN"],
   ANNOUNCEMENT: ["ADMIN"],
   FORUM: ["TRAINEE", "TRAINER", "ADMIN"],
+  MESSAGE: ["TRAINEE", "TRAINER", "ADMIN"],
 };
 
 /**
@@ -84,6 +86,19 @@ const ALLOWED_RESOURCE_TYPES_BY_KIND: Record<UploadKind, readonly UploadResource
   ANNOUNCEMENT_MEDIA: ["image", "video"],
   POST_ATTACHMENT: ["image", "raw"],
   REPLY_ATTACHMENT: ["image", "raw"],
+  MESSAGE_ATTACHMENT: ["image", "video", "raw"],
+};
+
+/**
+ * Per-kind byte ceiling override, applied IN ADDITION TO (never instead of)
+ * the global per-resource-type plan ceiling in cloudinary.ts —
+ * `requestUploadTicket` enforces the smaller of the two. Only
+ * MESSAGE_ATTACHMENT has one: the messaging spec caps every attachment at
+ * 10 MB regardless of kind (a video included), tighter than the global
+ * 100 MB video ceiling. No entry here means "use the global ceiling as-is."
+ */
+const MAX_BYTES_OVERRIDE_BY_KIND: Partial<Record<UploadKind, number>> = {
+  MESSAGE_ATTACHMENT: 10 * 1024 * 1024,
 };
 
 function categoryForKind(kind: UploadKind): MediaCategory | null {
@@ -98,6 +113,8 @@ function categoryForKind(kind: UploadKind): MediaCategory | null {
       return "FORUM";
     case "REPLY_ATTACHMENT":
       return "FORUM";
+    case "MESSAGE_ATTACHMENT":
+      return "MESSAGE";
     default: {
       // Fail closed on any kind this switch does not recognise (rule 3) —
       // and if the schema's kind union ever grows, this line stops
@@ -113,6 +130,7 @@ function categoryForOwner(owner: MediaAssetOwnerRef): MediaCategory {
   if ("moduleId" in owner) return "MODULE";
   if ("galleryPhotoId" in owner) return "GALLERY";
   if ("announcementId" in owner) return "ANNOUNCEMENT";
+  if ("messageId" in owner) return "MESSAGE";
   return "FORUM"; // postId or replyId
 }
 
@@ -121,7 +139,9 @@ function ownerMatches(asset: MediaAsset, owner: MediaAssetOwnerRef): boolean {
   if ("galleryPhotoId" in owner) return asset.galleryPhotoId === owner.galleryPhotoId;
   if ("announcementId" in owner) return asset.announcementId === owner.announcementId;
   if ("postId" in owner) return asset.postId === owner.postId;
-  return asset.replyId === owner.replyId;
+  if ("replyId" in owner) return asset.replyId === owner.replyId;
+  if ("enrollmentPaymentId" in owner) return asset.enrollmentPaymentId === owner.enrollmentPaymentId;
+  return asset.messageId === owner.messageId;
 }
 
 /** Cloudinary-facing lowercase resource type -> the Prisma enum stored on
@@ -139,18 +159,35 @@ function uploadWebhookUrl(): string {
 }
 
 /**
+ * Extensions Cloudinary can plausibly append to a `resource_type: "raw"`
+ * object's public_id, derived directly from `MIME_ALLOWLIST` in
+ * media.schema.ts (the only mime types this app ever signs a raw upload
+ * ticket for). Anchors the tail-matching below to a closed set instead of
+ * "any non-empty string after a dot" — the original version of this check
+ * accepted `${expected}.anything`, which is a real gap flagged in this
+ * project's own audit notes: a claimed public_id of, say,
+ * `${expected}.exe` or `${expected}.php` matched just as happily as
+ * `${expected}.pdf`. The extension itself carries no security property on
+ * its own (Cloudinary decides content type from the bytes it received, not
+ * this suffix) — bounding it is about keeping the match precise to what
+ * this app's own allowlist could actually have produced, not about
+ * blocking any particular file type.
+ */
+const RAW_UPLOAD_EXTENSIONS = ["pdf", "doc", "docx"] as const;
+
+/**
  * Whether `claimedPublicId` could plausibly be the object Cloudinary
  * created for the ticket this server signed.
  *
  * An exact match of `${folder}/${mintedPublicId}` covers image and video:
  * Cloudinary reports back exactly that string. A match of
- * `${folder}/${mintedPublicId}.<something>` additionally covers
- * `resource_type: "raw"`, which folds the file's extension into the
- * object's own identity and never reports a separate `format` (2026-08-14
- * lesson — a live probe confirmed a PDF comes back as
+ * `${folder}/${mintedPublicId}.<ext>` for `<ext>` in `RAW_UPLOAD_EXTENSIONS`
+ * additionally covers `resource_type: "raw"`, which folds the file's
+ * extension into the object's own identity and never reports a separate
+ * `format` (2026-08-14 lesson — a live probe confirmed a PDF comes back as
  * `<folder>/<mintedId>.pdf`). Anything else — a different folder, a
- * different id, no extension separator, or an empty extension — is
- * rejected.
+ * different id, no extension separator, or an extension outside the closed
+ * set above — is rejected.
  *
  * This is the entire tamper-protection boundary for confirmUpload: it is
  * what stops a client from pointing a valid ticket's confirmation at some
@@ -164,9 +201,7 @@ export function isAuthenticReturnedPublicId(
 ): boolean {
   const expected = `${folder}/${mintedPublicId}`;
   if (claimedPublicId === expected) return true;
-  return (
-    claimedPublicId.startsWith(`${expected}.`) && claimedPublicId.length > expected.length + 1
-  );
+  return RAW_UPLOAD_EXTENSIONS.some((ext) => claimedPublicId === `${expected}.${ext}`);
 }
 
 /**
@@ -247,6 +282,15 @@ export async function requestUploadTicket(
     // return verbatim. Anything else is unexpected and propagates.
     if (error instanceof FileTooLargeError) return { ok: false, error: error.message };
     throw error;
+  }
+
+  const kindOverrideBytes = MAX_BYTES_OVERRIDE_BY_KIND[input.kind];
+  if (kindOverrideBytes !== undefined && input.byteSize > kindOverrideBytes) {
+    const mb = (n: number) => `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    return {
+      ok: false,
+      error: `This file is ${mb(input.byteSize)}. The maximum is ${mb(kindOverrideBytes)}.`,
+    };
   }
 
   const folder = FOLDER_BY_CATEGORY[category];

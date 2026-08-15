@@ -18,12 +18,24 @@ export type UploadResourceType = "image" | "video" | "raw";
  * naming), so the set of places a client can ask to write to is closed, not
  * client-supplied.
  */
+// Deliberately does NOT include an enrollment-proof kind: every kind here
+// goes through requestUploadTicket, which authorizes via verifiedActor
+// against an *existing, signed-in* User row. `/enroll` submits before that
+// account is guaranteed to exist yet (submitEnrollment creates it inline via
+// findOrCreateApplicant), so there is no actor to authorize a ticket
+// against. Payment-proof upload instead goes straight through
+// storage/cloudinary.ts's uploadAsset from inside the enrollment Server
+// Action — see src/server/services/enrollment.service.ts — the same
+// server-authoritative-upload shape certificate-issue.service.ts already
+// uses, just registered in the MediaAsset outbox afterward instead of not
+// at all.
 export const uploadKindSchema = z.enum([
   "MODULE_FILE",
   "GALLERY_PHOTO",
   "ANNOUNCEMENT_MEDIA",
   "POST_ATTACHMENT",
   "REPLY_ATTACHMENT",
+  "MESSAGE_ATTACHMENT",
 ]);
 export type UploadKind = z.infer<typeof uploadKindSchema>;
 

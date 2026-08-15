@@ -90,11 +90,21 @@ export function UserManagementFilters({ search, role }: { search: string; role: 
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row">
+      {/*
+        h-11 (44px, the touch-target floor) below `sm`, h-8 (the shadcn
+        default, matching the measured reference density) from `sm` up —
+        this pair was the known-outstanding 32px mobile touch target
+        (see CLAUDE.md work item H). twMerge (src/lib/utils.ts `cn`)
+        resolves the height conflict against the primitive's own `h-8`
+        default in favor of whichever class comes last, so this className
+        genuinely overrides it rather than losing a specificity tie — see
+        the lessons-log entries on Tailwind utilities silently not applying.
+      */}
       <Select
         value={ROLE_FILTER_SENTINEL_TO_LABEL[role] ?? ADMIN_ROLE_FILTER_OPTIONS[0]}
         onValueChange={handleRoleChange}
       >
-        <SelectTrigger className="w-full sm:w-40">
+        <SelectTrigger className="h-11 w-full sm:h-8 sm:w-40">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -109,7 +119,7 @@ export function UserManagementFilters({ search, role }: { search: string; role: 
         <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input
           placeholder="Search users..."
-          className="pl-8"
+          className="h-11 pl-8 sm:h-8"
           value={searchValue}
           onChange={(event) => handleSearchChange(event.target.value)}
         />

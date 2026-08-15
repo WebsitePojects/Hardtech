@@ -11,7 +11,9 @@ export type MediaAssetOwnerRef =
   | { galleryPhotoId: string }
   | { announcementId: string }
   | { postId: string }
-  | { replyId: string };
+  | { replyId: string }
+  | { enrollmentPaymentId: string }
+  | { messageId: string };
 
 export type MediaAssetReserveInput = {
   publicId: string;
@@ -158,10 +160,26 @@ export const mediaAssetRepository = {
         })
         .then((result) => result.count);
     }
+    if ("replyId" in owner) {
+      return tx.mediaAsset
+        .updateMany({
+          where: { id, purgeState: "ACTIVE", replyId: null },
+          data: { replyId: owner.replyId },
+        })
+        .then((result) => result.count);
+    }
+    if ("enrollmentPaymentId" in owner) {
+      return tx.mediaAsset
+        .updateMany({
+          where: { id, purgeState: "ACTIVE", enrollmentPaymentId: null },
+          data: { enrollmentPaymentId: owner.enrollmentPaymentId },
+        })
+        .then((result) => result.count);
+    }
     return tx.mediaAsset
       .updateMany({
-        where: { id, purgeState: "ACTIVE", replyId: null },
-        data: { replyId: owner.replyId },
+        where: { id, purgeState: "ACTIVE", messageId: null },
+        data: { messageId: owner.messageId },
       })
       .then((result) => result.count);
   },
@@ -209,10 +227,26 @@ export const mediaAssetRepository = {
         })
         .then((result) => result.count);
     }
+    if ("replyId" in owner) {
+      return tx.mediaAsset
+        .updateMany({
+          where: { replyId: owner.replyId, purgeState: claimableStates },
+          data: { purgeState: "PENDING", replyId: null },
+        })
+        .then((result) => result.count);
+    }
+    if ("enrollmentPaymentId" in owner) {
+      return tx.mediaAsset
+        .updateMany({
+          where: { enrollmentPaymentId: owner.enrollmentPaymentId, purgeState: claimableStates },
+          data: { purgeState: "PENDING", enrollmentPaymentId: null },
+        })
+        .then((result) => result.count);
+    }
     return tx.mediaAsset
       .updateMany({
-        where: { replyId: owner.replyId, purgeState: claimableStates },
-        data: { purgeState: "PENDING", replyId: null },
+        where: { messageId: owner.messageId, purgeState: claimableStates },
+        data: { purgeState: "PENDING", messageId: null },
       })
       .then((result) => result.count);
   },

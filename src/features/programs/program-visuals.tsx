@@ -39,6 +39,54 @@ export function resolveAccent(accentColor: string | null | undefined): AccentTok
   return ACCENTS.green;
 }
 
+export interface ProgramImagery {
+  /**
+   * "photo" when a real photograph genuinely depicts this program's
+   * training; "icon" when no such photograph exists anywhere in the asset
+   * set and a deliberate accent-tinted icon panel is used instead.
+   */
+  kind: "photo" | "icon";
+  src?: string;
+}
+
+/**
+ * Curated gallery photos that genuinely depict each program's training —
+ * hand-picked, not name-matched by coincidence. `public/images/gallery`
+ * (prisma/seed.ts GALLERY_PHOTOS) is entirely repair-bench, soldering, and
+ * certificate photos; none show networking or CCTV work, so those two
+ * programs are deliberately left out of this table rather than assigned a
+ * photo that would misrepresent them.
+ */
+const CURATED_PROGRAM_PHOTOS: Record<string, string> = {
+  "Computer Hardware Servicing": "/images/gallery/gallery-01.jpg",
+  "Cellphone Hardware Servicing": "/images/gallery/gallery-08.jpg",
+  "I.T. Software Development": "/images/gallery/gallery-15.jpg",
+};
+
+/**
+ * Resolves the marketing image for a program, or a deliberate fallback.
+ *
+ * `Program.imageUrl` is DATA-seeded and null for all five seeded rows (see
+ * prisma/seed.ts). Three programs have a curated photo that actually shows
+ * their training; "Networking Basics" and "CCTV Installation" do not, and
+ * previously fell through to `undefined` — rendering a blank/void card on
+ * the homepage carousel and, on `/programs`, causing the whole card to be
+ * skipped (`if (!marketingImage) return null`), silently dropping both
+ * programs from the catalogue page entirely. Both call sites now use this
+ * single resolver so every program renders: a real photo when one honestly
+ * exists, otherwise an accent-tinted icon panel bearing the program's own
+ * icon and name — a designed fallback, not an absent one.
+ */
+export function resolveProgramImagery(program: {
+  name: string;
+  imageUrl?: string | null;
+}): ProgramImagery {
+  if (program.imageUrl) return { kind: "photo", src: program.imageUrl };
+  const curated = CURATED_PROGRAM_PHOTOS[program.name];
+  if (curated) return { kind: "photo", src: curated };
+  return { kind: "icon" };
+}
+
 /**
  * Resolves `Program.iconName` to a lucide glyph. Defaults to a generic cap
  * for anything unrecognized.
