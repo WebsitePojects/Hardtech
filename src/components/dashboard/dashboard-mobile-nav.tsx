@@ -47,7 +47,7 @@ export function DashboardMobileNav({
   return (
     <div
       className={cn(
-        "glass sticky top-0 z-40 flex items-center gap-3 px-4 py-3",
+        "glass sticky top-0 z-40 flex min-h-14 shrink-0 items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3",
         className
       )}
     >
@@ -64,7 +64,7 @@ export function DashboardMobileNav({
         </SheetTrigger>
         <SheetContent
           side="left"
-          className="w-4/5 gap-0 border-glass-border bg-surface-secondary p-0 sm:max-w-xs"
+          className="w-[min(86vw,22rem)] gap-0 border-glass-border bg-surface-secondary p-0 sm:max-w-xs"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>{meta.portalLabel}</SheetTitle>

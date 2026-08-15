@@ -81,7 +81,7 @@ export async function HomeHero() {
           {TRUST_ITEMS.map((item) => <li key={item.label} className="flex items-center gap-1.5"><CircleCheckBig className={`size-4 ${item.colorClass}`} />{item.label}</li>)}
         </ul>
       </div>
-      <AnnouncementsCard announcements={announcements} desktopOnly />
+      <AnnouncementsCard announcements={announcements} />
     </section>
   );
 }

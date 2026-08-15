@@ -6,6 +6,7 @@ import { Menu } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { DashboardLogoutButton } from "@/components/dashboard/dashboard-logout-button";
 import {
   Sheet,
   SheetClose,
@@ -28,7 +29,7 @@ import { exploreNavItems, primaryNavItems } from "./nav-items";
  * drawer (the layout persists across marketing routes, so an uncontrolled
  * sheet would otherwise stay open after navigation).
  */
-export function MobileNav({ user }: { user: NavbarUser | null }) {
+export function MobileNav({ user, logoutAction }: { user: NavbarUser | null; logoutAction: () => Promise<void> }) {
   const pathname = usePathname();
 
   return (
@@ -71,7 +72,7 @@ export function MobileNav({ user }: { user: NavbarUser | null }) {
           the top of the "Home" pill under the logo's bounding box. Same
           80px clearance value used for the same reason in hero.tsx.
         */}
-        <SheetHeader className="border-b border-glass-border px-4 pt-20 pb-4">
+        <SheetHeader className="border-b border-glass-border px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4">
           <SheetTitle className="sr-only">Site navigation</SheetTitle>
           {user && (
             <div className="mt-3 flex items-center gap-2 rounded-full bg-glass px-3 py-2 text-left">
@@ -86,7 +87,7 @@ export function MobileNav({ user }: { user: NavbarUser | null }) {
         </SheetHeader>
 
         <nav
-          className="flex flex-1 flex-col gap-1 overflow-y-auto p-4"
+          className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-4"
           aria-label="Primary"
         >
           {primaryNavItems.map((item) => {
@@ -139,7 +140,19 @@ export function MobileNav({ user }: { user: NavbarUser | null }) {
         </nav>
 
         <div className="flex flex-col gap-2 border-t border-glass-border p-4">
-          {!user && (
+          {user ? (
+            <>
+              <SheetClose asChild>
+                <Link
+                  href={user.dashboardHref}
+                  className={cn(buttonVariants({ variant: "outline" }), "w-full justify-start")}
+                >
+                  Back to dashboard
+                </Link>
+              </SheetClose>
+              <DashboardLogoutButton action={logoutAction} className="w-full" />
+            </>
+          ) : (
             <>
               <SheetClose asChild>
                 <Link href="/login" className={cn(buttonVariants({ variant: "outline" }), "w-full")}>

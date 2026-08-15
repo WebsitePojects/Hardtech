@@ -73,7 +73,7 @@ export default async function DashboardLayout({
           className="hidden lg:flex"
         />
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col overflow-x-clip">
           <DashboardMobileNav
             role={session.role}
             userName={user?.name}
@@ -81,7 +81,7 @@ export default async function DashboardLayout({
             badges={adminStats ? { enrollments: adminStats.pendingEnrollments, certificates: adminStats.pendingCertificateRequests } : undefined}
             className="lg:hidden"
           />
-          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-6">{children}</main>
+          <main className="min-w-0 flex-1 px-3 py-5 sm:px-6 sm:py-6 lg:px-6">{children}</main>
         </div>
       </div>
     </DashboardShell>

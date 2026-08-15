@@ -1,14 +1,33 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 
 export type Announcement = { id: string; title: string; body: string; type: string; mediaUrl: string | null; createdAt: string };
 
-export function AnnouncementsCard({ announcements, mobileOnly = false, desktopOnly = false }: { announcements: Announcement[]; mobileOnly?: boolean; desktopOnly?: boolean }) {
+export function AnnouncementsCard({ announcements }: { announcements: Announcement[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [expanded, setExpanded] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const scrollY = window.scrollY;
+      const delta = scrollY - lastScrollY.current;
+
+      if (scrollY <= 96 || delta < -5) setHidden(false);
+      else if (scrollY > 180 && delta > 5) setHidden(true);
+
+      lastScrollY.current = scrollY;
+    };
+
+    lastScrollY.current = window.scrollY;
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   if (announcements.length === 0) return null;
   const announcement = announcements[activeIndex] ?? announcements[0];
   const createdAt = new Date(announcement.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -34,7 +53,7 @@ export function AnnouncementsCard({ announcements, mobileOnly = false, desktopOn
     // instance (rendered in-flow further down the page by
     // features/home/programs-section.tsx) carries the same content instead —
     // it never overlaps anything because it stacks in normal document flow.
-    <aside className={`relative right-auto top-auto z-30 mx-auto mb-8 block w-[calc(100%-1rem)] max-w-[360px] rounded-2xl border border-primary/40 bg-background/80 p-3 shadow-glow-md backdrop-blur-md 2xl:absolute 2xl:right-6 2xl:top-[75px] 2xl:mx-0 2xl:mb-0 2xl:block 2xl:w-[360px] 2xl:p-5 ${mobileOnly ? "2xl:hidden" : ""} ${desktopOnly ? "hidden 2xl:block" : ""}`} aria-label="Live updates">
+    <aside className="fixed top-[76px] right-3 z-30 block w-[min(360px,calc(100vw-1.5rem))] rounded-2xl border border-primary/40 bg-background/80 p-3 shadow-glow-md backdrop-blur-md transition-[opacity,transform,visibility] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none data-[hidden=true]:invisible data-[hidden=true]:pointer-events-none data-[hidden=true]:-translate-y-3 data-[hidden=true]:opacity-0 lg:top-[84px] lg:right-6 lg:p-5" data-hidden={hidden} aria-hidden={hidden} aria-label="Live updates">
       <div className="flex items-center gap-2 text-[10px] font-semibold tracking-wider text-primary">
         <span className="size-1.5 rounded-full bg-primary" aria-hidden /> LIVE UPDATES
         <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px]">{announcement.type}</span>

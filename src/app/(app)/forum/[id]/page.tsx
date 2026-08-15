@@ -99,7 +99,12 @@ export default async function ForumPostPage(props: PageProps<"/forum/[id]">) {
         </div>
       )}
 
-      <div className="space-y-3">
+      <div
+        className="max-h-[min(62dvh,42rem)] space-y-3 overflow-y-auto overscroll-contain pr-2"
+        tabIndex={0}
+        data-lenis-prevent
+        aria-label="Post replies"
+      >
         {post.replies.map((reply) => (
           <ReplyCard key={reply.id} reply={reply} />
         ))}

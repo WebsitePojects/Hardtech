@@ -80,25 +80,25 @@ export function StepSelectPlan({
               onSelect={() => toggle(program.id)}
               accentBorder={accent.border}
               accentRing={cn(accent.text, "ring-current/30")}
-              className="pr-12"
+              className="p-3 sm:p-4 sm:pr-12"
             >
-              <div className="flex items-start gap-3">
-                <div className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", accent.bg)}>
-                  {renderProgramIcon(program.iconName, cn("size-4", accent.text))}
+              <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
+                <div className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-9", accent.bg)}>
+                  {renderProgramIcon(program.iconName, cn("size-3.5 sm:size-4", accent.text))}
                 </div>
-                <div className="flex-1 space-y-1.5">
-                  <Badge variant="outline" className={cn(accent.border, accent.text)}>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Badge variant="outline" className={cn("text-[11px] sm:text-xs", accent.border, accent.text)}>
                     Skills Track
                   </Badge>
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-heading text-base font-semibold text-foreground">
+                  <div className="flex min-w-0 flex-col items-start gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                    <h3 className="min-w-0 max-w-full text-pretty font-heading text-[clamp(0.9375rem,3.9vw,1rem)] leading-tight font-semibold text-foreground sm:text-base">
                       {program.name}
                     </h3>
-                    <span className={cn("shrink-0 text-lg font-bold", accent.text)}>
+                    <span className={cn("shrink-0 text-base leading-tight font-bold sm:text-lg", accent.text)}>
                       {formatCentavos(program.priceCentavos)}
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[clamp(0.6875rem,2.8vw,0.75rem)] text-muted-foreground sm:gap-x-4">
                     <span className="flex items-center gap-1">
                       <Clock className="size-3.5" aria-hidden />
                       {program.durationLabel}
@@ -108,14 +108,18 @@ export function StepSelectPlan({
                       {program.scheduleLabel}
                     </span>
                   </div>
-                  <Badge variant="outline" className="border-primary/40 text-primary">
+                  <Badge variant="outline" className="border-primary/40 text-[11px] text-primary sm:text-xs">
                     Certified
                   </Badge>
 
                   {selected && program.curriculumTopics.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5 border-t border-glass-border pt-2">
                       {program.curriculumTopics.map((topic) => (
-                        <Badge key={topic} variant="outline" className="font-normal">
+                        <Badge
+                          key={topic}
+                          variant="outline"
+                          className="h-auto min-h-5 max-w-full items-start overflow-visible whitespace-normal break-words py-1 text-left font-normal leading-snug"
+                        >
                           {topic}
                         </Badge>
                       ))}
