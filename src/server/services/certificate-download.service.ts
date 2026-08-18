@@ -33,7 +33,7 @@ export async function getIssuedCertificateForViewer(input: {
       enrollment: {
         select: {
           traineeId: true,
-          trainee: { select: { firstName: true, lastName: true } },
+          trainee: { select: { firstName: true, lastName: true, timezone: true } },
           program: { select: { name: true } },
         },
       },
@@ -54,6 +54,7 @@ export async function getIssuedCertificateForViewer(input: {
     programName: record.enrollment.program.name,
     programHours: null,
     completedAt: record.completedAt,
+    traineeTimeZone: record.enrollment.trainee.timezone,
     certificateCode: record.certificateCode,
   });
 

@@ -1,8 +1,9 @@
-import { Bell, ChevronDown } from "lucide-react";
+import { Bell, ChevronDown, MessageCircle } from "lucide-react";
 import Link from "next/link";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
+import { UnreadBadge } from "@/features/messaging/unread-badge";
 import { cn } from "@/lib/utils";
 
 export type NavbarUser = {
@@ -10,8 +11,24 @@ export type NavbarUser = {
   roleLabel: string;
 };
 
-/** Session-aware right side of the desktop navbar. */
-export function NavbarActions({ user }: { user: NavbarUser | null }) {
+/**
+ * Session-aware right side of the desktop navbar.
+ *
+ * `unreadMessageCount` is optional and undefined/0 by default deliberately —
+ * there is no real unread-count read wired up yet
+ * (src/server/services/messaging.service.ts doesn't exist for this wave), so
+ * this component never fabricates a live number. The type is ready for
+ * whoever wires `getUnreadTotal` at the page/layout level: pass the real
+ * count in and the badge appears; leave it out and the icon renders with no
+ * badge, exactly like today.
+ */
+export function NavbarActions({
+  user,
+  unreadMessageCount = 0,
+}: {
+  user: NavbarUser | null;
+  unreadMessageCount?: number;
+}) {
   if (!user) {
     return (
       <div className="hidden items-center gap-2 md:flex">
@@ -40,6 +57,15 @@ export function NavbarActions({ user }: { user: NavbarUser | null }) {
         <Bell className="size-4" aria-hidden />
         {/* TODO(orchestrator): connect the unread notification service read before showing a badge. */}
       </div>
+
+      <Link
+        href="/messages"
+        className="relative flex size-9 shrink-0 items-center justify-center rounded-full text-foreground/80 hover:text-foreground"
+        aria-label={unreadMessageCount > 0 ? `Messages, ${unreadMessageCount} unread` : "Messages"}
+      >
+        <MessageCircle className="size-4" aria-hidden />
+        <UnreadBadge count={unreadMessageCount} className="absolute -top-0.5 -right-0.5" />
+      </Link>
 
       <div className="flex items-center gap-2 rounded-full border border-glass-border bg-glass py-1 pr-2.5 pl-1">
         <Avatar size="sm">

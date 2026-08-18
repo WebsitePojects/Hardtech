@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isValidIanaTimeZone } from "@/server/timezone";
+
 /**
  * Boundary validation for every AUTH input (.claude/rules/00-non-negotiables.md
  * rule 4: "Validate at the boundary"). Server actions in src/app/(auth)/**
@@ -19,6 +21,13 @@ export const loginSchema = z.object({
   // stops pathologically large request bodies, not weak-password rejection.
   password: z.string().min(1, "Enter your password.").max(200),
   rememberMe: z.boolean().optional().default(false),
+  timezone: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .refine(isValidIanaTimeZone, "Invalid timezone.")
+    .optional(),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

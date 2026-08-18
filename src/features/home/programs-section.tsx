@@ -7,12 +7,10 @@ import { AnnouncementsCard, type Announcement } from "./announcements-card";
  * wrapper is static and stays a server component; the carousel itself needs
  * "use client" for embla + selected-slide state, kept in a separate file.
  *
- * The design's dot pagination shows exactly 3 slides (Computer Hardware
- * Servicing, Cellphone Hardware Servicing, I.T. Software Development), but
- * the Program model (prisma/schema.prisma) has 5 rows and no "core"/
- * "featured" boolean to filter by. getPrograms() returns the full catalog,
- * so this renders whatever DATA seeds — likely 5 slides, not the
- * screenshot's 3. Flagged rather than inventing a filter field.
+ * The active HardTech catalog has exactly 3 public slides: Computer Hardware
+ * Servicing, Cellphone Hardware Servicing, and I.T. Software Development.
+ * The client carousel also fail-closes to those names so legacy unsupported
+ * rows cannot appear while preserving any unrelated dependent records.
  */
 export function ProgramsSection({
   programs,

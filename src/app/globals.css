@@ -85,6 +85,20 @@
   --color-surface-card: var(--bg-card);
   --color-glass: var(--glass-bg);
   --color-glass-border: var(--glass-border);
+  /* Registering this is what makes `bg-glass-hover` exist at all. It was
+   * missing while 18 call sites (sidebar nav, forum post + leaderboard,
+   * footer, navbar actions, admin trainer/overview cards, trainee schedule)
+   * already wrote `hover:bg-glass-hover` — in Tailwind v4 an unregistered
+   * token emits no utility, so every one of those hovers was silently dead
+   * in the built stylesheet while looking correct in source. Verified by
+   * grepping the emitted CSS: `bg-glass-hover` occurred 0 times, its
+   * registered siblings `bg-glass` and `border-glass-border` once each.
+   * Same failure mode as the `.glass` backdrop-filter entry in
+   * .claude/lessons.md — a rule present in source is not a rule in the
+   * browser. The value itself was never missing: --glass-hover is defined in
+   * both themes and already consumed by the .glass-hover:hover class below,
+   * so this only makes the utility agree with the class. */
+  --color-glass-hover: var(--glass-hover);
   --color-text-primary: var(--text-primary);
   --color-text-muted: var(--text-muted);
 

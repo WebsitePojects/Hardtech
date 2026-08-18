@@ -40,6 +40,8 @@ export type CertificateFields = {
   certificateCode: string;
   /** Absolute URL a scanner lands on to verify authenticity. */
   verifyUrl: string;
+  /** HardTech logo as a data URI. Omitted safely if the asset cannot load. */
+  logoDataUri: string | null;
   /** QR rendered as SVG `<path d="...">` geometry on a 0..(qrSize) grid. */
   qrPath: string;
   qrModules: number;
@@ -71,6 +73,7 @@ export function renderCertificateSvg(fields: CertificateFields): string {
   const completed = esc(fields.completedOn);
   const code = esc(fields.certificateCode);
   const verify = esc(fields.verifyUrl);
+  const logo = fields.logoDataUri ? esc(fields.logoDataUri) : null;
 
   // QR occupies a fixed 118px box; scale the module grid to fit.
   const qrBox = 118;
@@ -101,27 +104,38 @@ export function renderCertificateSvg(fields: CertificateFields): string {
   <rect x="34" y="34" width="${W - 68}" height="${H - 68}" rx="12"
         fill="none" stroke="${BRAND.hairline}" stroke-width="1"/>
 
-  <g transform="translate(${W / 2}, 118)" text-anchor="middle">
+  <g transform="translate(${W / 2}, 82)" text-anchor="middle">
+    <circle cx="0" cy="0" r="42" fill="#050608" stroke="${BRAND.green}" stroke-opacity="0.55" stroke-width="1.5"/>
+    <circle cx="0" cy="0" r="36" fill="#000000"/>
+    ${
+      logo
+        ? `<clipPath id="logoRound"><circle cx="0" cy="0" r="32"/></clipPath>
+    <image href="${logo}" x="-32" y="-32" width="64" height="64" preserveAspectRatio="xMidYMid meet" clip-path="url(#logoRound)"/>`
+        : `<text y="7" fill="${BRAND.green}" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="bold">HT</text>`
+    }
+  </g>
+
+  <g transform="translate(${W / 2}, 150)" text-anchor="middle">
     <text y="0" fill="${BRAND.green}" font-family="Georgia, 'Times New Roman', serif"
           font-size="19" letter-spacing="5.5">HARDTECH IT CORP</text>
     <text y="26" fill="${BRAND.textMuted}" font-family="Helvetica, Arial, sans-serif"
           font-size="12" letter-spacing="2.6">QUEZON CITY, PHILIPPINES</text>
   </g>
 
-  <g transform="translate(${W / 2}, 214)" text-anchor="middle">
+  <g transform="translate(${W / 2}, 234)" text-anchor="middle">
     <text y="0" fill="${BRAND.textPrimary}" font-family="Georgia, 'Times New Roman', serif"
           font-size="47" font-weight="bold" letter-spacing="1.5">Certificate of Completion</text>
     <text y="40" fill="${BRAND.textMuted}" font-family="Helvetica, Arial, sans-serif"
           font-size="15">This certifies that</text>
   </g>
 
-  <g transform="translate(${W / 2}, 336)" text-anchor="middle">
+  <g transform="translate(${W / 2}, 348)" text-anchor="middle">
     <text y="0" fill="${BRAND.green}" font-family="Georgia, 'Times New Roman', serif"
           font-size="56" font-weight="bold">${name}</text>
     <line x1="-260" y1="26" x2="260" y2="26" stroke="${BRAND.hairline}" stroke-width="1"/>
   </g>
 
-  <g transform="translate(${W / 2}, 408)" text-anchor="middle">
+  <g transform="translate(${W / 2}, 420)" text-anchor="middle">
     <text y="0" fill="${BRAND.textMuted}" font-family="Helvetica, Arial, sans-serif" font-size="15">
       has successfully completed the training program
     </text>

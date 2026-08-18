@@ -26,17 +26,8 @@ function parseTopic(value: string | undefined): CommunityTopic | undefined {
   return VALID_TOPICS.includes(value as CommunityTopic) ? (value as CommunityTopic) : undefined;
 }
 
-// This page calls the wave-2 forum.service contract (owned by DATA-2, built
-// in parallel — docs/contracts/wave-2-app.md). Until that file lands,
-// "Cannot find module '@/server/services/forum.service'" and
-// "Cannot find module '@/server/auth/session'" are expected compile errors,
-// not bugs in this route. Expected shapes:
-//   listPosts({ tab, category?, sort?, search?, currentUserId? }): Promise<ForumPostSummary[]>
-//   listCommunities({ search?, region?, topic? }): Promise<CommunitySummary[]>
-//   listTrendingPosts(limit = 5): Promise<Pick<ForumPostSummary, "id" | "title">[]>
-//   getLeaderboard(limit = 5): Promise<LeaderboardEntry[]>
-//   getForumStats(): Promise<ForumStats>
-//   getSession(): Promise<{ userId: string; role: UserRole } | null>
+// Server component route: parse query filters fail-closed, then read forum
+// data through services so Prisma access remains behind the service layer.
 import { getSession } from "@/server/auth/session";
 import {
   getForumStats,

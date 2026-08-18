@@ -126,26 +126,15 @@ const TRAINERS = [
 const LEGACY_HENRY_EMAIL = "henry.lopez@hardtechitcorp.com";
 
 // ---------------------------------------------------------------------------
-// Programs — the 5-program catalog confirmed in docs/screens/desktop-02.md
-// and docs/screens/mobile-05.md admin dropdowns: Computer Hardware,
-// Cellphone Repair, Software Dev, Networking Basics, CCTV Installation.
+// Programs — active HardTech catalog.
 //
 // Computer Hardware Servicing, Cellphone Hardware Servicing, and I.T.
 // Software Development have full marketing cards in the screenshot corpus
 // (desktop-01 #14-17, mobile-01 #31-35, mobile-02 #1-3) and are transcribed
 // verbatim below.
-//
-// Networking Basics and CCTV Installation are confirmed to exist (they are
-// real, selectable rows in the admin Program dropdown, and Networking Basics
-// additionally appears with a real ₱5,000 price and trainer on the trainee
-// "Enroll in Another Program" screen, mobile-06 #14:33:09) but NO screenshot
-// in the corpus shows their full marketing card — no description, duration,
-// schedule, or curriculum list was ever captured for either. The fields
-// below marked "not sourced" are short, factual, domain-accurate copy
-// authored to satisfy the schema's NOT NULL columns; they are flagged here
-// rather than silently presented as transcribed content. See the return
-// report for this same flag.
 // ---------------------------------------------------------------------------
+
+const LEGACY_UNSUPPORTED_PROGRAM_NAMES = ["Networking Basics", "CCTV Installation"] as const;
 
 const PROGRAMS = [
   {
@@ -229,57 +218,6 @@ const PROGRAMS = [
       "Database Design (SQL & NoSQL)",
       "Portfolio Project & Career Coaching",
     ],
-  },
-  {
-    key: "networking",
-    name: "Networking Basics",
-    shortName: "Networking Basics",
-    subtitle: null,
-    // NOT SOURCED — no full marketing card for this program exists in the
-    // screenshot corpus. Authored to satisfy the NOT NULL `description` column.
-    description:
-      "Covers structured cabling, router and switch configuration, IP addressing, and network troubleshooting fundamentals for small and medium business setups.",
-    // NOT SOURCED — no duration/schedule was ever captured for this program.
-    durationLabel: "To be announced",
-    scheduleLabel: "To be announced",
-    levelLabel: "Beginner to Intermediate",
-    // Price IS sourced: mobile-06 #14:33:09 "Networking Basics ... ₱5,000".
-    priceAmount: "5000.00",
-    badgeLabel: null,
-    iconName: "Network",
-    accentColor: null,
-    imageUrl: null,
-    marketingEnrolledLabel: null,
-    // Trainer IS sourced: mobile-06 #14:33:09 "Trainer: Prof. Adelan P. Sistoso".
-    primaryTrainerKey: "dylan",
-    instructorCredentialLine: null,
-    curriculum: [],
-  },
-  {
-    key: "cctv",
-    name: "CCTV Installation",
-    shortName: "CCTV Installation",
-    subtitle: null,
-    // NOT SOURCED — this program's name is confirmed (admin Program dropdown,
-    // desktop-02 #6 / mobile-05 #8) but no marketing content, price, or
-    // trainer for it appears anywhere in the screenshot corpus. Authored to
-    // satisfy the NOT NULL `description` column; price mirrors the uniform
-    // ₱5,000 seen on every other confirmed program rather than inventing a
-    // distinct figure.
-    description:
-      "Covers CCTV camera installation, DVR/NVR setup, cabling, and system configuration for residential and commercial surveillance projects.",
-    durationLabel: "To be announced",
-    scheduleLabel: "To be announced",
-    levelLabel: "Beginner to Intermediate",
-    priceAmount: "5000.00",
-    badgeLabel: null,
-    iconName: "Camera",
-    accentColor: null,
-    imageUrl: null,
-    marketingEnrolledLabel: null,
-    primaryTrainerKey: null,
-    instructorCredentialLine: null,
-    curriculum: [],
   },
 ] as const;
 
@@ -1146,6 +1084,46 @@ async function main() {
         })),
       });
     }
+  }
+
+  // Remove only the two exact legacy seed rows that are no longer supported
+  // by HardTech's active catalog. If real user-created/dependent data points
+  // at either row, preserve it and rely on the frontend fail-closed catalog
+  // guards so unsupported offerings are not exposed as selectable/cards.
+  for (const legacyName of LEGACY_UNSUPPORTED_PROGRAM_NAMES) {
+    const legacy = await prisma.program.findUnique({
+      where: { name: legacyName },
+      select: {
+        id: true,
+        _count: {
+          select: {
+            batches: true,
+            enrollments: true,
+            modules: true,
+            testimonials: true,
+            trainerProfiles: true,
+          },
+        },
+      },
+    });
+    if (!legacy) continue;
+
+    const hasDependentRecords =
+      legacy._count.batches > 0 ||
+      legacy._count.enrollments > 0 ||
+      legacy._count.modules > 0 ||
+      legacy._count.testimonials > 0 ||
+      legacy._count.trainerProfiles > 0;
+
+    if (hasDependentRecords) {
+      console.warn(
+        `Preserved legacy unsupported program "${legacyName}" because dependent records exist; ` +
+          "public selectors/cards filter it out.",
+      );
+      continue;
+    }
+
+    await prisma.program.delete({ where: { id: legacy.id } });
   }
 
   // 3. Trainer profiles — upsert by userId (unique).

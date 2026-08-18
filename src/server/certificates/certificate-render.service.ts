@@ -1,6 +1,10 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import QRCode from "qrcode";
 
 import { renderCertificateSvg, type CertificateFields } from "./certificate-template";
+import { DEFAULT_USER_TIMEZONE, normalizeIanaTimeZone } from "@/server/timezone";
 
 /**
  * Turns certificate data into the finished SVG bytes.
@@ -63,14 +67,27 @@ async function qrGeometry(text: string): Promise<{ path: string; modules: number
   return { path: parts.join(""), modules: size };
 }
 
+async function hardtechLogoDataUri(): Promise<string | null> {
+  try {
+    const logoPath = path.join(process.cwd(), "public", "images", "brand", "hardtech-logo.png");
+    const bytes = await readFile(logoPath);
+    return `data:image/png;base64,${bytes.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 /** Print format: "10 August 2026". Explicit locale so a server in another
  *  region cannot silently reorder day and month on a legal document. */
-export function formatCompletionDate(date: Date): string {
+export function formatCompletionDate(
+  date: Date,
+  timeZone: string = DEFAULT_USER_TIMEZONE,
+): string {
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "long",
     year: "numeric",
-    timeZone: "Asia/Manila",
+    timeZone: normalizeIanaTimeZone(timeZone),
   }).format(date);
 }
 
@@ -79,6 +96,7 @@ export type CertificateRenderInput = {
   programName: string;
   programHours: number | null;
   completedAt: Date;
+  traineeTimeZone?: string | null;
   certificateCode: string;
 };
 
@@ -87,15 +105,20 @@ export async function renderCertificate(
   input: CertificateRenderInput,
 ): Promise<{ svg: string; bytes: Buffer; verifyUrl: string }> {
   const verifyUrl = verificationUrl(input.certificateCode);
-  const qr = await qrGeometry(verifyUrl);
+  const [qr, logoDataUri] = await Promise.all([
+    qrGeometry(verifyUrl),
+    hardtechLogoDataUri(),
+  ]);
+  const traineeTimeZone = normalizeIanaTimeZone(input.traineeTimeZone);
 
   const fields: CertificateFields = {
     recipientName: input.recipientName,
     programName: input.programName,
     programHours: input.programHours === null ? null : `${input.programHours} hrs`,
-    completedOn: formatCompletionDate(input.completedAt),
+    completedOn: formatCompletionDate(input.completedAt, traineeTimeZone),
     certificateCode: input.certificateCode,
     verifyUrl,
+    logoDataUri,
     qrPath: qr.path,
     qrModules: qr.modules,
   };

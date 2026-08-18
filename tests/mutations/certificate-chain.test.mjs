@@ -170,23 +170,30 @@ test("certificate chain: approve -> issue -> real Cloudinary asset -> public ver
       approveCertificate({ adminId, adminRole: "ADMIN", certificateRequestId: approveCertId }),
       approveCertificate({ adminId, adminRole: "ADMIN", certificateRequestId: approveCertId }),
     ]);
-    assert.equal(
-      concurrentApprovals.filter((r) => r.ok).length,
-      1,
-      "only one of two concurrent approvals should win the conditional transition",
-    );
 
+    // Read back and capture the Cloudinary handle BEFORE asserting on the
+    // approval outcome. approveCertificate() has already uploaded the asset
+    // (if it issued at all) by the time Promise.all above resolved, so the
+    // asset can exist in Cloudinary even if one of the assertions below
+    // throws. Capturing `issuedPublicId` first, rather than after three
+    // assertions that can each fail, is what lets the `finally` cleanup at
+    // the bottom of this test find and delete it on every path instead of
+    // only the happy path — a `finally` block only cleans up what its guard
+    // variable actually got set to.
     const approvedRow = await one(
       client,
       'SELECT status, "certificatePublicId" FROM "CertificateRequest" WHERE id = $1',
       [approveCertId],
     );
-    assert.equal(approvedRow.status, "APPROVED", "the row must actually transition to APPROVED");
-    assert.ok(
-      approvedRow.certificatepublicid ?? approvedRow.certificatePublicId,
-      "issueCertificate must have run and populated certificatePublicId",
+    issuedPublicId = approvedRow.certificatepublicid ?? approvedRow.certificatePublicId ?? null;
+
+    assert.equal(
+      concurrentApprovals.filter((r) => r.ok).length,
+      1,
+      "only one of two concurrent approvals should win the conditional transition",
     );
-    issuedPublicId = approvedRow.certificatepublicid ?? approvedRow.certificatePublicId;
+    assert.equal(approvedRow.status, "APPROVED", "the row must actually transition to APPROVED");
+    assert.ok(issuedPublicId, "issueCertificate must have run and populated certificatePublicId");
 
     // Prove the asset is REAL by checking a second channel — Cloudinary's own
     // Admin API — not by trusting destroyAsset()'s return value later (that
@@ -253,10 +260,51 @@ test("certificate chain: approve -> issue -> real Cloudinary asset -> public ver
     if (issuedPublicId) {
       const destroyed = await revokeCertificateAsset(issuedPublicId);
       assert.equal(destroyed, true, "cleanup destroy must report success");
-      await assert.rejects(
-        () => cloudinary.api.resource(issuedPublicId, { resource_type: "image" }),
-        /not found/i,
+
+      // Second-channel proof the asset is actually gone, per the comment
+      // above the earlier `cloudinary.api.resource` call and the 2026-08-14
+      // lesson in .claude/lessons.md: destroyAsset()'s own return value
+      // conflates "deleted" with "was never there", so this reads the truth
+      // back from Cloudinary's own Admin API instead of trusting it.
+      //
+      // This deliberately does NOT use assert.rejects(promise, /regex/):
+      // the Cloudinary Admin SDK rejects with an object shaped
+      // { request_options: { ..., auth: '<key>:<secret>' }, query_params,
+      // error: { message, http_code } } — there is no top-level `message`
+      // for a regex to match against, so that form could never pass no
+      // matter how correct the delete was. Worse, on failure Node prints
+      // the whole actual/expected value, which would put the live
+      // Cloudinary API key and secret (`request_options.auth`) straight
+      // into stdout and CI logs — exactly what non-negotiable rule #6
+      // (never log or return secrets, tokens, or PII) forbids. So the
+      // rejection is caught by hand and only two safe, structured fields
+      // are pulled out of it; the raw SDK error object itself is never
+      // passed into an assertion's actual/expected, and therefore never
+      // printed.
+      let stillPresent = false;
+      let httpCode = null;
+      let safeMessage = null;
+      try {
+        await cloudinary.api.resource(issuedPublicId, { resource_type: "image" });
+        stillPresent = true;
+      } catch (err) {
+        httpCode = err?.error?.http_code ?? null;
+        safeMessage = typeof err?.error?.message === "string" ? err.error.message : null;
+      }
+
+      assert.equal(
+        stillPresent,
+        false,
         "the asset must actually be gone from Cloudinary after cleanup, not just reported gone",
+      );
+      // Assert 404 specifically, not merely "it rejected". A bare rejection
+      // would also pass for a network error, an expired credential, or a 401
+      // auth failure — none of which prove the asset was deleted — which
+      // would silently destroy the guarantee this test exists to provide.
+      assert.equal(
+        httpCode,
+        404,
+        `expected Cloudinary to report the asset not found (404), got http_code=${httpCode} message=${safeMessage ?? "(none)"}`,
       );
     }
     if (data) {

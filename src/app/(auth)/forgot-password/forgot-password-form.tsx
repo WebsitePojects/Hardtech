@@ -4,7 +4,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Mail } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { MorphingButton } from "@/components/ui/morphing-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -61,10 +61,35 @@ export function ForgotPasswordForm() {
         </p>
       ) : null}
 
-      <Button type="submit" disabled={isPending} className="w-full">
-        <Mail className="size-4" aria-hidden />
-        {isPending ? "Sending…" : "Send Reset Instructions"}
-      </Button>
+      <MorphingButton
+        type="submit"
+        disabled={isPending}
+        className="w-full"
+        icon={<Mail className="size-4" aria-hidden />}
+        // The `role="alert"` element above already announces the actual
+        // server/error message the moment `error` is set. Without this
+        // flag, MorphingButton's own internal live region would announce
+        // its generic "Try Again" label on the same render, so a
+        // screen-reader user hears the specific reason immediately followed
+        // by a second, less informative announcement competing for
+        // priority (see morphing-button.tsx's module doc on the rejected
+        // "never announce" fix and why suppression is opt-in per caller).
+        // Removing this later reintroduces that double announcement — it is
+        // not a redundant flag to tidy up.
+        suppressErrorAnnouncement
+        // The action currently always throws (see the catch block above),
+        // so no code path here ever observes a real "success" — only
+        // idle/pending/error occur. The label below is required by
+        // MorphingButtonLabels' Record<MorphingButtonState, string> shape
+        // but is dead code, not a claim that this state is reachable.
+        state={isPending ? "pending" : error ? "error" : "idle"}
+        labels={{
+          idle: "Send Reset Instructions",
+          pending: "Sending…",
+          success: "Instructions Sent",
+          error: "Try Again",
+        }}
+      />
     </form>
   );
 }

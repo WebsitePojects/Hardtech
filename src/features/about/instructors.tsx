@@ -35,6 +35,13 @@ function initialsOf(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
 
+function isMobileHiddenTrainer(trainer: TrainerWithUser): boolean {
+  return (
+    trainer.user.firstName.trim().toLowerCase() === "adelan" &&
+    trainer.user.lastName.trim().toLowerCase() === "sistoso"
+  );
+}
+
 export function Instructors({ trainers }: { trainers: TrainerWithUser[] }) {
   if (trainers.length === 0) return null;
 
@@ -53,9 +60,14 @@ export function Instructors({ trainers }: { trainers: TrainerWithUser[] }) {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {trainers.map((trainer) => (
-          <Card key={trainer.id} className="bg-surface-secondary transition-[border-color,box-shadow,transform] motion-reduce:transition-none lg:hover:-translate-y-1 lg:hover:border-[var(--glass-border-strong)] lg:hover:shadow-glow-sm">
+          <Card
+            key={trainer.id}
+            className={`bg-surface-secondary transition-[border-color,box-shadow,transform] motion-reduce:transition-none lg:hover:-translate-y-1 lg:hover:border-[var(--glass-border-strong)] lg:hover:shadow-glow-sm ${
+              isMobileHiddenTrainer(trainer) ? "max-sm:hidden" : ""
+            }`}
+          >
             <CardContent className="flex flex-col gap-4">
               <Avatar size="lg" className="border border-primary/40">
                 <AvatarFallback className="bg-primary/10 text-primary">

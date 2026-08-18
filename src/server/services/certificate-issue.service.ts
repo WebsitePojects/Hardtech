@@ -1,5 +1,6 @@
 import { certificateRequestRepository } from "@/server/repositories/certificate-request.repository";
 import { renderCertificate } from "@/server/certificates/certificate-render.service";
+import { db } from "@/server/db";
 import { destroyAsset, isStorageConfigured, uploadAsset } from "@/server/storage/cloudinary";
 
 /**
@@ -73,11 +74,17 @@ export async function issueCertificate(certificateRequestId: string): Promise<Is
     return { ok: true, publicId: request.certificatePublicId, alreadyIssued: true };
   }
 
+  const timezoneRecord = await db.certificateRequest.findUnique({
+    where: { id: request.id },
+    select: { enrollment: { select: { trainee: { select: { timezone: true } } } } },
+  });
+
   const { bytes } = await renderCertificate({
     recipientName: fullName(request.enrollment.trainee),
     programName: request.enrollment.program.name,
     programHours: null,
     completedAt: request.completedAt,
+    traineeTimeZone: timezoneRecord?.enrollment.trainee.timezone,
     certificateCode: request.certificateCode,
   });
 

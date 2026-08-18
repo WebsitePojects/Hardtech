@@ -4,7 +4,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { MorphingButton } from "@/components/ui/morphing-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
@@ -42,7 +42,8 @@ export function LoginForm() {
 
     setError(null);
     startTransition(async () => {
-      const result = await loginAction({ email, password, rememberMe });
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const result = await loginAction({ email, password, rememberMe, timezone });
       // A successful login redirects server-side and this line never runs;
       // only the failure path returns a value.
       setError(result.error);
@@ -112,10 +113,35 @@ export function LoginForm() {
         </p>
       ) : null}
 
-      <Button type="submit" disabled={isPending} className="w-full">
-        <LogIn className="size-4" aria-hidden />
-        {isPending ? "Signing In…" : "Sign In to Dashboard"}
-      </Button>
+      <MorphingButton
+        type="submit"
+        disabled={isPending}
+        className="w-full"
+        icon={<LogIn className="size-4" aria-hidden />}
+        // The `role="alert"` element above already announces the actual
+        // server error ("Invalid email or password") the moment `error` is
+        // set. Without this flag, MorphingButton's own internal live region
+        // would announce its generic "Try Again" label on the same render,
+        // so a screen-reader user hears the specific reason immediately
+        // followed by a second, less informative announcement competing for
+        // priority (see morphing-button.tsx's module doc on the rejected
+        // "never announce" fix and why suppression is opt-in per caller).
+        // Removing this later reintroduces that double announcement — it is
+        // not a redundant flag to tidy up.
+        suppressErrorAnnouncement
+        // A successful login redirects server-side (see the comment above
+        // `setError` in handleSubmit), so "success" never actually renders
+        // here — only idle/pending/error occur. The label below is required
+        // by MorphingButtonLabels' Record<MorphingButtonState, string> shape
+        // but is dead code, not a claim that this state is reachable.
+        state={isPending ? "pending" : error ? "error" : "idle"}
+        labels={{
+          idle: "Sign In to Dashboard",
+          pending: "Signing In…",
+          success: "Signed In",
+          error: "Try Again",
+        }}
+      />
     </form>
   );
 }

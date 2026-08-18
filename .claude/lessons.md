@@ -15,6 +15,205 @@ Format:
 
 ---
 
+## 2026-08-18 — A Tailwind v4 theme token was never registered, killing 18 hover states
+
+**Symptom:** `hover:bg-glass-hover` appeared at 18 call sites across the app —
+`src/components/dashboard/dashboard-sidebar-nav.tsx`,
+`src/app/(app)/forum/[id]/page.tsx`,
+`src/app/(app)/forum/leaderboard/page.tsx`, `src/components/layout/footer.tsx`,
+`src/components/layout/navbar-actions.tsx`,
+`src/features/dashboard-admin/components/trainer-card.tsx`,
+`src/features/dashboard-admin/sections/overview-section.tsx`,
+`src/features/dashboard-trainee/session-schedule-section.tsx`, and others.
+None of them ever painted. The source looked correct in every one.
+
+**Cause:** In Tailwind v4 a utility only exists if its token is registered in
+the `@theme` block. `src/app/globals.css` registered
+`--color-glass: var(--glass-bg)` and `--color-glass-border: var(--glass-border)`
+but **not** `--color-glass-hover`. The underlying `--glass-hover` variable was
+defined in both light and dark themes and was already being consumed by the
+`.glass-hover:hover` class, so the *value* was never missing — only the theme
+registration that turns it into a utility. Verified empirically by grepping the
+built stylesheet under `.next/static/`: `bg-glass-hover` occurred **0** times
+while its registered siblings `bg-glass` and `border-glass-border` occurred once
+each. After adding `--color-glass-hover: var(--glass-hover)` to `@theme`, the
+built CSS emitted `bg-glass-hover:hover{background-color:var(--glass-hover)}`.
+
+**Rule:** This is the same failure class as the 2026-08-09 entry "`.glass`
+shipped without its blur for the whole project" — *a declaration present in
+source is not necessarily present in the browser.* Verify a new colour utility
+by grepping the **built** CSS, not by reading the source, and check that every
+`--<name>` intended as a utility has a matching `--color-<name>` in `@theme`.
+
+---
+
+## 2026-08-18 — A shared button primitive disabled its own error state and deadlocked the login form
+
+**Symptom:** A new shared `MorphingButton` primitive
+(`src/components/ui/morphing-button.tsx`) derived
+`disabled={disabled || state !== "idle"}`. Adopted in
+`src/app/(auth)/login/login-form.tsx`, one failed login attempt made the form
+permanently unusable until a full page reload.
+
+**Cause:** Walk the exact sequence: a failed submit sets `error`; the call site
+maps that to `state="error"`; the primitive disables the button; but `error` is
+only cleared inside `handleSubmit`, which starts with `setError(null)`; and
+`handleSubmit` can only run on form submission, which requires the submit
+button. Enter-key implicit submission does not rescue it either — the HTML
+specification skips implicit submission when the form's default button is
+disabled. So the only path that clears the error is gated behind the control
+the error disabled. Fixed by narrowing the derivation to
+`disabled={disabled || state === "pending"}`: `pending` is genuinely in-flight
+and must disable, while `error` and `success` are terminal states that must
+not.
+
+**Rule:** A "disabled while busy" rule must disable only the *in-flight* state,
+never a terminal one. More broadly, whenever a component disables a control,
+check whether the only code path that clears the disabling condition runs
+through that same control — that is a self-locking cycle, and it is invisible
+to a typecheck, a lint, and a build. `success` was also left enabled because the
+component cannot know whether a given call site clears it via a handler behind
+the same button; assuming "success precedes a redirect" would recreate the
+identical deadlock one state over.
+
+---
+
+## 2026-08-18 — A test asserted on the wrong property path and leaked credentials when it failed
+
+**Symptom:** `tests/mutations/certificate-chain.test.mjs` failed on
+`assert.rejects(promise, /not found/i)` with the message "the asset must
+actually be gone from Cloudinary after cleanup, not just reported gone". The
+rejection *did* occur and the rejected value *did* contain
+`Resource not found - hardtech/certificates/...` with `http_code: 404` — i.e.
+the behaviour under test was correct the whole time. The failure had been
+mis-attributed to a stale Cloudinary API secret; a direct Admin API call
+returned HTTP 200, disproving that.
+
+**Cause:** Two distinct defects, both in the test. (1) `assert.rejects(promise,
+/regex/)` matches the regex against the thrown value's top-level `message`
+property. The Cloudinary SDK rejects with
+`{ request_options, query_params, error: { message, http_code } }` — there is
+no top-level `message`, so the regex could never match regardless of how
+correct the code was. (2) On failure, Node prints the assertion's raw `actual`
+value, and `request_options` contains an `auth` field holding the live
+`apiKey:apiSecret` pair — so a failing test wrote real credentials in plaintext
+to stdout, CI logs, and any pasted output, violating rule #6 of
+`.claude/rules/00-non-negotiables.md`. Fixed by replacing the regex matcher
+with a manual `try/catch` that extracts only `http_code` and the nested message
+into locals and asserts on those, so the raw SDK object is never handed to an
+assertion.
+
+**Rule:** On matching: when asserting against an error from a third-party SDK,
+verify the actual shape of the rejected value before choosing a matcher — a
+rejection carrying the right information at the wrong property path fails
+identically to a genuine defect, which sends you hunting the product code. On
+leakage: an assertion's `actual` value is printed verbatim on failure, so never
+pass a raw provider/request object to an assertion — extract the specific
+fields you mean to check first. Asserting on a structured field
+(`http_code === 404`) is stronger than a message regex; a bare "rejects with
+anything" would silently accept a 401 or a network error and destroy the
+guarantee.
+
+---
+
+## 2026-08-16 — Next 16 immediate invalidation means `updateTag`, not old `revalidateTag`
+
+**Symptom:** Mutating actions for dashboard, forum, enrollment, and messages
+needed immediate post-write UI freshness under Next 16.
+
+**Cause:** Next 16 changed the cache API contract: `revalidateTag` now requires
+a profile argument and is stale-while-revalidate, so it is the wrong primitive
+for user-owned writes that must reflect immediately. The verified action files
+import `updateTag` from `next/cache` and call it only after successful writes.
+
+**Rule:** On Next 16, use `updateTag("<domain>")` for read-your-own-write
+mutations and reserve `revalidateTag` for explicitly stale refresh semantics.
+Verify this by grepping the action layer for `revalidateTag` before accepting a
+wave receipt; a compile pass alone does not prove the cache semantics are right.
+
+---
+
+## 2026-08-16 — Messaging writes must be duplicate-safe as transactions, not just guarded buttons
+
+**Symptom:** The messaging wave added direct conversation creation, message
+send, unread increments, attachment binding, and mark-read state changes; each
+path can be double-fired by retries, impatient clicks, or concurrent requests.
+
+**Cause:** UI pending guards prevent accidental double-clicks but cannot stop a
+replayed request. The service layer now enforces one direct conversation via
+`directKey`, one message via `idempotencyKey`, participant-scoped reads/writes,
+owned active attachment binding, and conditional mark-read updates. Tests prove
+sequential and concurrent duplicate sends return the same row and increment
+unread counts only once.
+
+**Rule:** For messaging, the database transaction owns correctness: unique key
+or `ON CONFLICT`, validate actor scope inside the transaction, and fire side
+effects only on the inserted/changed row. Client handlers still need disabled,
+pending, and early-return guards, but they are UX protection, not the duplicate
+safety boundary.
+
+---
+
+## 2026-08-16 — GET routes must not create conversations
+
+**Symptom:** `/messages/new?to=...` is a tempting place to call
+`getOrCreateDirectConversation` during render so the page can immediately
+redirect into a thread.
+
+**Cause:** That would make a GET request mutate state: crawlers, prefetches,
+reloads, or merely viewing an author avatar link could create conversations and
+participant rows. The page now only validates `searchParams` and session, while
+the get-or-create call stays behind an explicit client confirmation with
+pending, disabled, and early-return guards.
+
+**Rule:** Any route named `new`, `preview`, or `confirm` must be audited for
+GET-side writes. A GET page may authenticate and validate, but creation belongs
+in a user-triggered action. Add a route-safety test that rejects imports or
+calls to the write service from the GET component.
+
+---
+
+## 2026-08-16 — Forum post/reply creation needs unique keys plus exactly-once side effects
+
+**Symptom:** Forum post/reply creation previously relied on application flow;
+duplicate submits could create duplicate posts or replies, and reply side
+effects could drift from the row count.
+
+**Cause:** Creation is not naturally idempotent. The wave 3 migration added
+nullable `idempotencyKey` columns and concurrent unique indexes for
+`ForumPost` and `Reply`, preserving legacy rows while making new create intents
+database-enforced. The service recovers `P2002` unique violations by loading the
+existing row for the same actor/input, and tests assert sequential and
+concurrent duplicates produce one row, one counter increment, and one
+notification per real reply.
+
+**Rule:** New create endpoints require a client-minted idempotency key that is
+persisted under a unique constraint. Side effects such as counters and
+notifications must happen in the same winning transaction and must be tested
+with both sequential replay and `Promise.all` concurrency.
+
+---
+
+## 2026-08-16 — Test fixtures must be hermetic, and DB integrity tests need an isolated database
+
+**Symptom:** Storage and database verification can look green while depending
+on developer-machine state or mutating a shared database.
+
+**Cause:** The Cloudinary signed-upload suite is intentionally hermetic: it sets
+fake Cloudinary variables before importing the storage modules and never reads
+real `.env` credentials or touches remote storage. By contrast,
+`tests/db-integrity.mjs` executes real constraint violations, creates seed
+records, and rolls back per assertion, so it must run against an isolated test
+database with migrations applied, not a shared dev or production database.
+
+**Rule:** Storage signature tests should provide fake provider fixtures inside
+the test process and assert secrets never appear in returned objects. Integrity
+scripts that exercise real SQL constraints must require an isolated
+`TEST_DATABASE_URL` and should not be treated as safe smoke tests for a shared
+database, even when most assertions roll back.
+
+---
+
 ## 2026-08-14 — Cloudinary appends the file extension to `public_id` for raw, and our "delete" reported success against nothing
 
 **Symptom:** A live probe of the new signed direct-upload path uploaded a PDF

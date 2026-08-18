@@ -1,6 +1,6 @@
-import { certificateRequestRepository } from "@/server/repositories/certificate-request.repository";
 import { formatCompletionDate } from "@/server/certificates/certificate-render.service";
 import { certificateCodeSchema } from "@/server/schemas/certificate.schema";
+import { db } from "@/server/db";
 
 /**
  * Public, unauthenticated certificate lookup backing the QR verification page.
@@ -34,7 +34,20 @@ export async function getPublicCertificate(
   const parsed = certificateCodeSchema.safeParse(rawCode);
   if (!parsed.success) return null;
 
-  const record = await certificateRequestRepository.findPublicByCode(parsed.data);
+  const record = await db.certificateRequest.findUnique({
+    where: { certificateCode: parsed.data },
+    select: {
+      certificateCode: true,
+      status: true,
+      completedAt: true,
+      enrollment: {
+        select: {
+          trainee: { select: { firstName: true, lastName: true, timezone: true } },
+          program: { select: { name: true } },
+        },
+      },
+    },
+  });
   if (!record) return null;
   if (record.status !== "APPROVED") return null;
 
@@ -43,7 +56,7 @@ export async function getPublicCertificate(
   return {
     recipientName: `${firstName} ${lastName}`.trim(),
     programName: record.enrollment.program.name,
-    completedOn: formatCompletionDate(record.completedAt),
+    completedOn: formatCompletionDate(record.completedAt, record.enrollment.trainee.timezone),
     certificateCode: record.certificateCode,
   };
 }

@@ -32,6 +32,10 @@ export const forumPostRepository = {
     return db.forumPost.findUnique({ where: { id }, include: withAuthor });
   },
 
+  findByIdempotencyKey(idempotencyKey: string, client: Prisma.TransactionClient = db) {
+    return client.forumPost.findUnique({ where: { idempotencyKey }, include: withAuthor });
+  },
+
   create(data: Prisma.ForumPostUncheckedCreateInput, client: Prisma.TransactionClient = db) {
     return client.forumPost.create({ data });
   },

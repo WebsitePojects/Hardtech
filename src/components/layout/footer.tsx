@@ -3,6 +3,7 @@ import { ExternalLink, Mail, MapPin, Phone } from "lucide-react";
 
 import { SiteLogo } from "./site-logo";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
+import { GradientWordmark } from "@/components/ui/gradient-wordmark";
 
 /**
  * Global site footer (docs/screens/desktop-01.md #5, docs/screens/
@@ -16,9 +17,10 @@ import { ScrollReveal } from "@/components/motion/scroll-reveal";
  * column reveals on scroll with an 80ms stagger (vgldesign technique #1,
  * `EASE_REVEAL`), the section sits on the same tinted `.hero-glow` radial
  * used behind the homepage hero (not pure black), and it closes on an
- * oversized ghost "HARDTECH" wordmark instead of a flat link list — the
- * large-scale layered-typography closing moment the reference genre is known
- * for. No copy was added: every string below already existed in this file.
+ * oversized ghost "HARDTECH" wordmark (the shared `GradientWordmark`
+ * primitive) instead of a flat link list — the large-scale
+ * layered-typography closing moment the reference genre is known for. No
+ * copy was added: every string below already existed in this file.
  */
 const quickLinks = [
   { label: "Home", href: "/" },
@@ -125,14 +127,12 @@ export function Footer() {
           src/components/motion/scroll-reveal.tsx) — `rootMargin: "0px"` and
           `threshold: 0`, satisfiable by an element with no more page below
           it to scroll through. Re-verified firing after the fix (Playwright,
-          scrolled to document end, 390x900): opacity 0 -> 1. */}
+          scrolled to document end, 390x900): opacity 0 -> 1. Now rendered
+          via the shared GradientWordmark primitive (see
+          src/components/ui/gradient-wordmark.tsx) instead of a bespoke
+          span. */}
       <ScrollReveal nearBottom durationMs={900} className="relative -mb-3 select-none text-center sm:-mb-4 md:-mb-6">
-        <span
-          aria-hidden
-          className="font-title inline-block bg-gradient-to-b from-primary/25 via-primary/8 to-transparent bg-clip-text text-[19vw] leading-[0.8] font-bold tracking-tighter text-transparent sm:text-[15vw] md:text-[12vw] lg:text-[9vw]"
-        >
-          HARDTECH
-        </span>
+        <GradientWordmark text="HARDTECH" />
       </ScrollReveal>
 
       <div className="relative border-t border-glass-border">

@@ -22,17 +22,15 @@ export const ADMIN_STATUS_OPTIONS: { value: UserStatus; label: string }[] = [
 ];
 
 /**
- * "Program catalog confirmed (5 programs)" — desktop-02.md #6. These are
- * the short labels shown inside the admin dropdown, distinct from each
- * Program's full marketing title used elsewhere (e.g. "Computer Hardware"
- * here vs. "Computer Hardware Servicing" on /programs).
+ * Active HardTech program catalog. These are the short labels shown inside
+ * the admin dropdown, distinct from each Program's full marketing title used
+ * elsewhere (e.g. "Computer Hardware" here vs. "Computer Hardware Servicing"
+ * on /programs).
  */
 export const ADMIN_PROGRAM_OPTIONS: string[] = [
   "Computer Hardware",
   "Cellphone Repair",
   "Software Dev",
-  "Networking Basics",
-  "CCTV Installation",
 ];
 
 /** User Management's top filter Select (mobile-05.md #7): a role filter,

@@ -6,7 +6,7 @@ import { postReportRepository } from "@/server/repositories/post-report.reposito
 import { replyRepository } from "@/server/repositories/reply.repository";
 import { userRepository } from "@/server/repositories/user.repository";
 import { verifiedActor } from "@/server/services/actor-verification.service";
-import type { Prisma, ReactionType, ReportReason, UserRole } from "@/../generated/prisma/client";
+import { Prisma, type ReactionType, type ReportReason, type UserRole } from "@/../generated/prisma/client";
 import type {
   CreateForumPostInput,
   CreateForumReplyInput,
@@ -49,6 +49,10 @@ function verifiedModerator(id: string, suppliedRole: UserRole): Promise<boolean>
   return verifiedActor(id, suppliedRole, moderatorRoles);
 }
 
+function isUniqueViolation(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
+
 export async function createForumPost(input: CreateForumPostInput, authorId: string): Promise<WriteResult> {
   const author = await userRepository.findById(authorId);
   if (!author) return { ok: false, error: "You must be signed in to post." };
@@ -77,10 +81,15 @@ export async function createForumPost(input: CreateForumPostInput, authorId: str
       category: input.category,
       hashtags: input.hashtags,
       communityId: input.communityId,
+      idempotencyKey: input.idempotencyKey,
       status,
     });
     return { ok: true };
-  } catch {
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      const existing = await forumPostRepository.findByIdempotencyKey(input.idempotencyKey);
+      if (existing?.authorId === authorId) return { ok: true };
+    }
     return { ok: false, error: "We could not publish your post." };
   }
 }
@@ -92,7 +101,13 @@ export async function createForumReply(input: CreateForumReplyInput, authorId: s
   try {
     await forumPostRepository.transaction(async (client) => {
       await replyRepository.create(
-        { postId: input.postId, authorId, body: input.body, parentReplyId: input.parentReplyId },
+        {
+          postId: input.postId,
+          authorId,
+          body: input.body,
+          parentReplyId: input.parentReplyId,
+          idempotencyKey: input.idempotencyKey,
+        },
         client,
       );
       await forumPostRepository.incrementCounter(input.postId, "replyCount", 1, client);
@@ -109,7 +124,11 @@ export async function createForumReply(input: CreateForumReplyInput, authorId: s
       }
     });
     return { ok: true };
-  } catch {
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      const existing = await replyRepository.findByIdempotencyKey(input.idempotencyKey);
+      if (existing?.postId === input.postId && existing.authorId === authorId) return { ok: true };
+    }
     return { ok: false, error: "We could not post your reply." };
   }
 }

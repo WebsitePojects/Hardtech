@@ -11,16 +11,12 @@ import { Card, CardContent } from "@/components/ui/card";
  * copy — no service function backs a "years of experience" or "master
  * trainers" count, so these are hardcoded rather than derived.
  *
- * Known source inconsistency (flagged, not reconciled): this stat block says
- * "3" CORE PROGRAMS, but the Program catalog (prisma/schema.prisma) seeds 5
- * rows (Computer Hardware Servicing, Cellphone Hardware Servicing, I.T.
- * Software Development, Networking Basics, CCTV Installation) with no "core"
- * flag — see also programs-section.tsx's carousel-count note. Also flagged:
- * "20+" YEARS OF EXPERIENCE here vs. "Established 2011" on the Our Story
- * card below (2011→2026 is 15 years, not 20+), and "4" MASTER TRAINERS here
- * vs. "50+ Expert Trainers" on /programs (owned by ROUTES-B, not built by
- * this route). Reproduced verbatim per docs/screens/desktop-01.md's own
- * Open Questions #7 and mobile-01.md's Open Questions #4.
+ * Known source inconsistency (flagged, not reconciled): "20+" YEARS OF
+ * EXPERIENCE here vs. "Established 2011" on the Our Story card below
+ * (2011→2026 is 15 years, not 20+), and "4" MASTER TRAINERS here vs.
+ * "50+ Expert Trainers" on /programs (owned by ROUTES-B, not built by this
+ * route). Reproduced verbatim per docs/screens/desktop-01.md's own Open
+ * Questions #7 and mobile-01.md's Open Questions #4.
  */
 const STATS = [
   { value: "20+", label: "YEARS OF EXPERIENCE" },

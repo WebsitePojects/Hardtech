@@ -225,6 +225,10 @@ model User {
   firstName    String
   lastName     String
   phone        String?
+  /// IANA timezone captured from the user's browser and validated at the
+  /// server boundary. DateTime columns remain canonical UTC instants; this is
+  /// only a display/printing preference for user-facing dates.
+  timezone     String     @default("Asia/Manila")
   role         UserRole
   status       UserStatus @default(PENDING)
   createdAt    DateTime   @default(now())
@@ -692,6 +696,10 @@ model ForumPost {
   author           User           @relation("ForumPostAuthor", fields: [authorId], references: [id], onDelete: Restrict)
   communityId      String?
   community        Community?     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  /// Nullable for live/backfill safety: legacy posts remain NULL while new
+  /// createForumPost writes can store the client-minted key. The unique index
+  /// below is the database duplicate-submit guard for one compose intent.
+  idempotencyKey   String?        @unique
   category         ForumCategory?
   title            String
   body             String
@@ -743,6 +751,10 @@ model Reply {
   post            ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   authorId        String
   author          User      @relation("ReplyAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  /// Nullable for live/backfill safety: legacy replies remain NULL while new
+  /// createForumReply writes can store the client-minted key. The unique index
+  /// below is the database duplicate-submit guard for one reply intent.
+  idempotencyKey  String?   @unique
   // CHECK Reply_no_self_parent (parentReplyId IS NULL OR parentReplyId <>
   // id) — migration 20260729173000_author_rating_integrity.
   parentReplyId   String?

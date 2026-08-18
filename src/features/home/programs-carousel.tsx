@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Camera, ChevronLeft, ChevronRight, Code2, Cpu, Network, Smartphone } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Code2, Cpu, Smartphone } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { resolveProgramImagery } from "@/features/programs/program-visuals";
+import { isSupportedProgramName, resolveProgramImagery } from "@/features/programs/program-visuals";
 
 export interface ProgramsCarouselProgram {
   id: string;
@@ -16,7 +16,7 @@ export interface ProgramsCarouselProgram {
   imageUrl: string | null;
 }
 
-const PROGRAM_ICONS: Record<string, LucideIcon> = { cpu: Cpu, chip: Cpu, computer: Cpu, hardware: Cpu, phone: Smartphone, smartphone: Smartphone, cellphone: Smartphone, code: Code2, "code-2": Code2, software: Code2, network: Network, networking: Network, wifi: Network, camera: Camera, cctv: Camera };
+const PROGRAM_ICONS: Record<string, LucideIcon> = { cpu: Cpu, chip: Cpu, computer: Cpu, hardware: Cpu, phone: Smartphone, smartphone: Smartphone, cellphone: Smartphone, code: Code2, "code-2": Code2, software: Code2 };
 const ACCENT_CLASSES: Record<string, string> = {
   blue: "border-brand-blue text-brand-blue bg-brand-blue/10",
   amber: "border-brand-orange text-brand-orange bg-brand-orange/10",
@@ -29,29 +29,37 @@ function resolveIcon(iconName: string | null): LucideIcon { return iconName ? PR
 function resolveAccent(accentColor: string | null): string { return accentColor ? ACCENT_CLASSES[accentColor.toLowerCase()] ?? ACCENT_CLASSES.green : ACCENT_CLASSES.green; }
 
 export function ProgramsCarousel({ programs }: { programs: ProgramsCarouselProgram[] }) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  if (programs.length === 0) return null;
-  const previous = () => setSelectedIndex((selectedIndex - 1 + programs.length) % programs.length);
-  const next = () => setSelectedIndex((selectedIndex + 1) % programs.length);
+  const supportedPrograms = useMemo(
+    () => programs.filter((program) => isSupportedProgramName(program.name)),
+    [programs],
+  );
+  // Clamped during render rather than corrected afterwards in an effect. If
+  // the programme list shrinks, an effect would first render one frame
+  // pointing past the end of the array, then fix itself — and a setState
+  // inside an effect cascades a second render for a value we can simply
+  // compute. `requestedIndex` is what the user asked for; `selectedIndex` is
+  // what the current list can actually honour.
+  const [requestedIndex, setRequestedIndex] = useState(0);
+  const lastIndex = Math.max(0, supportedPrograms.length - 1);
+  const selectedIndex = Math.min(requestedIndex, lastIndex);
+
+  if (supportedPrograms.length === 0) return null;
+  const previous = () => setRequestedIndex((selectedIndex - 1 + supportedPrograms.length) % supportedPrograms.length);
+  const next = () => setRequestedIndex((selectedIndex + 1) % supportedPrograms.length);
 
             return (
     <div className="relative mx-auto w-full max-w-5xl overflow-x-clip">
       <button type="button" aria-label="Previous program" onClick={previous} className="absolute left-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-glass-border bg-background/80 p-3 text-muted-foreground transition-[border-color,box-shadow,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-primary hover:text-primary hover:shadow-glow-sm motion-reduce:transition-none lg:block"><ChevronLeft className="size-4" /></button>
       <button type="button" aria-label="Next program" onClick={next} className="absolute right-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-glass-border bg-background/80 p-3 text-muted-foreground transition-[border-color,box-shadow,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-primary hover:text-primary hover:shadow-glow-sm motion-reduce:transition-none lg:block"><ChevronRight className="size-4" /></button>
       <div className="relative top-0 mx-auto h-[106px] w-full max-w-4xl [--carousel-step:112px] [perspective:1100px] lg:top-0 lg:h-[292px] lg:[--carousel-step:180px]">
-        {programs.map((program, index) => {
+        {supportedPrograms.map((program, index) => {
           const rawOffset = index - selectedIndex;
-          const offset = rawOffset > programs.length / 2 ? rawOffset - programs.length : rawOffset < -programs.length / 2 ? rawOffset + programs.length : rawOffset;
+          const offset = rawOffset > supportedPrograms.length / 2 ? rawOffset - supportedPrograms.length : rawOffset < -supportedPrograms.length / 2 ? rawOffset + supportedPrograms.length : rawOffset;
           const distance = Math.abs(offset);
           const Icon = resolveIcon(program.iconName);
           const active = offset === 0;
           const visible = distance <= 2;
           const accent = resolveAccent(program.accentColor);
-          // Deliberate fallback (see features/programs/program-visuals.tsx
-          // resolveProgramImagery): no gallery photo genuinely depicts
-          // "Networking Basics" or "CCTV Installation", so those cards get
-          // an accent-tinted panel with a large watermark icon instead of a
-          // photo — never a blank/void card.
           const imagery = resolveProgramImagery(program);
           const accentBgClass = accent.match(/bg-\S+/)?.[0] ?? "bg-primary/10";
           return (
@@ -79,7 +87,7 @@ export function ProgramsCarousel({ programs }: { programs: ProgramsCarouselProgr
         Playwright boundingBox(), well under the 44px minimum.
       */}
       <div className="mt-4 flex justify-center gap-3 lg:mt-5">
-        {programs.map((program, index) => <button key={program.id} type="button" aria-label={`Go to ${program.name}`} onClick={() => setSelectedIndex(index)} className={`relative h-1.5 rounded-full transition-all after:absolute after:-inset-3.5 after:content-[''] motion-reduce:transition-none ${index === selectedIndex ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/40"}`} />)}
+        {supportedPrograms.map((program, index) => <button key={program.id} type="button" aria-label={`Go to ${program.name}`} onClick={() => setRequestedIndex(index)} className={`relative h-1.5 rounded-full transition-all after:absolute after:-inset-3.5 after:content-[''] motion-reduce:transition-none ${index === selectedIndex ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/40"}`} />)}
       </div>
     </div>
   );

@@ -10,7 +10,7 @@
 // render") because a component picked by a function call isn't statically
 // provable to be stable across renders, even though this lookup is a pure,
 // deterministic table.
-import { Camera, Code2, Cpu, GraduationCap, Network, Smartphone } from "lucide-react";
+import { Code2, Cpu, GraduationCap, Smartphone } from "lucide-react";
 
 export interface AccentTokens {
   /** Text color utility, e.g. for the icon glyph and price. */
@@ -22,6 +22,18 @@ export interface AccentTokens {
 }
 
 type AccentKey = "green" | "blue" | "purple" | "orange";
+
+export const SUPPORTED_PROGRAM_NAMES = [
+  "Computer Hardware Servicing",
+  "Cellphone Hardware Servicing",
+  "I.T. Software Development",
+] as const;
+
+export type SupportedProgramName = (typeof SUPPORTED_PROGRAM_NAMES)[number];
+
+export function isSupportedProgramName(name: string): name is SupportedProgramName {
+  return SUPPORTED_PROGRAM_NAMES.includes(name as SupportedProgramName);
+}
 
 const ACCENTS: Record<AccentKey, AccentTokens> = {
   green: { text: "text-primary", bg: "bg-primary/10", border: "border-primary/30" },
@@ -53,9 +65,9 @@ export interface ProgramImagery {
  * Curated gallery photos that genuinely depict each program's training —
  * hand-picked, not name-matched by coincidence. `public/images/gallery`
  * (prisma/seed.ts GALLERY_PHOTOS) is entirely repair-bench, soldering, and
- * certificate photos; none show networking or CCTV work, so those two
- * programs are deliberately left out of this table rather than assigned a
- * photo that would misrepresent them.
+ * certificate photos. Only the three active HardTech programs are mapped
+ * here; unsupported legacy rows fail closed elsewhere before reaching public
+ * selectors/cards.
  */
 const CURATED_PROGRAM_PHOTOS: Record<string, string> = {
   "Computer Hardware Servicing": "/images/gallery/gallery-01.jpg",
@@ -66,16 +78,10 @@ const CURATED_PROGRAM_PHOTOS: Record<string, string> = {
 /**
  * Resolves the marketing image for a program, or a deliberate fallback.
  *
- * `Program.imageUrl` is DATA-seeded and null for all five seeded rows (see
- * prisma/seed.ts). Three programs have a curated photo that actually shows
- * their training; "Networking Basics" and "CCTV Installation" do not, and
- * previously fell through to `undefined` — rendering a blank/void card on
- * the homepage carousel and, on `/programs`, causing the whole card to be
- * skipped (`if (!marketingImage) return null`), silently dropping both
- * programs from the catalogue page entirely. Both call sites now use this
- * single resolver so every program renders: a real photo when one honestly
- * exists, otherwise an accent-tinted icon panel bearing the program's own
- * icon and name — a designed fallback, not an absent one.
+ * `Program.imageUrl` is DATA-seeded and null for the active seeded rows (see
+ * prisma/seed.ts). The three supported programs have curated photos that
+ * actually show their training; any unexpected row gets a deliberate icon
+ * fallback instead of a blank/void card.
  */
 export function resolveProgramImagery(program: {
   name: string;
@@ -91,13 +97,10 @@ export function resolveProgramImagery(program: {
  * Resolves `Program.iconName` to a lucide glyph. Defaults to a generic cap
  * for anything unrecognized.
  *
- * Keys below match prisma/seed.ts's actual seeded values exactly — "Cpu",
- * "Smartphone", "Code", "Network", "Camera" (5 programs: Computer Hardware
- * Servicing, Cellphone Hardware Servicing, I.T. Software Development,
- * Networking Basics, CCTV Installation) — the same source ROUTES-A's
- * carousel maps, so the two icon maps agree. A handful of lowercase/kebab
- * aliases are kept alongside so this stays correct even if a future seed
- * uses a different casing convention.
+ * Keys below match prisma/seed.ts's active seeded values exactly: "Cpu",
+ * "Smartphone", and "Code". A handful of lowercase/kebab aliases are kept
+ * alongside so this stays correct if a future seed uses a different casing
+ * convention.
  */
 export function renderProgramIcon(iconName: string | null | undefined, className?: string) {
   switch (iconName?.toLowerCase().trim()) {
@@ -117,12 +120,6 @@ export function renderProgramIcon(iconName: string | null | undefined, className
     case "dev":
     case "it-software":
       return <Code2 className={className} aria-hidden />;
-    case "network":
-    case "networking":
-      return <Network className={className} aria-hidden />;
-    case "camera":
-    case "cctv":
-      return <Camera className={className} aria-hidden />;
     default:
       return <GraduationCap className={className} aria-hidden />;
   }

@@ -28,10 +28,12 @@ export type DashboardMobileNavProps = {
 /**
  * Mobile sticky header: `[hamburger][coloured dot][ROLE PORTAL label]`
  * (docs/screens/mobile-05.md screenshot #1 / #31, "Mobile layout rules").
- * The hamburger opens a left `Sheet` containing the exact same
+ * The hamburger opens a right `Sheet` containing the exact same
  * `DashboardSidebarNav` the desktop rail renders — there is no bottom tab
  * bar and no FAB anywhere in this shell, confirmed across the whole
- * mobile-05.md slice.
+ * mobile-05.md slice. The trainee drawer evidence in mobile-06.md fixes the
+ * mobile dashboard sheet to the right edge at roughly 85vw, with a rounded
+ * leading edge.
  */
 export function DashboardMobileNav({
   role,
@@ -63,8 +65,8 @@ export function DashboardMobileNav({
           </Button>
         </SheetTrigger>
         <SheetContent
-          side="left"
-          className="w-4/5 gap-0 border-glass-border bg-surface-secondary p-0 sm:max-w-xs"
+          side="right"
+          className="w-[85vw] max-w-sm gap-0 rounded-l-xl border-glass-border bg-surface-secondary p-0 motion-reduce:transition-none"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>{meta.portalLabel}</SheetTitle>

@@ -34,6 +34,10 @@ export const replyRepository = {
     return client.reply.create({ data });
   },
 
+  findByIdempotencyKey(idempotencyKey: string, client: Prisma.TransactionClient = db) {
+    return client.reply.findUnique({ where: { idempotencyKey } });
+  },
+
   findById(id: string, client: Prisma.TransactionClient = db) {
     return client.reply.findUnique({ where: { id } });
   },

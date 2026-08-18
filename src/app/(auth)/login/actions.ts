@@ -7,6 +7,8 @@ import { verifyDemoCredentials } from "@/server/auth/demo-credentials";
 import { createSession } from "@/server/auth/session";
 import { checkRateLimit } from "@/server/auth/rate-limit";
 import { getClientIp } from "@/server/auth/client-ip";
+import { db } from "@/server/db";
+import { normalizeIanaTimeZone } from "@/server/timezone";
 
 export interface LoginActionResult {
   ok: false;
@@ -48,6 +50,14 @@ export async function loginAction(rawInput: unknown): Promise<LoginActionResult>
   const user = await verifyDemoCredentials(parsed.data.email, parsed.data.password);
   if (!user) {
     return { ok: false, error: GENERIC_ERROR };
+  }
+
+  const timezone = parsed.data.timezone ? normalizeIanaTimeZone(parsed.data.timezone) : null;
+  if (timezone) {
+    await db.user.updateMany({
+      where: { id: user.id, timezone: { not: timezone } },
+      data: { timezone },
+    });
   }
 
   await createSession(user.id, user.role, { rememberMe: parsed.data.rememberMe });
