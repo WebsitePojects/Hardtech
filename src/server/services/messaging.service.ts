@@ -1,5 +1,11 @@
 import type { MessageAttachmentKind, ConversationSummary, MessageView, SendMessageInput } from "@/features/messaging/types";
 import { messagingRepository } from "@/server/repositories/messaging.repository";
+import { Prisma } from "@/../generated/prisma/client";
+
+// Rule 2 ("unique constraint + out-of-transaction recovery"): the code lives on
+// `.code`, not in the stringified error, so recovery must type-check the error
+// class and inspect `.code` directly rather than substring-matching toString().
+const isUniqueViolation = (error: unknown): boolean => error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 
 const directKey = (a: string, b: string) => [a, b].sort().join(":");
 const kind = (resourceType: string, format: string | null): MessageAttachmentKind => format?.startsWith("image/") || resourceType === "image" ? "IMAGE" : format?.startsWith("video/") || resourceType === "video" ? "VIDEO" : "FILE";
@@ -21,13 +27,13 @@ export async function getOrCreateDirectConversation(userId: string, otherUserId:
   const key = directKey(userId, otherUserId);
   const current = await messagingRepository.findDirect(key);
   if (current) return summary(current, userId);
-  try { return summary(await messagingRepository.createDirect(key, userId, otherUserId), userId); } catch { const winner = await messagingRepository.findDirect(key); if (!winner) throw new Error("CONVERSATION_UNAVAILABLE"); return summary(winner, userId); }
+  try { return summary(await messagingRepository.createDirect(key, userId, otherUserId), userId); } catch (error) { if (!isUniqueViolation(error)) throw error; const winner = await messagingRepository.findDirect(key); if (!winner) throw new Error("CONVERSATION_UNAVAILABLE"); return summary(winner, userId); }
 }
 export async function listMessages(conversationId: string, userId: string) { return (await messagingRepository.listMessages(conversationId, userId)).map(message); }
 export async function sendMessage(input: SendMessageInput & { senderId: string }) {
   const replay = await messagingRepository.findMessageByIdempotencyKey(input.idempotencyKey, input.senderId);
   if (replay) return message(replay);
-  try { return message(await messagingRepository.createMessage(input)); } catch (error) { if (String(error).includes("P2002")) { const retry = await messagingRepository.findMessageByIdempotencyKey(input.idempotencyKey, input.senderId); if (retry) return message(retry); } throw error; }
+  try { return message(await messagingRepository.createMessage(input)); } catch (error) { if (isUniqueViolation(error)) { const retry = await messagingRepository.findMessageByIdempotencyKey(input.idempotencyKey, input.senderId); if (retry) return message(retry); } throw error; }
 }
 export async function markConversationRead(conversationId: string, userId: string) { return { updated: (await messagingRepository.markRead(conversationId, userId)).count }; }
 export async function getUnreadTotal(userId: string) { return (await messagingRepository.unreadTotal(userId))._sum.unreadCount ?? 0; }

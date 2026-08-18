@@ -23,7 +23,16 @@ export function ForumTabs({
   active: ForumTab;
   buildHref: (tab: ForumTab) => string;
 }) {
-  return (
-    <FluidTabs mode="link" tabs={TABS} active={active} buildHref={buildHref} />
-  );
+  // Resolve every tab's href here, on the server, instead of forwarding
+  // `buildHref` itself. `ForumTabs` is a Server Component but `FluidTabs`
+  // (src/components/ui/fluid-tabs.tsx) is "use client", and a function prop
+  // cannot cross that boundary — passing `buildHref` straight through threw
+  // "Functions cannot be passed directly to Client Components" at render
+  // time in production (HTTP 500 on `/forum`), even though `tsc`, `eslint`,
+  // `npm run build`, and the whole test suite all passed cleanly, because
+  // none of them render the component tree. The hrefs are fully known here,
+  // so hand FluidTabs plain, serializable strings instead of a callback.
+  const tabs = TABS.map((tab) => ({ ...tab, href: buildHref(tab.value) }));
+
+  return <FluidTabs mode="link" tabs={tabs} active={active} />;
 }

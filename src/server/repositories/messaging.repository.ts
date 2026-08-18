@@ -35,6 +35,12 @@ export const messagingRepository = {
       return message;
     });
   },
-  markRead(conversationId: string, userId: string) { return db.conversationParticipant.updateMany({ where: { conversationId, userId }, data: { unreadCount: 0, lastReadAt: new Date() } }); },
+  // Rule 2 conditional state-transition UPDATE: gate on `unreadCount: { gt: 0 }`
+  // so only a row genuinely transitioning is matched. Without this, Postgres
+  // reports every WHERE-matched row as updated regardless of whether the value
+  // changed, so a replay or a losing concurrent racer could not be told apart
+  // from the real transition — a future side effect gated on this call would
+  // double-fire.
+  markRead(conversationId: string, userId: string) { return db.conversationParticipant.updateMany({ where: { conversationId, userId, unreadCount: { gt: 0 } }, data: { unreadCount: 0, lastReadAt: new Date() } }); },
   unreadTotal(userId: string) { return db.conversationParticipant.aggregate({ where: { userId }, _sum: { unreadCount: true } }); },
 };

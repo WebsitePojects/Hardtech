@@ -24,11 +24,22 @@ function testProofBytes() {
  * Mirrors enrollment.service.ts's private `proofPublicIdFor` so cleanup can
  * find (and destroy) exactly the Cloudinary object + MediaAsset row a given
  * idempotencyKey would have produced, without importing a private function.
- * Only used for addressing rows to clean up — every assertion below reads
- * real state back from Postgres/Cloudinary, never this function's output.
+ *
+ * This is NOT just the leaf the server asks for. This Cloudinary account's
+ * folder mode folds `folder` into the object's identity: an upload_stream
+ * call with `{ folder: "hardtech/enrollment-proofs", public_id: "enroll-x" }`
+ * comes back with `public_id: "hardtech/enrollment-proofs/enroll-x"`, and
+ * that full string — never the bare leaf — is what `uploadAsset` returns as
+ * `StoredAsset.publicId` and what `mediaAssetRepository.reserve` persists
+ * (correctly: see the 2026-08-14 lesson in .claude/lessons.md — the
+ * authoritative public_id is the one the provider returns, not the one we
+ * minted). A test that queries `MediaAsset` by the bare leaf finds zero rows
+ * even though the upload and the row both succeeded — confirmed by direct
+ * SQL: every real row this suite has ever created stores the folder-prefixed
+ * form. Reproduce the prefix here so lookups match what is actually stored.
  */
 function proofPublicIdFor(idempotencyKey) {
-  return `enroll-${idempotencyKey.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+  return `hardtech/enrollment-proofs/enroll-${idempotencyKey.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
 }
 
 /** Deletes the MediaAsset row(s) for the given idempotency keys' deterministic

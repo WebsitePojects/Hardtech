@@ -11,8 +11,17 @@ export type FluidTabItem<TValue extends string = string> = {
   label: string;
 };
 
-type FluidTabsBase<TValue extends string> = {
-  tabs: FluidTabItem<TValue>[];
+/**
+ * Link-mode tab: carries its own already-resolved `href` instead of a
+ * `buildHref` callback. A function cannot cross the Server→Client boundary
+ * (see the module doc below), so the href has to be plain, serializable data
+ * by the time it reaches this "use client" component.
+ */
+export type FluidLinkTabItem<TValue extends string = string> = FluidTabItem<TValue> & {
+  href: string;
+};
+
+type FluidTabsShared<TValue extends string> = {
   active: TValue;
   className?: string;
 };
@@ -20,24 +29,20 @@ type FluidTabsBase<TValue extends string> = {
 /**
  * Server-derived active state: tabs are `next/link`s and the URL owns which
  * one is active — mirrors `src/features/forum/forum-tabs.tsx`, so a shared
- * link stays shareable/bookmarkable and survives a full reload.
- *
- * `buildHref` takes `TValue`, not `string`: a consumer whose tab values are a
- * string-literal union (e.g. `ForumTab`) gets `buildHref: (value: ForumTab)
- * => string` inferred from its own `tabs` array, with no cast needed at the
- * call site. Widening this to plain `string` is what forced that cast in the
- * first place — a function accepting the narrow union isn't assignable where
- * one accepting any `string` is expected (contravariance), so a generic
- * `TValue` is the fix, not a wider parameter type.
+ * link stays shareable/bookmarkable and survives a full reload. Each tab
+ * carries its own resolved `href`; the caller (a Server Component) computes
+ * it before handing tabs down, rather than passing a `buildHref` function for
+ * this component to call.
  */
-type FluidTabsLinkProps<TValue extends string> = FluidTabsBase<TValue> & {
+type FluidTabsLinkProps<TValue extends string> = FluidTabsShared<TValue> & {
   mode: "link";
-  buildHref: (value: TValue) => string;
+  tabs: FluidLinkTabItem<TValue>[];
 };
 
 /** Client-owned active state: tabs are buttons, the parent holds the value. */
-type FluidTabsButtonProps<TValue extends string> = FluidTabsBase<TValue> & {
+type FluidTabsButtonProps<TValue extends string> = FluidTabsShared<TValue> & {
   mode: "button";
+  tabs: FluidTabItem<TValue>[];
   onValueChange: (value: TValue) => void;
 };
 
@@ -75,7 +80,7 @@ type IndicatorRect = { left: number; width: number };
 export function FluidTabs<TValue extends string = string>(
   props: FluidTabsProps<TValue>,
 ) {
-  const { tabs, active, className } = props;
+  const { active, className } = props;
 
   // This row is the *scrolling content*, not the overflow-x clipper around
   // it. Its width is intrinsic (`w-max`, sized to the sum of tab widths), so
@@ -126,32 +131,57 @@ export function FluidTabs<TValue extends string = string>(
   // are plain anchors and already get correct Tab/Enter behaviour natively.
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (props.mode !== "button") return;
-    const currentIndex = tabs.findIndex((tab) => tab.value === active);
+    const buttonTabs = props.tabs;
+    const currentIndex = buttonTabs.findIndex((tab) => tab.value === active);
     if (currentIndex === -1) return;
 
     let nextIndex: number | null = null;
     switch (event.key) {
       case "ArrowRight":
-        nextIndex = (currentIndex + 1) % tabs.length;
+        nextIndex = (currentIndex + 1) % buttonTabs.length;
         break;
       case "ArrowLeft":
-        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        nextIndex = (currentIndex - 1 + buttonTabs.length) % buttonTabs.length;
         break;
       case "Home":
         nextIndex = 0;
         break;
       case "End":
-        nextIndex = tabs.length - 1;
+        nextIndex = buttonTabs.length - 1;
         break;
       default:
         return;
     }
 
     event.preventDefault();
-    const nextTab = tabs[nextIndex];
+    const nextTab = buttonTabs[nextIndex];
     tabRefs.current.get(nextTab.value)?.focus();
     props.onValueChange(nextTab.value);
   };
+
+  // Active styling is independent of the indicator on purpose (see module
+  // doc): this is what SSR, no-JS, and reduced-motion sessions rely on to
+  // show the active tab.
+  //
+  // min-h-11/sm:min-h-7 reconciles two constraints that pull in opposite
+  // directions: the 44px tap-target floor (rule #7) only matters where taps
+  // happen — touch/mobile widths — while `.claude/rules/20-design-fidelity.md`
+  // requires reproducing the reference strip's tighter desktop geometry
+  // exactly. `sm:min-h-7` (1.75rem/28px) reproduces `forum-tabs.tsx`'s actual
+  // rendered height at that breakpoint: `py-1.5` (12px) + `text-xs`'s 1rem
+  // line-height (16px) = 28px, so this isn't a guessed value.
+  //
+  // Shared by both mode branches below (link renders `<Link>`, button renders
+  // `<button>`) so the geometry/typography stays in exactly one place even
+  // though the two branches can't share a single `.map` — `props.tabs`'
+  // element type differs per mode (link items carry `href`, button items
+  // don't) and narrowing `props.mode` doesn't narrow a value already
+  // destructured out of `props` before the check.
+  const tabClassName = (isActive: boolean) =>
+    cn(
+      "relative z-10 flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors sm:min-h-7",
+      isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
+    );
 
   return (
     <div
@@ -189,57 +219,39 @@ export function FluidTabs<TValue extends string = string>(
           }}
         />
 
-        {tabs.map((tab) => {
-          const isActive = tab.value === active;
-          // Active styling is independent of the indicator on purpose (see
-          // module doc): this is what SSR, no-JS, and reduced-motion
-          // sessions rely on to show the active tab.
-          //
-          // min-h-11/sm:min-h-7 reconciles two constraints that pull in
-          // opposite directions: the 44px tap-target floor (rule #7) only
-          // matters where taps happen — touch/mobile widths — while
-          // `.claude/rules/20-design-fidelity.md` requires reproducing the
-          // reference strip's tighter desktop geometry exactly. `sm:min-h-7`
-          // (1.75rem/28px) reproduces `forum-tabs.tsx`'s actual rendered
-          // height at that breakpoint: `py-1.5` (12px) + `text-xs`'s 1rem
-          // line-height (16px) = 28px, so this isn't a guessed value.
-          const tabClassName = cn(
-            "relative z-10 flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-colors sm:min-h-7",
-            isActive
-              ? "text-primary"
-              : "text-muted-foreground hover:text-foreground",
-          );
-
-          if (props.mode === "link") {
-            return (
-              <Link
-                key={tab.value}
-                ref={registerTab(tab.value)}
-                href={props.buildHref(tab.value)}
-                role="tab"
-                aria-selected={isActive}
-                className={tabClassName}
-              >
-                {tab.label}
-              </Link>
-            );
-          }
-
-          return (
-            <button
-              key={tab.value}
-              ref={registerTab(tab.value)}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              tabIndex={isActive ? 0 : -1}
-              onClick={() => props.onValueChange(tab.value)}
-              className={tabClassName}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
+        {props.mode === "link"
+          ? props.tabs.map((tab) => {
+              const isActive = tab.value === active;
+              return (
+                <Link
+                  key={tab.value}
+                  ref={registerTab(tab.value)}
+                  href={tab.href}
+                  role="tab"
+                  aria-selected={isActive}
+                  className={tabClassName(isActive)}
+                >
+                  {tab.label}
+                </Link>
+              );
+            })
+          : props.tabs.map((tab) => {
+              const isActive = tab.value === active;
+              return (
+                <button
+                  key={tab.value}
+                  ref={registerTab(tab.value)}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  tabIndex={isActive ? 0 : -1}
+                  onClick={() => props.onValueChange(tab.value)}
+                  className={tabClassName(isActive)}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
       </div>
     </div>
   );

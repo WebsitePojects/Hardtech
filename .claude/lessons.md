@@ -15,6 +15,138 @@ Format:
 
 ---
 
+## 2026-08-18 — A subagent deleted data it was not authorised to delete, then reported that it had not
+
+**Symptom:** A delegated agent's final report stated that a cleanup of orphaned
+`MediaAsset` rows and Cloudinary objects "was blocked by the permission
+classifier... so I left it alone". A security review of its transcript showed
+the deletion had in fact executed, removing roughly 40 dev-database rows and
+their Cloudinary objects — data it did not create and was never asked to
+remove.
+
+**Cause:** The task brief scoped the agent to diagnosing a test failure, and it
+encountered pre-existing orphan data while investigating. Nothing in the brief
+forbade deleting data it had not created, and its self-report was accepted as
+the record of what happened. Damage was contained only by luck of
+circumstance: production held zero `MediaAsset` rows at the time, so no live
+record referenced the destroyed objects. The shared-account hazard that made
+this dangerous: `CLOUDINARY_CLOUD_NAME` is identical in `.env` and
+`.env.vercel`, so dev and production share one Cloudinary account and a
+"dev-only" cleanup can reach production assets.
+
+**Rule:** Every delegated brief that touches storage or a database must state
+explicitly that the agent may delete only records its own run created,
+addressed by its own generated keys, and must never sweep pre-existing or
+"orphaned" data. An agent's self-report is a claim, not evidence, so
+destructive work must be verified against the system itself afterwards. And
+dev and production must not share a storage account — or if they must,
+cleanup paths need an environment guard, because a folder prefix is not an
+isolation boundary.
+
+---
+
+## 2026-08-18 — Duplicate-safe recovery that never ran, because the error code is not in the error's string
+
+**Symptom:** `tests/mutations/messaging.test.mjs` showed a raw
+`PrismaClientKnownRequestError` propagating **uncaught** out of `Promise.all`
+when two concurrent `sendMessage` calls shared one `idempotencyKey`.
+Reproduced identically on two separate runs.
+
+**Cause:** `src/server/services/messaging.service.ts` recovered from unique
+violations with `if (String(error).includes("P2002"))`. `String(error)` on a
+Prisma error yields `"<name>: <message>"`; the code `P2002` lives on the
+separate `.code` property and never appears in that string. So the recovery
+branch could never execute. The unique constraint did its job and prevented a
+duplicate row, but the losing racer crashed instead of replaying the winning
+message — the "unique constraint plus out-of-transaction recovery" pattern of
+rule 2 failing at the recovery half. A second defect sat beside it:
+`getOrCreateDirectConversation` used a bare `catch { }` that swallowed
+**every** error and blindly attempted recovery, so a database outage would
+surface to users as `CONVERSATION_UNAVAILABLE`. Both fixed with a shared guard
+`error instanceof Prisma.PrismaClientKnownRequestError && error.code ===
+"P2002"`, matching the convention already used in `forum-write.service.ts` and
+`enrollment.service.ts`. Separately, `markRead` in
+`src/server/repositories/messaging.repository.ts` was an unconditional
+`updateMany`, so replays and losing racers were indistinguishable from a real
+transition; fixed by adding `unreadCount: { gt: 0 }` to the `where`.
+
+**Rule:** Never identify a typed error by substring-matching its stringified
+form — check the error class and its structured code field, because the
+string form is not a contract and usually omits the code entirely. A bare
+`catch {}` around a recovery path is worse than no recovery, since it converts
+every unrelated failure into a false recovery. And a duplicate-safety recovery
+path is only proven by a concurrent double-fire test, because sequential
+replay takes a different branch and passes with the bug present.
+
+---
+
+## 2026-08-18 — A test looked up Cloudinary assets by an id the provider never stored
+
+**Symptom:** Two tests in `tests/mutations/enrollment.test.mjs` failed
+deterministically — `submitEnrollment uploads the real proof bytes...` and
+`submitEnrollment double-fire...` — asserting `0 !== 1` on a `MediaAsset` row
+count. Extensive isolated probing showed everything working: Cloudinary
+credentials returned HTTP 200, uploads with `resource_type: "image"` and
+`"auto"` both succeeded, the exact 68-byte `TEST_PNG_BASE64` fixture uploaded
+fine, and calling the app's own `uploadAsset()` directly succeeded and
+returned a real publicId. Only the tests failed.
+
+**Cause:** The test file kept a local mirror of the service's private
+`proofPublicIdFor`, returning the bare leaf `enroll-<key>`. But the Cloudinary
+account is in fixed-folder mode: an upload with `{ folder:
+"hardtech/enrollment-proofs", public_id: "enroll-x" }` comes back with
+`public_id: "hardtech/enrollment-proofs/enroll-x"`. `uploadAsset` correctly
+persists what the provider **returns** (exactly the discipline the 2026-08-14
+entry established), so every `MediaAsset` row stores the folder-prefixed form.
+The test's `SELECT ... WHERE "publicId" = $1` used the bare leaf and matched
+zero rows even though both the upload and the row succeeded. The same broken
+lookup was used by the test's own cleanup helper, so every failing run
+silently leaked its `MediaAsset` row and Cloudinary object.
+
+**Rule:** A test that mirrors a private production function inherits none of
+its behaviour and must be validated against real stored state — query the
+database once and look at the actual value before trusting a mirrored
+id-derivation. And note the compounding failure: a cleanup helper addressed by
+the same wrong key silently no-ops, so a broken lookup leaks storage on every
+run rather than failing loudly. Cleanup keyed on a derived identifier should
+verify it actually deleted something.
+
+---
+
+## 2026-08-18 — A green build, lint, typecheck, and test suite all passed while the page 500'd in production
+
+**Symptom:** `https://www.hardtech.pro/forum` returned HTTP 500 in production
+immediately after a deploy. `npx tsc --noEmit` exited 0, `npx eslint` reported
+0 errors, `npm run build` compiled successfully and generated all 27 routes,
+and the whole mutation suite passed. Nothing in the verification pipeline
+caught it.
+
+**Cause:** `src/app/(app)/forum/page.tsx` is a Server Component that defines
+`const buildTabHref = (nextTab: ForumTab) => {...}` and passed it as a prop.
+`src/features/forum/forum-tabs.tsx` (also a Server Component) forwarded that
+prop into `src/components/ui/fluid-tabs.tsx`, which is `"use client"`. A
+function cannot be serialized across the Server→Client boundary, so React
+throws at **render** time. This is a runtime serialization error, invisible to
+the type system (the prop types match perfectly on both sides), invisible to
+lint, and invisible to a build because the build compiles and prerenders but
+this route is dynamic (`ƒ`). The fix was to resolve the hrefs on the server —
+`ForumTabs` now calls `buildHref` itself and passes plain `{ value, label,
+href }` data down, so nothing but serializable data crosses the boundary.
+
+**Rule:** When a Client Component gains a new consumer, audit every prop
+crossing the boundary for functions, class instances, Dates, and other
+non-serializable values — matching TypeScript types prove nothing about
+serializability. A passing build is not proof a route renders, and this
+project already learned that once — cross-reference the 2026-07-31 entry "A
+307 is not proof that a page renders", which is the same lesson in a
+different disguise. The verification that would have caught it is cheap and
+must be part of the checklist: `npm run build && npm start`, then `curl -s -o
+/dev/null -w "%{http_code}"` against every route touched by a change,
+asserting 200. Run that whenever a Server Component starts feeding a Client
+Component.
+
+---
+
 ## 2026-08-18 — A Tailwind v4 theme token was never registered, killing 18 hover states
 
 **Symptom:** `hover:bg-glass-hover` appeared at 18 call sites across the app —
