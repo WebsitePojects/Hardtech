@@ -239,7 +239,12 @@ export default async function ForumPage(props: ForumPageProps) {
                     No posts yet.
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div
+                    className="max-h-[min(68dvh,52rem)] space-y-4 overflow-y-auto overscroll-contain pr-2"
+                    tabIndex={0}
+                    data-lenis-prevent
+                    aria-label="Forum posts"
+                  >
                     {(tab === "bookmarks" ? bookmarkedPosts : posts).map((post) => (
                       <PostCard key={post.id} post={post} />
                     ))}

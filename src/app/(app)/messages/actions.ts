@@ -1,65 +1,29 @@
 "use server";
 
-import { refresh, updateTag } from "next/cache";
+import { getSession } from "@/server/auth/session";
+import { sendMessage, markConversationRead, getOrCreateDirectConversation } from "@/server/services/messaging.service";
+import { sendMessageSchema, markConversationReadSchema } from "@/features/messaging/messaging.schema";
 
-import { requireSession } from "@/server/auth/session";
-import {
-  getOrCreateDirectConversation,
-  markConversationRead,
-  sendMessage,
-} from "@/server/services/messaging.service";
-import {
-  getOrCreateConversationSchema,
-  markConversationReadSchema,
-  sendMessageSchema,
-} from "@/features/messaging/messaging.schema";
-import type { ConversationSummary, MessageView } from "@/features/messaging/types";
-
-type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
-
-const GENERIC_MESSAGE_ERROR = "We could not update messages. Try again.";
-
-export async function sendMessageAction(rawInput: unknown): Promise<ActionResult<MessageView>> {
-  const parsed = sendMessageSchema.safeParse(rawInput);
-  if (!parsed.success) return { ok: false, error: "Write a message or attach a file." };
-
-  const session = await requireSession();
-  const result = await sendMessage({ ...parsed.data, senderId: session.userId });
-  if (!result.ok) return result;
-
-  updateTag("messages");
-  refresh();
-  return result;
+export async function sendMessageAction(input: unknown) {
+  const session = await getSession();
+  if (!session) return { ok: false as const, error: "Not authorized." };
+  const parsed = sendMessageSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Invalid message." };
+  try { return { ok: true as const, data: await sendMessage({ ...parsed.data, senderId: session.userId }) }; }
+  catch { return { ok: false as const, error: "Unable to send message." }; }
 }
 
-export async function markConversationReadAction(
-  rawInput: unknown,
-): Promise<ActionResult<{ updated: number }>> {
-  const parsed = markConversationReadSchema.safeParse(rawInput);
-  if (!parsed.success) return { ok: false, error: GENERIC_MESSAGE_ERROR };
-
-  const session = await requireSession();
-  const result = await markConversationRead(parsed.data.conversationId, session.userId);
-  if (result.updated > 0) {
-    updateTag("messages");
-    refresh();
-  }
-  return { ok: true, data: result };
+export async function markConversationReadAction(input: unknown) {
+  const session = await getSession();
+  if (!session) return { ok: false as const, error: "Not authorized." };
+  const parsed = markConversationReadSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Invalid conversation." };
+  return { ok: true as const, data: await markConversationRead(parsed.data.conversationId, session.userId) };
 }
 
-export async function getOrCreateDirectConversationAction(
-  rawInput: unknown,
-): Promise<ActionResult<ConversationSummary>> {
-  const parsed = getOrCreateConversationSchema.safeParse(rawInput);
-  if (!parsed.success) return { ok: false, error: GENERIC_MESSAGE_ERROR };
-
-  const session = await requireSession();
-  try {
-    const conversation = await getOrCreateDirectConversation(session.userId, parsed.data.otherUserId);
-    updateTag("messages");
-    refresh();
-    return { ok: true, data: conversation };
-  } catch {
-    return { ok: false, error: GENERIC_MESSAGE_ERROR };
-  }
+export async function getOrCreateDirectConversationAction(input: unknown) {
+  const session = await getSession();
+  if (!session || typeof input !== "object" || input === null || !("otherUserId" in input) || typeof input.otherUserId !== "string") return { ok: false as const, error: "Not authorized." };
+  try { return { ok: true as const, data: await getOrCreateDirectConversation(session.userId, input.otherUserId) }; }
+  catch { return { ok: false as const, error: "Unable to open conversation." }; }
 }

@@ -1,10 +1,8 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { otherParticipants, participantDisplayName, participantInitials } from "./conversation-helpers";
 import { Composer } from "./composer";
 import { MessageList } from "./message-list";
+import { MessagingBackButton } from "./messaging-back-button";
 import type { ConversationSummary, MessageView } from "./types";
 
 /**
@@ -28,13 +26,7 @@ export function ThreadView({
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex items-center gap-3 border-b border-glass-border p-3">
-        <Link
-          href="/messages"
-          className="text-muted-foreground hover:text-foreground lg:hidden"
-          aria-label="Back to conversations"
-        >
-          <ArrowLeft className="size-5" aria-hidden />
-        </Link>
+        <MessagingBackButton label="Back to previous page" />
         <Avatar size="sm">
           <AvatarFallback className="bg-primary/15 font-semibold text-primary">
             {primary ? participantInitials(primary) : "?"}

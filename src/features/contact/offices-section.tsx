@@ -15,9 +15,11 @@ export function OfficesSection() {
         Visit Us <span className="text-primary">In Person</span>
       </h2>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {OFFICES.map((office) => (
-          <OfficeMapCard key={office.id} office={office} />
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {OFFICES.map((office, index) => (
+          <div key={office.id} className={index === 0 ? "lg:col-span-7" : "lg:col-span-5"}>
+            <OfficeMapCard office={office} />
+          </div>
         ))}
       </div>
     </section>

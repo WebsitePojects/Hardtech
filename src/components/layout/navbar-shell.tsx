@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
  * App-wide z-index scale. Every stacking value in the layout/home tree
@@ -52,20 +52,45 @@ import { useEffect, useState, type ReactNode } from "react";
  */
 export function NavbarShell({ children }: { children: ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const lastScrollY = useRef(0);
+  const frame = useRef<number | null>(null);
 
   useEffect(() => {
     // Read once on mount so a page restored mid-scroll starts in the right
     // state instead of flat-then-popping on the first wheel event.
-    const read = () => setScrolled(window.scrollY > 8);
+    const read = () => {
+      const scrollY = window.scrollY;
+      const delta = scrollY - lastScrollY.current;
+
+      setScrolled(scrollY > 8);
+      if (scrollY <= 24 || delta < -6) setHidden(false);
+      else if (scrollY > 112 && delta > 6) setHidden(true);
+
+      lastScrollY.current = scrollY;
+      frame.current = null;
+    };
+
+    lastScrollY.current = window.scrollY;
     read();
-    window.addEventListener("scroll", read, { passive: true });
-    return () => window.removeEventListener("scroll", read);
+
+    const onScroll = () => {
+      if (frame.current !== null) return;
+      frame.current = window.requestAnimationFrame(read);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame.current !== null) window.cancelAnimationFrame(frame.current);
+    };
   }, []);
 
   return (
     <div
       data-scrolled={scrolled}
-      className="fixed inset-x-0 top-0 z-[100000] px-0 pt-0 transition-[padding] duration-[600ms] ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none data-[scrolled=true]:px-4 data-[scrolled=true]:pt-[10px]"
+      data-hidden={hidden}
+      className="navbar-shell fixed inset-x-0 top-0 z-[100000] px-0 pt-0 transition-[padding,transform,opacity,visibility] duration-[500ms] ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none data-[scrolled=true]:px-4 data-[scrolled=true]:pt-[10px] data-[hidden=true]:invisible data-[hidden=true]:-translate-y-[calc(100%+1rem)] data-[hidden=true]:opacity-0 data-[hidden=true]:pointer-events-none"
     >
       <nav
         data-scrolled={scrolled}

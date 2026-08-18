@@ -36,6 +36,7 @@ export function ConversationListItem({
     <Link
       href={`/messages/${conversation.id}`}
       data-active={isActive}
+      aria-current={isActive ? "page" : undefined}
       className={cn(
         "flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-glass-hover",
         isActive && "bg-glass",

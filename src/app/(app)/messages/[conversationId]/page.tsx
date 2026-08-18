@@ -1,11 +1,14 @@
 import { notFound } from "next/navigation";
 
-import { Footer } from "@/components/layout/footer";
 import { MessagingShell } from "@/features/messaging/messaging-shell";
 import type { ConversationSummary } from "@/features/messaging/types";
 
-// `listMessages` is called with the viewer id so the service can enforce
-// participant scope before returning thread contents.
+// Same expected-missing-module situation as ../page.tsx — see that file's
+// header comment. This route additionally assumes `listMessages` scopes to
+// the viewer (rule 5: server-side authorization on every route) and returns
+// `null`/throws for a conversationId the caller isn't a participant in,
+// which is treated as `notFound()` below rather than leaking whether the id
+// exists at all.
 import { requireSession } from "@/server/auth/session";
 import { listConversations, listMessages, searchConversations } from "@/server/services/messaging.service";
 
@@ -39,17 +42,14 @@ export default async function ConversationPage(props: ConversationPageProps) {
   }
 
   return (
-    <>
-      <div className="px-4 pt-20 pb-4 sm:px-6 sm:pt-24">
-        <MessagingShell
-          conversations={conversations}
-          currentUserId={session.userId}
-          search={search}
-          activeConversation={activeConversation}
-          messages={messages}
-        />
-      </div>
-      <Footer />
-    </>
+    <div data-messaging-canvas className="fixed inset-0 z-[90000] overflow-hidden bg-surface">
+      <MessagingShell
+        conversations={conversations}
+        currentUserId={session.userId}
+        search={search}
+        activeConversation={activeConversation}
+        messages={messages}
+      />
+    </div>
   );
 }

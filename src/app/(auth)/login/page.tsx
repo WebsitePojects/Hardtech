@@ -54,8 +54,8 @@ export default async function LoginPage() {
         * footer exists but sits below the fold. Ours was 770 tall, which
         * pulled the footer into view and made the page read as a different
         * layout entirely. */}
-      <div className="relative mx-auto grid min-h-screen w-full max-w-[1400px] gap-8 px-4 py-10 sm:gap-10 sm:px-8 sm:py-16 lg:grid-cols-2 lg:items-center lg:py-24">
-        <div className="relative space-y-6 lg:space-y-8">
+      <div className="relative mx-auto grid min-h-[100dvh] w-full max-w-[1400px] gap-8 px-4 pt-24 pb-10 sm:gap-10 sm:px-8 sm:py-16 lg:grid-cols-2 lg:items-center lg:py-24">
+        <div className="relative order-last space-y-6 lg:order-none lg:space-y-8">
           {/* Scoped to the marketing column, matching the reference's
            * `hidden lg:flex lg:w-1/2 ... overflow-hidden` panel. */}
           <div
@@ -68,7 +68,7 @@ export default async function LoginPage() {
             * the source copy stays readable in the markup. */}
           <Badge
             variant="outline"
-            className="gap-1.5 border-primary/40 text-[12px] tracking-wider text-primary uppercase"
+            className="hidden gap-1.5 border-primary/40 text-[12px] tracking-wider text-primary uppercase sm:inline-flex"
           >
             <span className="size-1.5 rounded-full bg-primary" aria-hidden />
             System Online · 2026 Batches Open
@@ -85,7 +85,7 @@ export default async function LoginPage() {
             </p>
           </div>
 
-          <ul className="space-y-4">
+          <ul className="hidden space-y-4 sm:block">
             {FEATURE_ROWS.map((row) => (
               <li key={row.label} className="flex items-center gap-3">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-glass-border bg-glass">
@@ -111,7 +111,7 @@ export default async function LoginPage() {
           * containing the words Welcome Back" — that heuristic lands on an
           * inner wrapper and reports 382. */}
         <Card
-          className="glass w-full max-w-[448px] justify-self-end rounded-2xl p-6 [--card-spacing:--spacing(1)] sm:p-8"
+          className="order-first w-full max-w-[448px] justify-self-end border-0 bg-transparent p-0 shadow-none lg:order-none lg:glass lg:rounded-2xl lg:border lg:p-8 [--card-spacing:--spacing(1)]"
         >
           {/* Measured (Playwright, all 4 breakpoints): h2-bottom to email-input-top
             * was a consistent 88px. `mb-6` (24px) + `space-y-1.5` (6px) here
@@ -161,7 +161,7 @@ export default async function LoginPage() {
 
           <LoginForm />
 
-          <div className="mt-6">
+          <div className="mt-6 hidden lg:block">
             <TestCredentialsCard />
           </div>
         </Card>

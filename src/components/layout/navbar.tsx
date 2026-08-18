@@ -6,6 +6,7 @@ import { MobileNav } from "./mobile-nav";
 import { getSession } from "@/server/auth/session";
 import { getDashboardUser } from "@/server/services/dashboard.service";
 import { getInitials } from "@/components/dashboard/get-initials";
+import { logoutAction } from "@/app/(dashboard)/actions";
 
 function roleLabel(role: "ADMIN" | "TRAINER" | "TRAINEE"): string {
   switch (role) {
@@ -16,6 +17,10 @@ function roleLabel(role: "ADMIN" | "TRAINER" | "TRAINEE"): string {
     case "TRAINEE":
       return "Trainee";
   }
+}
+
+function dashboardHref(role: "ADMIN" | "TRAINER" | "TRAINEE"): string {
+  return role === "ADMIN" ? "/dashboard/admin" : role === "TRAINER" ? "/dashboard/trainer" : "/dashboard/trainee";
 }
 
 /**
@@ -34,7 +39,7 @@ export async function Navbar() {
   const session = await getSession();
   const userRecord = session ? await getDashboardUser(session.userId) : null;
   const user: NavbarUser | null = session && userRecord
-    ? { initials: getInitials(userRecord.name), roleLabel: roleLabel(session.role) }
+    ? { initials: getInitials(userRecord.name), roleLabel: roleLabel(session.role), dashboardHref: dashboardHref(session.role) }
     : null;
 
   return (
@@ -42,8 +47,8 @@ export async function Navbar() {
       <SiteLogo />
       <DesktopNav />
       <div className="flex items-center gap-2">
-        <NavbarActions user={user} />
-        <MobileNav user={user} />
+        <NavbarActions user={user} logoutAction={logoutAction} />
+        <MobileNav user={user} logoutAction={logoutAction} />
       </div>
     </NavbarShell>
   );

@@ -1,6 +1,7 @@
 import { MessageSquareOff } from "lucide-react";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MessagingBackButton } from "./messaging-back-button";
 import { ConversationListItem } from "./conversation-list-item";
 import { ConversationSearch } from "./conversation-search";
 import type { ConversationSummary } from "./types";
@@ -21,7 +22,14 @@ export function ConversationList({
   search: string;
 }) {
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col gap-3 p-3">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-3 overflow-hidden p-3">
+      <div className="flex items-center gap-2 px-1">
+        <MessagingBackButton label="Back to previous page" />
+        <div className="min-w-0">
+          <p className="font-sub text-sm font-semibold text-foreground">Messages</p>
+          <p className="text-[11px] text-muted-foreground">Your conversations</p>
+        </div>
+      </div>
       <ConversationSearch basePath="/messages" search={search} />
 
       {conversations.length === 0 ? (
@@ -44,8 +52,8 @@ export function ConversationList({
         // instead of "missing". Caught by reading getBoundingClientRect() on
         // the badge (width>0, but positioned past the sidebar's right edge),
         // not by eyeballing a screenshot of an apparently-empty spot.
-        <ScrollArea className="min-h-0 min-w-0 flex-1">
-          <div className="flex w-full min-w-0 flex-col gap-0.5 pr-2">
+        <ScrollArea className="conversation-list-scroll min-h-0 min-w-0 flex-1 overflow-hidden">
+          <div className="flex w-full min-w-0 max-w-full flex-col gap-0.5 pr-2">
             {conversations.map((conversation) => (
               <ConversationListItem
                 key={conversation.id}

@@ -1,6 +1,8 @@
 /**
- * DEV-ONLY sample data and simulated upload helpers for local messaging UI
- * checks.
+ * DEV-ONLY sample data and simulated service calls, used exclusively for
+ * local rendering and Playwright verification of this feature slice while
+ * `src/server/services/messaging.service.ts` and
+ * `src/app/(app)/messages/actions.ts` don't exist yet.
  *
  * Never import this module from a real route (`src/app/**\/page.tsx`) or
  * from any component that ships to production — it exists purely so this
@@ -144,7 +146,10 @@ export async function devListMessages(conversationId: string): Promise<MessageVi
 }
 
 /**
- * Simulated upload with progress for local UI checks.
+ * Simulated upload with progress, standing in for a real XHR/fetch progress
+ * handler. Resolves to a MessageAttachment carrying a server-minted id, the
+ * same "trust the id the provider returns" discipline as the real Cloudinary
+ * path (.claude/lessons.md 2026-08-14) even though this is fake.
  */
 export function devSimulateUpload(
   file: File,

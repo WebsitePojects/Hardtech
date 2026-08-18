@@ -7,10 +7,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { AttachmentPicker, type StagedAttachment } from "./attachment-picker";
-import { devSimulateUpload } from "./dev-fixtures";
 import { validateAttachmentBatch } from "./file-validation";
 import { sendMessageSchema } from "./messaging.schema";
 import { sendMessage } from "./mutations/send-message";
+import { uploadMessageAttachment } from "./upload-client";
 
 /**
  * Message composer: body textarea, attachment tray, send button.
@@ -45,7 +45,6 @@ import { sendMessage } from "./mutations/send-message";
 export function Composer({ conversationId, onSent }: { conversationId: string; onSent?: () => void }) {
   const [body, setBody] = useState("");
   const [staged, setStaged] = useState<StagedAttachment[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const idempotencyKeyRef = useRef(crypto.randomUUID());
   const [isOffline, setIsOffline] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -68,7 +67,8 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
   }, []);
 
   const uploadFile = useCallback((localId: string, file: File) => {
-    const { promise } = devSimulateUpload(file, (percent) => {
+    setStaged((current) => current.map((item) => item.localId === localId ? { ...item, status: "uploading" } : item));
+    const promise = uploadMessageAttachment(file, (percent) => {
       setStaged((current) =>
         current.map((item) => (item.localId === localId ? { ...item, status: "uploading", progress: percent } : item)),
       );
@@ -79,10 +79,13 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
           current.map((item) => (item.localId === localId ? { ...item, status: "done", progress: 100, remote } : item)),
         );
       })
-      .catch(() => {
+      .catch((uploadError: unknown) => {
+        toast.error(uploadError instanceof Error ? uploadError.message : "Upload failed. Remove it or retry.");
         setStaged((current) =>
           current.map((item) =>
-            item.localId === localId ? { ...item, status: "error", error: "Upload failed. Remove it and try again." } : item,
+            item.localId === localId
+              ? { ...item, status: "error", error: uploadError instanceof Error ? uploadError.message : "Upload failed. Remove it or retry." }
+              : item,
           ),
         );
       });
@@ -99,12 +102,8 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
     // mixed batch (e.g. 2 of 5 files rejected for different reasons), never
     // the only place the message appears.
     if (rejections.length > 0) {
-      setError(rejections[0].reason);
-      for (const rejection of rejections.slice(1)) {
-        toast.error(rejection.reason);
-      }
+      for (const rejection of rejections) toast.error(rejection.reason);
     } else {
-      setError(null);
     }
 
     if (accepted.length === 0) return;
@@ -125,6 +124,12 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
     setStaged((current) => current.filter((item) => item.localId !== localId));
   }
 
+  function handleRetry(localId: string) {
+    const item = staged.find((candidate) => candidate.localId === localId);
+    if (!item || isPending) return;
+    uploadFile(localId, item.file);
+  }
+
   const hasUploadingAttachment = staged.some((item) => item.status === "pending" || item.status === "uploading");
   const hasErroredAttachment = staged.some((item) => item.status === "error");
   const isEmpty = body.trim().length === 0 && staged.length === 0;
@@ -135,15 +140,15 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
     // checked before anything else, on top of the `disabled` attribute below.
     if (isPending) return;
     if (isOffline) {
-      setError("You're offline. Reconnect to send this message.");
+      toast.error("You're offline. Reconnect to send this message.");
       return;
     }
     if (hasUploadingAttachment) {
-      setError("Wait for attachments to finish uploading.");
+      toast.error("Wait for attachments to finish uploading.");
       return;
     }
     if (hasErroredAttachment) {
-      setError("Remove the failed attachment before sending.");
+      toast.error("Remove the failed attachment before sending.");
       return;
     }
 
@@ -155,11 +160,10 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
       attachmentIds,
     });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Write a message first.");
+      toast.error(parsed.error.issues[0]?.message ?? "Write a message first.");
       return;
     }
 
-    setError(null);
     setIsPending(true);
     try {
       const result = await sendMessage(parsed.data);
@@ -173,7 +177,7 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
       ) {
         // Reported failure, not a thrown one — same "keep the draft, reuse
         // the key" recovery path as the catch block below.
-        setError((result as { error: string }).error);
+        toast.error((result as { error: string }).error);
         return;
       }
 
@@ -189,7 +193,7 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
       // reused so pressing send again replays this intent instead of
       // minting a new one that could double-post if the first attempt
       // actually landed server-side.
-      setError("We could not send your message. Check your connection and try again.");
+      toast.error("We could not send your message. Check your connection and try again.");
     } finally {
       setIsPending(false);
     }
@@ -204,13 +208,7 @@ export function Composer({ conversationId, onSent }: { conversationId: string; o
         </p>
       ) : null}
 
-      <AttachmentPicker staged={staged} disabled={isPending} onFilesSelected={handleFilesSelected} onRemove={handleRemove} />
-
-      {error ? (
-        <p role="alert" aria-live="polite" className="text-xs text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <AttachmentPicker staged={staged} disabled={isPending} onFilesSelected={handleFilesSelected} onRemove={handleRemove} onRetry={handleRetry} />
 
       <div className="flex items-end gap-2">
         <Textarea

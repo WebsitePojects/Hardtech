@@ -1,8 +1,16 @@
-import { Footer } from "@/components/layout/footer";
 import { MessagingShell } from "@/features/messaging/messaging-shell";
 
-// Server component route: authenticate the viewer, then read conversations
-// through the messaging service so repository access stays out of the UI.
+// This route calls the not-yet-built messaging.service contract (backend
+// paused for this wave — src/server/services/messaging.service.ts does not
+// exist and this builder does not create it, per its brief). Mirrors exactly
+// how src/app/(app)/forum/page.tsx documented the same situation during its
+// own wave: "Cannot find module '@/server/services/messaging.service'" from
+// `npx tsc --noEmit` is an EXPECTED compile error for this file, not a
+// defect in this slice — the shape below is what the real service needs to
+// satisfy (src/features/messaging/types.ts `MessagingServiceContract`):
+//   listConversations(userId): Promise<ConversationSummary[]>
+//   searchConversations(userId, query): Promise<ConversationSummary[]>
+//   getUnreadTotal(userId): Promise<number>   -- not called here; navbar's job
 import { requireSession } from "@/server/auth/session";
 import { listConversations, searchConversations } from "@/server/services/messaging.service";
 
@@ -24,11 +32,8 @@ export default async function MessagesPage(props: MessagesPageProps) {
     : await listConversations(session.userId);
 
   return (
-    <>
-      <div className="px-4 pt-20 pb-4 sm:px-6 sm:pt-24">
-        <MessagingShell conversations={conversations} currentUserId={session.userId} search={search} />
-      </div>
-      <Footer />
-    </>
+    <div data-messaging-canvas className="fixed inset-0 z-[90000] overflow-hidden bg-surface">
+      <MessagingShell conversations={conversations} currentUserId={session.userId} search={search} />
+    </div>
   );
 }

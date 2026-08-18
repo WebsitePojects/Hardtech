@@ -73,6 +73,8 @@ const CURATED_PROGRAM_PHOTOS: Record<string, string> = {
   "Computer Hardware Servicing": "/images/gallery/gallery-01.jpg",
   "Cellphone Hardware Servicing": "/images/gallery/gallery-08.jpg",
   "I.T. Software Development": "/images/gallery/gallery-15.jpg",
+  "Networking Basics": "/images/gallery/gallery-05.jpg",
+  "CCTV Installation": "/images/gallery/gallery-11.jpg",
 };
 
 /**

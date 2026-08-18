@@ -23,7 +23,7 @@ export function RightRail({
   leaderboard: LeaderboardEntry[];
 }) {
   return (
-    <div className="hidden w-[220px] shrink-0 flex-col gap-3 xl:flex">
+    <div className="flex w-full shrink-0 flex-col gap-4 lg:w-[220px]">
       <Card className="border border-glass-border bg-surface-card ring-0">
         <CardHeader className="px-3.5 pb-1 pt-3.5">
           <CardTitle className="flex items-center gap-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">

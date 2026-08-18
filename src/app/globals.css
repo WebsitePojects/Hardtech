@@ -4,6 +4,48 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html {
+  min-height: 100%;
+  overflow-y: auto;
+}
+
+body {
+  min-height: 100%;
+  overflow-x: clip;
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive density calibration.
+
+   The compact layout is not a second visual language; it is the same system
+   stepped down to the space a thumb and a narrow reading column provide.
+   Rem-based Tailwind sizes therefore scale together across marketing, auth,
+   dashboards, forum, enrollment, and messages. Pixel-sized icons and borders
+   stay crisp, while headings, gaps, card padding, and controls gain enough
+   room to avoid the oversized desktop composition on a phone.
+   --------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  html {
+    font-size: 93.75%;
+  }
+
+  body {
+    line-height: 1.48;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+@media (max-width: 390px) {
+  html {
+    font-size: 87.5%;
+  }
+}
+
 /* ---------------------------------------------------------------------------
    HardTech design tokens.
 
@@ -616,7 +658,8 @@
     top: 0;
     left: 0;
     pointer-events: none;
-    z-index: 9999;
+    /* Above the fixed glass navbar (100000), below desktop menus (999999). */
+    z-index: 110000;
     border-radius: 9999px;
     transition:
       opacity 200ms var(--ease-ui, cubic-bezier(0.4, 0, 0.2, 1)),
@@ -635,7 +678,6 @@
   .custom-cursor-ring {
     width: 32px;
     height: 32px;
-    margin: -13px 0 0 -13px; /* offsets the dot's own -50% centering transform */
     border: 1.5px solid rgb(var(--neon-rgb) / 0.5);
     background: transparent;
   }
@@ -643,7 +685,6 @@
   .custom-cursor-ring[data-hover="true"] {
     width: 52px;
     height: 52px;
-    margin: -23px 0 0 -23px;
     background: rgb(var(--neon-rgb) / 0.1);
     border-color: var(--neon);
   }
@@ -651,13 +692,39 @@
   .custom-cursor-ring[data-active="true"] {
     width: 26px;
     height: 26px;
-    margin: -10px 0 0 -10px;
     background: rgb(var(--neon-rgb) / 0.18);
   }
 
   .custom-cursor-dot[data-hidden="true"],
   .custom-cursor-ring[data-hidden="true"] {
     opacity: 0;
+  }
+
+  @media (max-width: 767px) {
+    .navbar-shell:has([data-state="open"]) {
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+  }
+
+  /* Messages is an immersive workspace, not a marketing page. The route
+   * marker is rendered inside the shared app layout, so this removes the
+   * inherited fixed navbar without duplicating route-aware server chrome. */
+  body:has([data-messaging-canvas]) .navbar-shell {
+    display: none;
+  }
+
+  /* Radix uses a table-sized internal wrapper so generic scroll areas can
+   * support intrinsic content. Conversation rows must instead measure to the
+   * fixed sidebar, otherwise a long preview makes each link wider than the
+   * pane even though the viewport clips it. */
+  .conversation-list-scroll > [data-slot="scroll-area-viewport"] > div {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
   }
 
   /*
@@ -735,6 +802,18 @@
     opacity: 0;
     transform: translateX(-24px);
     animation: hero-slide-in 0.9s cubic-bezier(0.77, 0, 0.175, 1) var(--reveal-delay, 0s) forwards;
+  }
+}
+
+/* On small screens the hero is the product's first proof point. Keep the
+   content immediately readable instead of asking a narrow viewport to wait
+   through a masked line reveal; desktop keeps the full VGL choreography. */
+@media (prefers-reduced-motion: no-preference) and (max-width: 639px) {
+  .hero-reveal-line > span,
+  .hero-fade-slide {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
 

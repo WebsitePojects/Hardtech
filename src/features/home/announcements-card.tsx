@@ -1,19 +1,44 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 
 export type Announcement = { id: string; title: string; body: string; type: string; mediaUrl: string | null; createdAt: string };
 
-export function AnnouncementsCard({ announcements, mobileOnly = false, desktopOnly = false }: { announcements: Announcement[]; mobileOnly?: boolean; desktopOnly?: boolean }) {
+export function AnnouncementsCard({ announcements }: { announcements: Announcement[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [expanded, setExpanded] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const scrollY = window.scrollY;
+      const delta = scrollY - lastScrollY.current;
+
+      if (scrollY <= 96 || delta < -5) setHidden(false);
+      else if (scrollY > 180 && delta > 5) setHidden(true);
+
+      lastScrollY.current = scrollY;
+    };
+
+    lastScrollY.current = window.scrollY;
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (announcements.length < 2) return;
+    const timer = window.setInterval(() => setActiveIndex((index) => (index + 1) % announcements.length), 5200);
+    return () => window.clearInterval(timer);
+  }, [announcements.length]);
+
   if (announcements.length === 0) return null;
   const announcement = announcements[activeIndex] ?? announcements[0];
   const createdAt = new Date(announcement.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  const previous = () => { setExpanded(false); setActiveIndex((activeIndex - 1 + announcements.length) % announcements.length); };
-  const next = () => { setExpanded(false); setActiveIndex((activeIndex + 1) % announcements.length); };
+  const previous = () => setActiveIndex((activeIndex - 1 + announcements.length) % announcements.length);
+  const next = () => setActiveIndex((activeIndex + 1) % announcements.length);
   const mediaUrl = announcement.mediaUrl ?? "/images/home/announcement-june-2026-batch.jpg";
 
   return (
@@ -34,7 +59,7 @@ export function AnnouncementsCard({ announcements, mobileOnly = false, desktopOn
     // instance (rendered in-flow further down the page by
     // features/home/programs-section.tsx) carries the same content instead —
     // it never overlaps anything because it stacks in normal document flow.
-    <aside className={`relative right-auto top-auto z-30 mx-auto mb-8 block w-[calc(100%-1rem)] max-w-[360px] rounded-2xl border border-primary/40 bg-background/80 p-3 shadow-glow-md backdrop-blur-md 2xl:absolute 2xl:right-6 2xl:top-[75px] 2xl:mx-0 2xl:mb-0 2xl:block 2xl:w-[360px] 2xl:p-5 ${mobileOnly ? "2xl:hidden" : ""} ${desktopOnly ? "hidden 2xl:block" : ""}`} aria-label="Live updates">
+    <aside className="fixed top-[76px] right-3 z-30 block w-[min(360px,calc(100vw-1.5rem))] rounded-2xl border border-primary/40 bg-background/80 p-3 shadow-glow-md backdrop-blur-md transition-[opacity,transform,visibility] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none data-[hidden=true]:invisible data-[hidden=true]:pointer-events-none data-[hidden=true]:-translate-y-3 data-[hidden=true]:opacity-0 lg:top-[84px] lg:right-6 lg:p-5" data-hidden={hidden} aria-hidden={hidden} aria-label="Live updates">
       <div className="flex items-center gap-2 text-[10px] font-semibold tracking-wider text-primary">
         <span className="size-1.5 rounded-full bg-primary" aria-hidden /> LIVE UPDATES
         <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px]">{announcement.type}</span>
@@ -62,26 +87,25 @@ export function AnnouncementsCard({ announcements, mobileOnly = false, desktopOn
         body in place; tapping again collapses it. EASE_UI (vgldesign) on the
         height transition, skipped under reduced motion.
       */}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-        className="mt-4 flex w-full gap-3 rounded-xl text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+      <Link
+        href={`/announcements/${announcement.id}`}
+        className="mt-4 flex w-full gap-3 rounded-xl text-left transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+        aria-label={`Read announcement: ${announcement.title}`}
       >
         <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold leading-snug">{announcement.title}</h2>
           <p
-            className={`mt-1.5 overflow-hidden text-[11px] leading-relaxed text-muted-foreground transition-[max-height] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none ${expanded ? "max-h-40" : "line-clamp-2 max-h-10"}`}
+            className="mt-1.5 line-clamp-2 overflow-hidden text-[11px] leading-relaxed text-muted-foreground"
           >
             {announcement.body}
           </p>
           <p className="mt-2 text-[10px] text-primary">
-            {createdAt} <span className="text-muted-foreground">·</span> {expanded ? "Tap to collapse" : "Tap to read more"}
+            {createdAt} <span className="text-muted-foreground">·</span> Read full update
           </p>
         </div>
         <Image src={mediaUrl} alt="" width={72} height={72} className="size-[72px] shrink-0 rounded-lg border border-glass-border object-cover" />
-      </button>
+      </Link>
     </aside>
   );
 }

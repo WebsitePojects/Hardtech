@@ -1,4 +1,6 @@
-// Data contract shared by the messaging UI, server actions, and service layer.
+// Data contract for the messaging feature. `src/server/services/messaging.service.ts`
+// does not exist yet (backend paused for this wave) — these types are the
+// agreed shape it must return so this UI slice is a drop-in once it lands.
 // Keep this file free of imports from `@/server/**`; it must compile standalone.
 
 export type ConversationParticipant = {
@@ -53,9 +55,12 @@ export type SendMessageInput = {
 };
 
 /**
- * The seven service functions used by the messaging UI. Client-triggered
- * writes flow through `src/app/(app)/messages/actions.ts`; server-side reads
- * flow through `@/server/services/messaging.service`.
+ * The seven service functions this UI is built in front of. None of these
+ * are implemented here — see mutations/*.ts (client-triggered writes, routed
+ * through `src/app/(app)/messages/actions.ts`, not yet authored) and the two
+ * page.tsx route files (server-side reads, routed through
+ * `@/server/services/messaging.service`, not yet authored) for exactly where
+ * each one is assumed to exist.
  */
 export type MessagingServiceContract = {
   listConversations(userId: string): Promise<ConversationSummary[]>;

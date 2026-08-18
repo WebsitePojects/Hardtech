@@ -37,7 +37,7 @@ export async function CertificatesSection() {
       ) : (
         <div className="space-y-3">
           {certificateRequests.map((item) => (
-            <CertificateApprovalCard key={item.id} item={item} />
+            <CertificateApprovalCard key={`${item.id}-${item.status}`} item={item} />
           ))}
         </div>
       )}

@@ -10,6 +10,9 @@ export const announcementRepository = {
       orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
     });
   },
+  findById(id: string) {
+    return db.announcement.findUnique({ where: { id }, include: { postedBy: true } });
+  },
   create(data: { title: string; body: string; type: AnnouncementType; pinned: boolean; authorId: string; idempotencyKey: string }) {
     return db.announcement.create({ data: { title: data.title, body: data.body, type: data.type, isPinned: data.pinned, postedByUserId: data.authorId, idempotencyKey: data.idempotencyKey } });
   },

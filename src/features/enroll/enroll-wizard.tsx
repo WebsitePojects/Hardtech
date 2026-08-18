@@ -50,7 +50,7 @@ export function EnrollWizard({ programs, paymentMethods }: EnrollWizardProps) {
 
       <Stepper currentStep={step} />
 
-      <Card className="glass rounded-3xl bg-surface-secondary p-6 shadow-glow-sm sm:p-8 lg:p-10">
+      <Card className="glass rounded-3xl bg-surface-secondary p-4 shadow-glow-sm sm:p-8 lg:p-10">
         {step === 1 ? (
           <StepSelectPlan
             programs={programs}

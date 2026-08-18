@@ -27,10 +27,10 @@ export function MessagingShell({
   messages?: MessageView[];
 }) {
   return (
-    <div className="mx-auto flex h-[calc(100dvh-4.5rem)] max-w-6xl overflow-hidden rounded-2xl border border-glass-border bg-surface-secondary/40 sm:my-4 sm:h-[calc(100dvh-6.5rem)]">
+    <div className="flex h-full min-h-0 w-full overflow-hidden bg-surface">
       <div
         className={cn(
-          "w-full min-w-0 shrink-0 border-glass-border lg:w-80 lg:border-r",
+          "w-full min-w-0 shrink-0 border-glass-border bg-surface-secondary/30 lg:w-[340px] lg:border-r",
           activeConversation ? "hidden lg:block" : "block",
         )}
       >
@@ -42,7 +42,7 @@ export function MessagingShell({
         />
       </div>
 
-      <div className={cn("min-w-0 flex-1", activeConversation ? "flex" : "hidden lg:flex")}>
+      <div className={cn("min-w-0 flex-1 bg-surface", activeConversation ? "flex" : "hidden lg:flex")}>
         {activeConversation ? (
           <ThreadView conversation={activeConversation} messages={messages ?? []} currentUserId={currentUserId} />
         ) : (
