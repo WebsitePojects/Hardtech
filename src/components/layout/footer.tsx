@@ -38,7 +38,7 @@ export function Footer() {
           (non-positioned) content below regardless of DOM order. */}
       <div
         aria-hidden
-        className="hero-glow pointer-events-none absolute inset-x-0 top-0 -z-10 h-[28rem] opacity-70"
+        className="hero-glow hero-glow-footer pointer-events-none absolute inset-x-0 top-0 -z-10 h-[28rem] opacity-70"
       />
 
       <div className="relative mx-auto grid w-full max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-3 md:py-20">

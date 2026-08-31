@@ -99,12 +99,12 @@ export default async function ForumPostPage(props: PageProps<"/forum/[id]">) {
         </div>
       )}
 
-      <div
-        className="max-h-[min(62dvh,42rem)] space-y-3 overflow-y-auto overscroll-contain pr-2"
-        tabIndex={0}
-        data-lenis-prevent
-        aria-label="Post replies"
-      >
+      {/* Comments flow with the page — same reasoning as the post feed in
+          ../page.tsx. The capped sub-scroller here carried overscroll-contain,
+          which blocks scroll chaining, so hitting the last reply dead-ended the
+          wheel mid-thread. Reading a discussion is the worst place to trap
+          scroll: the reader is already moving downward through it. */}
+      <div className="space-y-3">
         {post.replies.map((reply) => (
           <ReplyCard key={reply.id} reply={reply} />
         ))}

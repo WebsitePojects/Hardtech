@@ -7,12 +7,27 @@ import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 
 export type Announcement = { id: string; title: string; body: string; type: string; mediaUrl: string | null; createdAt: string };
 
-export function AnnouncementsCard({ announcements }: { announcements: Announcement[] }) {
+type AnnouncementsCardProps = {
+  announcements: Announcement[];
+  // "mobile": in-flow teaser rendered first inside the hero's content column,
+  // visible below 2xl. "floating": the fixed right-rail card, visible at 2xl
+  // and up only. hero.tsx mounts one of each so exactly one is ever visible —
+  // see the breakpoint note below for why 2xl is the split point.
+  variant: "mobile" | "floating";
+};
+
+export function AnnouncementsCard({ announcements, variant }: AnnouncementsCardProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [hidden, setHidden] = useState(false);
   const lastScrollY = useRef(0);
 
   useEffect(() => {
+    // Scroll-hide is a floating-rail behaviour only: that card sits fixed
+    // over page content, so it retreats on scroll-down to stop obscuring
+    // whatever the user is reading. The mobile variant is in normal document
+    // flow — it can never obscure anything — so it has nothing to hide from.
+    if (variant !== "floating") return;
+
     const onScroll = () => {
       const scrollY = window.scrollY;
       const delta = scrollY - lastScrollY.current;
@@ -26,7 +41,7 @@ export function AnnouncementsCard({ announcements }: { announcements: Announceme
     lastScrollY.current = window.scrollY;
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [variant]);
 
   useEffect(() => {
     if (announcements.length < 2) return;
@@ -41,8 +56,43 @@ export function AnnouncementsCard({ announcements }: { announcements: Announceme
   const next = () => setActiveIndex((activeIndex + 1) % announcements.length);
   const mediaUrl = announcement.mediaUrl ?? "/images/home/announcement-june-2026-batch.jpg";
 
+  if (variant === "mobile") {
+    // Compact in-flow teaser. No prev/next controls: at this card height
+    // (~92px total — p-4 padding plus the 56px thumbnail) there is no room
+    // for a second interactive row that still clears the 44px touch-target
+    // minimum without inflating the card past the "teaser, not the
+    // announcement" budget. Rotation is carried by the existing auto-advance
+    // timer instead, and the whole row is one tap target through to the full
+    // announcement.
+    return (
+      <Link
+        href={`/announcements/${announcement.id}`}
+        // hero-fade-slide is the same load-choreography utility the badge/
+        // headline/CTAs use (globals.css "hero load choreography" block):
+        // base state is fully visible, motion is additive under
+        // prefers-reduced-motion:no-preference, and it self-disables below
+        // 640px so true phones never wait on it. --reveal-delay 0.05s places
+        // this ahead of the badge's 0.1s since it is now the first element
+        // in the column.
+        className="hero-fade-slide 2xl:hidden flex w-full items-center gap-3 rounded-2xl border border-primary/40 bg-background/80 p-4 text-left shadow-glow-sm backdrop-blur-md transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+        style={{ "--reveal-delay": "0.05s" } as React.CSSProperties}
+        aria-label={`Read announcement: ${announcement.title}`}
+      >
+        <Image src={mediaUrl} alt="" width={56} height={56} className="size-14 shrink-0 rounded-lg border border-glass-border object-cover" />
+        <div className="min-w-0 flex-1 text-left">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold tracking-wider text-primary">
+            <span className="size-1.5 shrink-0 rounded-full bg-primary" aria-hidden /> LIVE UPDATES
+            <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px]">{announcement.type}</span>
+          </div>
+          <p className="mt-1 truncate text-sm font-semibold leading-snug">{announcement.title}</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">{createdAt}</p>
+        </div>
+      </Link>
+    );
+  }
+
   return (
-    // top-[75px] clears the fixed navbar (h-[68px] in navbar-shell.tsx) with a
+    // top-[76px] clears the fixed navbar (h-[68px] in navbar-shell.tsx) with a
     // 7px gap — that part was fixed once already (it used to ride up under the
     // bar and cover the account chip) and is correct. z-30 is the "floating
     // page-level card" tier in the stacking scale documented in
@@ -55,11 +105,12 @@ export function AnnouncementsCard({ announcements }: { announcements: Announceme
     // card, anchored right-6 from the viewport edge, does not clear the H1
     // until the viewport is ~1518px wide — it still overlaps at 1024, 1280,
     // and 1440. 2xl (1536px) is the nearest standard breakpoint that clears
-    // it (verified: 9px gap at exactly 1536). Below 2xl the `mobileOnly`
-    // instance (rendered in-flow further down the page by
-    // features/home/programs-section.tsx) carries the same content instead —
-    // it never overlaps anything because it stacks in normal document flow.
-    <aside className="fixed top-[76px] right-3 z-30 block w-[min(360px,calc(100vw-1.5rem))] rounded-2xl border border-primary/40 bg-background/80 p-3 shadow-glow-md backdrop-blur-md transition-[opacity,transform,visibility] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none data-[hidden=true]:invisible data-[hidden=true]:pointer-events-none data-[hidden=true]:-translate-y-3 data-[hidden=true]:opacity-0 lg:top-[84px] lg:right-6 lg:p-5" data-hidden={hidden} aria-hidden={hidden} aria-label="Live updates">
+    // it (verified: 9px gap at exactly 1536). Below 2xl this card is `hidden`
+    // and the "mobile" variant of this same component — mounted separately by
+    // hero.tsx as the first item in the hero's content column — carries the
+    // same content instead. It never overlaps anything because it stacks in
+    // normal document flow.
+    <aside className="fixed top-[76px] right-3 z-30 hidden w-[min(360px,calc(100vw-1.5rem))] rounded-2xl border border-primary/40 bg-background/80 p-3 shadow-glow-md backdrop-blur-md transition-[opacity,transform,visibility] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none data-[hidden=true]:invisible data-[hidden=true]:pointer-events-none data-[hidden=true]:-translate-y-3 data-[hidden=true]:opacity-0 2xl:block 2xl:top-[84px] 2xl:right-6 2xl:p-5" data-hidden={hidden} aria-hidden={hidden} aria-label="Live updates">
       <div className="flex items-center gap-2 text-[10px] font-semibold tracking-wider text-primary">
         <span className="size-1.5 rounded-full bg-primary" aria-hidden /> LIVE UPDATES
         <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px]">{announcement.type}</span>

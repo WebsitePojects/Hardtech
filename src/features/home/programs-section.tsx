@@ -6,10 +6,10 @@ import { ProgramsCarousel, type ProgramsCarouselProgram } from "./programs-carou
  * wrapper is static and stays a server component; the carousel itself needs
  * "use client" for embla + selected-slide state, kept in a separate file.
  *
- * The active HardTech catalog has exactly 3 public slides: Computer Hardware
- * Servicing, Cellphone Hardware Servicing, and I.T. Software Development.
- * The client carousel also fail-closes to those names so legacy unsupported
- * rows cannot appear while preserving any unrelated dependent records.
+ * The active HardTech catalog has exactly 2 public slides: Computer Hardware
+ * Servicing and Cellphone Hardware Servicing. The client carousel also
+ * fail-closes to those names so legacy unsupported rows cannot appear while
+ * preserving any unrelated dependent records.
  */
 export function ProgramsSection({
   programs,

@@ -13,13 +13,13 @@ const PILLARS: Array<{ icon: LucideIcon; label: string; description: string }> =
     icon: Target,
     label: "OUR MISSION",
     description:
-      "To empower individuals and businesses through innovative electronic devices servicing and software development.",
+      "To empower individuals and businesses through innovative electronic devices servicing.",
   },
   {
     icon: Eye,
     label: "OUR VISION",
     description:
-      "A future where people have knowledge on hardware servicing and I.T. software development.",
+      "A future where people have knowledge on hardware servicing.",
   },
   {
     icon: Heart,

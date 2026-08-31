@@ -46,8 +46,7 @@ export function StepSelectPlan({
   const visiblePrograms = programs.filter(
     (program) =>
       program.name === "Computer Hardware Servicing" ||
-      program.name === "Cellphone Hardware Servicing" ||
-      program.name === "I.T. Software Development",
+      program.name === "Cellphone Hardware Servicing",
   );
   const count = selectedProgramIds.length;
   const continueLabel =

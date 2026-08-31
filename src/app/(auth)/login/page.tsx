@@ -29,7 +29,7 @@ export default async function LoginPage() {
   if (session) redirect("/dashboard");
 
   return (
-    <div className="hero-glow relative overflow-hidden">
+    <div className="hero-glow hero-glow-login relative overflow-hidden">
       {/*
        * Two soft orbs + a technical grid, layered above the global `cyber-bg`
        * texture on this page only. Geometry and alpha match the live

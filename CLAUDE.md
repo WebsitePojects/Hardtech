@@ -3,8 +3,8 @@
 # HardTech — project instructions
 
 IT training platform for **HardTech IT Corp** (Quezon City, PH). Computer and
-cellphone hardware servicing plus IT software development courses, with online
-enrollment, role-based dashboards, and a regional community forum.
+cellphone hardware servicing courses, with online enrollment, role-based
+dashboards, and a regional community forum.
 
 This is a **1:1 rebuild** of an existing Figma Make design. Fidelity to that
 design is a hard requirement, not a preference.

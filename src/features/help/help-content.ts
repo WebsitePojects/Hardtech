@@ -112,8 +112,8 @@ export const HELP_ROLES: HelpRole[] = [
             fil: "Gamitin ang sidebar (kaliwang panel) para lumipat sa 8 seksyon: Overview, Enrollments, User Management, Certificates, Announcements, Analytics, Payment Methods, at Audit Log.",
           },
           {
-            en: "The revenue area chart shows 6-month trends. The pie chart shows how trainees are distributed across programs (Computer Hardware, Cellphone Repair, Software Dev).",
-            fil: "Ipinapakita ng revenue area chart ang 6 buwang trend. Ipinapakita naman ng pie chart kung paano naka-distribute ang mga trainee sa iba't ibang programa (Computer Hardware, Cellphone Repair, Software Dev).",
+            en: "The revenue area chart shows 6-month trends. The pie chart shows how trainees are distributed across programs (Computer Hardware, Cellphone Repair).",
+            fil: "Ipinapakita ng revenue area chart ang 6 buwang trend. Ipinapakita naman ng pie chart kung paano naka-distribute ang mga trainee sa iba't ibang programa (Computer Hardware, Cellphone Repair).",
           },
           {
             en: "Use the Quick Action cards on the Overview to jump directly to: Manage Users, Approve Enrollments, Approve Certificates, and Audit Log.",

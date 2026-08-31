@@ -1,12 +1,13 @@
 import { CircleHelp } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { ScrollReveal } from "@/components/motion/scroll-reveal";
 
 export function HelpHero() {
   return (
     <section className="relative overflow-hidden">
-      <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 -z-10 h-[26rem]" />
-      <div className="mx-auto max-w-3xl px-4 pt-16 pb-10 text-center sm:px-6 lg:pt-24">
+      <div className="hero-glow hero-glow-help pointer-events-none absolute inset-x-0 top-0 -z-10 h-[26rem]" />
+      <ScrollReveal className="mx-auto max-w-3xl px-4 pt-16 pb-10 text-center sm:px-6 lg:pt-24">
         <Badge variant="outline" className="gap-1.5 text-muted-foreground">
           <CircleHelp className="size-3 text-primary" />
           User Guide · Gabay sa Gumagamit
@@ -25,7 +26,7 @@ export function HelpHero() {
         <p className="mt-8 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           Select Your Role · Piliin ang Iyong Papel
         </p>
-      </div>
+      </ScrollReveal>
     </section>
   );
 }

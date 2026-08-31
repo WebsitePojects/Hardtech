@@ -2,6 +2,7 @@ import { Award, Camera, Diamond, Users, Zap } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { ScrollReveal } from "@/components/motion/scroll-reveal";
 
 const STATS = [
   { icon: Camera, value: "500+", label: "Photos" },
@@ -13,9 +14,9 @@ const STATS = [
 export function GalleryHero() {
   return (
     <section className="relative overflow-hidden">
-      <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 -z-10 h-[28rem]" />
+      <div className="hero-glow hero-glow-gallery pointer-events-none absolute inset-x-0 top-0 -z-10 h-[28rem]" />
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:py-24">
-        <div>
+        <ScrollReveal>
           <Badge variant="outline" className="gap-1.5 text-muted-foreground">
             <Diamond className="size-3 text-primary" />
             GALLERY
@@ -29,9 +30,9 @@ export function GalleryHero() {
             ceremonies. Every photo tells the story of someone building their
             future.
           </p>
-        </div>
+        </ScrollReveal>
 
-        <div className="grid grid-cols-2 gap-4">
+        <ScrollReveal delayMs={80} className="grid grid-cols-2 gap-4">
           {STATS.map(({ icon: Icon, value, label }) => (
             <Card key={label} className="bg-surface-secondary ring-glass-border">
               <CardContent className="flex flex-col gap-2">
@@ -45,7 +46,7 @@ export function GalleryHero() {
               </CardContent>
             </Card>
           ))}
-        </div>
+        </ScrollReveal>
       </div>
     </section>
   );

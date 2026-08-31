@@ -88,7 +88,10 @@ const TRAINERS = [
       "Visual Graphic Design NC III",
     ],
     facebookUrl: "https://facebook.com/Dongdylan",
-    primaryProgramKey: "software",
+    // No primary program: he led "I.T. Software Development", which the
+    // client discontinued 2026-08-26. Do not silently reassign him to a
+    // program he doesn't teach (Computer Hardware / Cellphone Repair).
+    primaryProgramKey: null,
   },
   {
     key: "jam",
@@ -128,13 +131,21 @@ const LEGACY_HENRY_EMAIL = "henry.lopez@hardtechitcorp.com";
 // ---------------------------------------------------------------------------
 // Programs — active HardTech catalog.
 //
-// Computer Hardware Servicing, Cellphone Hardware Servicing, and I.T.
-// Software Development have full marketing cards in the screenshot corpus
-// (desktop-01 #14-17, mobile-01 #31-35, mobile-02 #1-3) and are transcribed
-// verbatim below.
+// Computer Hardware Servicing and Cellphone Hardware Servicing have full
+// marketing cards in the screenshot corpus (desktop-01 #14-17, mobile-01
+// #31-35, mobile-02 #1-3) and are transcribed verbatim below.
 // ---------------------------------------------------------------------------
 
-const LEGACY_UNSUPPORTED_PROGRAM_NAMES = ["Networking Basics", "CCTV Installation"] as const;
+// Client-discontinued or otherwise unsupported catalog rows. Never upserted
+// above; if a matching row still exists from a prior seed run, the cleanup
+// loop right after the PROGRAMS upsert deletes it (or preserves + warns if
+// real dependent records point at it). "I.T. Software Development" was
+// retired 2026-08-26 — the client discontinued the course.
+const LEGACY_UNSUPPORTED_PROGRAM_NAMES = [
+  "Networking Basics",
+  "CCTV Installation",
+  "I.T. Software Development",
+] as const;
 
 const PROGRAMS = [
   {
@@ -192,33 +203,6 @@ const PROGRAMS = [
       "Business Operations & Pricing",
     ],
   },
-  {
-    key: "software",
-    name: "I.T. Software Development",
-    shortName: "Software Dev",
-    subtitle: "Build Real-World Applications",
-    description:
-      "A comprehensive software development training covering web development, programming fundamentals, database management, and modern frameworks. Build a portfolio of real-world projects you can show to employers.",
-    durationLabel: "6 Months (160 hrs)",
-    scheduleLabel: "Mon–Sat | 8AM–12PM",
-    levelLabel: "Beginner to Advanced",
-    priceAmount: "5000.00",
-    badgeLabel: "INDUSTRY CERT",
-    iconName: "Code",
-    accentColor: "orange",
-    imageUrl: null,
-    marketingEnrolledLabel: "800+ enrolled",
-    primaryTrainerKey: "dylan",
-    instructorCredentialLine: "EDPSE · LPT · MAEd | Owner, PRINCE IT Solutions",
-    curriculum: [
-      "Programming Fundamentals (Python & JS)",
-      "HTML, CSS & Responsive Web Design",
-      "React & Modern Frontend Frameworks",
-      "Node.js & Backend Development",
-      "Database Design (SQL & NoSQL)",
-      "Portfolio Project & Career Coaching",
-    ],
-  },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -246,16 +230,6 @@ const TESTIMONIALS = [
     avatarInitials: "JC",
     badgeColor: "green",
     programKey: "cellphone",
-    isFeatured: false,
-  },
-  {
-    quoteText:
-      "I went from zero coding knowledge to building real applications in just a few months. The project-based approach made all the difference. HardTech gives you real skills, not just theory.",
-    authorName: "Angelica Reyes",
-    authorRole: "Junior Developer",
-    avatarInitials: "AR",
-    badgeColor: "blue",
-    programKey: "software",
     isFeatured: false,
   },
   {
@@ -932,27 +906,6 @@ const ANNOUNCEMENTS = [
 
 const AUDIT_LOG_ENTRIES = [
   {
-    category: "PAYMENT",
-    action: "Verified payment",
-    description: "ENR-ms49u61n-7ntf",
-    actorKey: "demoAdmin",
-    createdAt: new Date("2026-07-28T06:25:00.000Z"),
-  },
-  {
-    category: "ENROLLMENT",
-    action: "Enrollment approved",
-    description: "ENR-ms49u61n-7ntf",
-    actorKey: "demoAdmin",
-    createdAt: new Date("2026-07-28T06:25:00.000Z"),
-  },
-  {
-    category: "ENROLLMENT",
-    action: "Re-enrolled in program",
-    description: "ENR-ms49u61n-7ntf — I.T. Software Development",
-    actorKey: "juan",
-    createdAt: new Date("2026-07-28T06:25:00.000Z"),
-  },
-  {
     category: "ENROLLMENT",
     action: "Re-enrolled in program",
     description: "ENR-ms49u61n-ddp2 — Cellphone Hardware Servicing",
@@ -1086,10 +1039,10 @@ async function main() {
     }
   }
 
-  // Remove only the two exact legacy seed rows that are no longer supported
-  // by HardTech's active catalog. If real user-created/dependent data points
-  // at either row, preserve it and rely on the frontend fail-closed catalog
-  // guards so unsupported offerings are not exposed as selectable/cards.
+  // Remove only the exact legacy seed rows that are no longer supported by
+  // HardTech's active catalog. If real user-created/dependent data points at
+  // a row, preserve it and rely on the frontend fail-closed catalog guards
+  // so unsupported offerings are not exposed as selectable/cards.
   for (const legacyName of LEGACY_UNSUPPORTED_PROGRAM_NAMES) {
     const legacy = await prisma.program.findUnique({
       where: { name: legacyName },
@@ -1130,7 +1083,9 @@ async function main() {
   for (const trainer of TRAINERS) {
     const userId = userIdByKey.get(trainer.key);
     if (!userId) continue;
-    const primaryProgramId = programIdByKey.get(trainer.primaryProgramKey) ?? null;
+    const primaryProgramId = trainer.primaryProgramKey
+      ? (programIdByKey.get(trainer.primaryProgramKey) ?? null)
+      : null;
 
     await prisma.trainerProfile.upsert({
       where: { userId },
@@ -1615,12 +1570,6 @@ async function main() {
         {
           userId: demoAdminId,
           title: "New enrollment to review",
-          body: "Juan Dela Cruz enrolled in I.T. Software Development.",
-          isRead: false,
-        },
-        {
-          userId: demoAdminId,
-          title: "New enrollment to review",
           body: "Juan Dela Cruz enrolled in Cellphone Hardware Servicing.",
           isRead: false,
         },
@@ -1632,7 +1581,7 @@ async function main() {
         },
         {
           userId: demoAdminId,
-          title: "3 enrollments awaiting approval",
+          title: "2 enrollments awaiting approval",
           body: "Review the pending queue under Enrollments.",
           isRead: false,
         },

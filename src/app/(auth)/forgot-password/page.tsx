@@ -20,7 +20,7 @@ export default async function ForgotPasswordPage() {
   if (session) redirect("/dashboard");
 
   return (
-    <div className="hero-glow relative mx-auto flex w-full max-w-md flex-col px-4 py-16 sm:px-6 lg:py-24">
+    <div className="hero-glow hero-glow-forgot-password relative mx-auto flex w-full max-w-md flex-col px-4 py-16 sm:px-6 lg:py-24">
       <Card className="glass rounded-2xl p-6 sm:p-8">
         <div className="mb-6 space-y-1.5">
           <h2 className="font-heading text-2xl font-semibold">Reset Your Password</h2>

@@ -257,6 +257,29 @@ body {
   --hero-glow-core: #16a34a29;
   --hero-glow-primary: #16a34a42;
   --hero-glow-secondary: #16a34a14;
+  /* Scrim for the home hero's directional composition (.hero-glow-home
+   * below) — the one tone the existing hero-glow-* trio doesn't have, since
+   * all three ADD brightness and this one needs to SUBTRACT it locally to
+   * protect headline contrast from the directional beam. Derived from
+   * --bg-main via color-mix rather than a pasted rgba: painting "N% opaque
+   * page background" over anything underneath always pulls the composite
+   * back toward the page's own already-legible ground, in either theme,
+   * without adding a second dark literal to chase across light/dark. Defined
+   * once here and again in .dark below (not relied on to cascade) to match
+   * this file's convention of an explicit value per theme. */
+  --hero-scrim: color-mix(in srgb, var(--bg-main) 70%, transparent);
+  /* Stronger sibling of --hero-scrim, for the same job over REAL photography
+   * instead of a decorative glow. --hero-scrim's 70% was tuned to protect a
+   * headline against .hero-glow-home's own beam — a much dimmer background
+   * than a full-resolution training photo, which needs more coverage to keep
+   * white text legible without flattening the photo into a uniform darken
+   * (the client's imagery direction explicitly wants the photo to still
+   * read as a photo — see the per-section hero-glow-{about,programs,contact}
+   * composition comments below for how this is applied as a directional
+   * gradient, never a flat opacity/brightness filter on the <Image> itself).
+   * Same color-mix(--bg-main) derivation as --hero-scrim, so it self-corrects
+   * per theme instead of chasing a second dark literal across light/dark. */
+  --hero-scrim-strong: color-mix(in srgb, var(--bg-main) 88%, transparent);
   --dashboard-glow: radial-gradient(ellipse, #16a34a24 0%, transparent 70%);
   --code-bg-color: #16a34a1c;
 
@@ -385,6 +408,13 @@ body {
   --hero-glow-core: #4ade801f;
   --hero-glow-primary: #4ade802e;
   --hero-glow-secondary: #60a5fa1a;
+  /* See the :root definition above for why this is color-mix(--bg-main, …)
+   * rather than a literal. --bg-main here is #080d12, so this resolves to a
+   * translucent near-black-blue rather than a translucent white. */
+  --hero-scrim: color-mix(in srgb, var(--bg-main) 70%, transparent);
+  /* See the :root definition above for what this is for. --bg-main here is
+   * #080d12, so this resolves to a stronger translucent near-black-blue. */
+  --hero-scrim-strong: color-mix(in srgb, var(--bg-main) 88%, transparent);
   --dashboard-glow: radial-gradient(
     ellipse,
     #a78bfa38 0%,
@@ -540,13 +570,348 @@ body {
     border-color: var(--glass-border-strong);
   }
 
-  /* Radial bloom behind hero headings and dashboard stat rows. */
+  /* Radial bloom behind hero headings, contact/about/footer/etc. This is the
+   * SHARED base: `.hero-glow` is consumed by 9 sections (home, login,
+   * forgot-password, programs, about, contact, footer, help, gallery), each
+   * a different height/shape, so this rule stays the simple centered radial
+   * that reads fine at any of those proportions. The home hero gets a
+   * bespoke directional composition instead — see the qualified rule below —
+   * rather than every one of those 9 sections inheriting a treatment tuned
+   * to one page's exact content layout. */
   .hero-glow {
     background: radial-gradient(
       ellipse at center,
       var(--hero-glow-primary) 0%,
       var(--hero-glow-secondary) 45%,
       transparent 70%
+    );
+  }
+
+  /* Home hero only: a layered, directional ground instead of the shared
+   * centered radial above. Client direction was explicit — "don't ever use
+   * blunt or lame background... very intentional" — and a symmetric radial
+   * is exactly what reads as inert/default.
+   *
+   * SCOPING: `.hero-glow` is shared by 9 sections (home, login,
+   * forgot-password, programs, about, contact, footer, help, gallery), so
+   * this composition can't live on the base rule above without restyling 8
+   * pages nobody asked to change. It is a dedicated class,
+   * `.hero-glow-home`, added alongside `.hero-glow` on the home hero's own
+   * element (src/features/home/hero.tsx) — not keyed off `.h-[36rem]` or any
+   * other layout utility. An earlier revision of this rule qualified
+   * `.hero-glow` with the Tailwind arbitrary-height utility that happened to
+   * be on that element; that made the styling silently dependent on an
+   * unrelated layout value — changing the hero's height would have stopped
+   * the rule matching with no build error, no lint error, and no failing
+   * test. A dedicated, intention-revealing class can't drift that way.
+   * SPECIFICITY: `.hero-glow-home` is a single class, same specificity as
+   * the bare `.hero-glow` above, so this rule must come AFTER it in source
+   * order to win — it does, immediately below.
+   *
+   * Three layers, each earning its place (painted top-to-bottom as listed —
+   * first layer paints on top):
+   *   1. Scrim — a soft dark pool centered over the badge/H1 zone (~50% 24%
+   *      of the box; badge/H1 measure to roughly 19-40% of the 576px box at
+   *      desktop lg). Keeps the headline legible against the brightest part
+   *      of the beam below without a second color: --hero-scrim is derived
+   *      from --bg-main, so it only ever pulls the composite back toward the
+   *      page's own already-legible ground.
+   *   2. Horizon — --hero-glow-secondary (the existing token, which in dark
+   *      mode is a blue tint, not more green) anchored to the BOTTOM edge of
+   *      the box rather than the center, so the CTA row and trust row sit in
+   *      a floor of light instead of floating in void. Reusing the blue
+   *      "secondary" token here (previously just the outer 45%-70% band of
+   *      the old center-out radial) gives the floor a cool undertone against
+   *      the warmer green beam — a technical two-tone rather than one flat
+   *      green wash.
+   *   3. Beam — --hero-glow-primary (existing token, the strongest of the
+   *      three) as a 135deg linear wash, brightest at the top-left corner
+   *      and fully faded by 45% along that diagonal. A single directional
+   *      wash reads as a light source; the symmetric center-out radial it
+   *      replaces is exactly what made the original feel inert.
+   * The fourth layer the brief calls for — technical texture — is NOT
+   * duplicated here: `.cyber-bg` (this file, below) already gives the whole
+   * page, including this section, an ambient gradient ground via `cyber-bg`
+   * on <body> (src/app/layout.tsx). Forking a second atmosphere layer here
+   * would violate the "reuse the language, don't invent a second one"
+   * instruction this rule itself was given. (`.cyber-bg`'s texture pass was
+   * a 1px dot grain when this comment was first written; it was replaced by
+   * a gradient field on later client direction — see `.cyber-bg::before`/
+   * `::after` below — but the "don't fork a second one here" reasoning is
+   * unchanged by what that layer's own composition looks like.) */
+  .hero-glow-home {
+    background:
+      radial-gradient(58% 40% at 50% 24%, var(--hero-scrim) 0%, transparent 72%),
+      radial-gradient(70% 45% at 50% 100%, var(--hero-glow-secondary) 0%, transparent 70%),
+      linear-gradient(135deg, var(--hero-glow-primary) 0%, transparent 45%);
+  }
+
+  /* ---------------------------------------------------------------------
+     Per-section directional compositions, same language as .hero-glow-home
+     above (2026-08-26 client direction — no plain centered radial anywhere).
+     `.hero-glow` (the shared base) stays mounted alongside every one of
+     these on its section's own element — same SCOPING/SPECIFICITY reasoning
+     as `.hero-glow-home`: a dedicated class per section, never keyed off a
+     Tailwind height utility, and each must come AFTER the bare `.hero-glow`
+     rule above to win on equal specificity (it does; source order below).
+
+     Three of these (about/programs/contact) sit on top of a real background
+     photograph instead of the plain page ground, so their first gradient
+     layer is a directional --hero-scrim-strong sweep doing double duty: it
+     is both this section's "scrim" layer (protecting the headline, same job
+     as .hero-glow-home's centered scrim) AND the photo-legibility scrim the
+     imagery direction calls for — one layer, not two competing ones. It
+     fades toward transparent well before the far edge of its section so the
+     photograph still reads as a photograph there, per the "directional
+     scrim, not a full-image darken" requirement — the <Image> element itself
+     carries no opacity/brightness filter anywhere in this codebase; only
+     this gradient, painted in a layer above the photo and below the text,
+     does the darkening. The other five (gallery/help/footer/login/
+     forgot-password) have no photo and keep the lighter --hero-scrim /
+     bare-token language .hero-glow-home already established.
+     --------------------------------------------------------------------- */
+
+  /* About (about/hero.tsx): h-32rem band, background photo behind a 2-col
+     grid — copy + CTAs on the left, a 2x2 stat grid on the right. Scrim
+     sweeps in from the left (protects the headline column) and fades out
+     by the right third, where the photo shows clearly around/behind the
+     opaque stat cards. Secondary bloom sits behind the stat-card corner
+     rather than centered, so the cards read as lit rather than the whole
+     band getting one flat wash. Beam angle (115deg) is deliberately close
+     to but distinct from .hero-glow-home's 135deg — same light-source
+     language, not an identical copy-paste. */
+  .hero-glow-about {
+    background:
+      linear-gradient(
+        100deg,
+        var(--hero-scrim-strong) 0%,
+        color-mix(in srgb, var(--hero-scrim-strong) 45%, transparent) 40%,
+        transparent 68%
+      ),
+      radial-gradient(55% 50% at 88% 12%, var(--hero-glow-secondary) 0%, transparent 68%),
+      linear-gradient(115deg, var(--hero-glow-primary) 0%, transparent 42%);
+  }
+
+  /* Programs (app/(marketing)/programs/page.tsx): h-26rem band, background
+     photo behind a single CENTERED column (badge/H1/paragraph/trust row) —
+     the only one of the three photo sections without a left/right split, so
+     the scrim pools centrally instead of sweeping from one side. Horizon
+     anchored to the bottom edge lifts the trust row the way .hero-glow-home
+     lifts its CTA row. Beam comes from the upper-RIGHT (200deg) rather than
+     upper-left, so this, About, and Home each read as their own light
+     source instead of three sections lit identically. */
+  /* NOTE on the scrim strength here — it is deliberately heavier than About's
+   * and Contact's, and must stay that way. gallery-13.jpg is a bright,
+   * high-frequency workshop shot (white shelving, pale benches, teal
+   * microscopes) rather than the darker, human-centred frames the other two
+   * use. Screenshot review showed the original single 65%/60% radial left the
+   * lede paragraph and the trust row effectively unreadable against it.
+   *
+   * Two changes fix that without flattening the photo into mud:
+   *   - a full-width horizontal band (the first layer) rather than a lone
+   *     centred ellipse, because this hero's text column is centred and its
+   *     trust row runs wide — an ellipse falls off before the row's outer
+   *     items and left them lit.
+   *   - a bottom-weighted second scrim, since the trust row sits low in the
+   *     band where the original radial had already gone transparent.
+   * If this photo is ever swapped for a darker one, dial these back. */
+  .hero-glow-programs {
+    background:
+      linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--hero-scrim-strong) 70%, transparent) 0%,
+        var(--hero-scrim-strong) 42%,
+        color-mix(in srgb, var(--hero-scrim-strong) 88%, transparent) 78%,
+        transparent 100%
+      ),
+      radial-gradient(72% 65% at 50% 34%, var(--hero-scrim-strong) 0%, transparent 74%),
+      radial-gradient(65% 42% at 50% 100%, var(--hero-glow-secondary) 0%, transparent 70%),
+      linear-gradient(200deg, var(--hero-glow-primary) 0%, transparent 46%);
+  }
+
+  /* Contact (contact/contact-hero.tsx): h-26rem band, background photo
+     behind a single top-left-anchored text column; the 4-card contact grid
+     sits mostly below this band. Scrim sweeps from the top-left (protects
+     the heading) same shape family as About's but a shallower angle so the
+     two don't read as the same treatment; secondary bloom anchored
+     bottom-right forms a floor the card grid below visually continues from. */
+  .hero-glow-contact {
+    background:
+      linear-gradient(
+        115deg,
+        var(--hero-scrim-strong) 0%,
+        color-mix(in srgb, var(--hero-scrim-strong) 40%, transparent) 36%,
+        transparent 64%
+      ),
+      radial-gradient(58% 48% at 85% 100%, var(--hero-glow-secondary) 0%, transparent 70%),
+      linear-gradient(150deg, var(--hero-glow-primary) 0%, transparent 40%);
+  }
+
+  /* Navbar protection band for the photo-backed heroes. The site header is
+   * transparent, which is fine over a flat dark ground but fails over
+   * photography: screenshot review found the nav links unreadable where they
+   * crossed the bright faces in contact's gallery-17. That is the known
+   * failure mode of a permanently transparent header, and it is a legibility
+   * bug, not a taste preference.
+   *
+   * Stops are in PIXELS, not percentages, on purpose: the header is a fixed
+   * height (~64px) regardless of whether the band beneath it is 26rem or
+   * 32rem, so a percentage would protect the nav on one page and miss on
+   * another. Applied ALONGSIDE each .hero-glow-* on the same element, so it
+   * composites over that section's own composition without replacing it.
+   *
+   * Implemented as a ::before rather than a second background-image on the
+   * same element: every .hero-glow-* uses the `background` SHORTHAND, which
+   * resets background-image. Two classes on one element would therefore
+   * conflict rather than composite, and since this rule sits later in the
+   * file it would silently wipe out the section's own composition. A
+   * pseudo-element genuinely layers over it.
+   *
+   * Deliberately not applied to gallery/help/login/forgot-password — those
+   * have no photo behind the header and need no band. */
+  .hero-photo-navscrim::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 136px;
+    pointer-events: none;
+    background-image: linear-gradient(
+      to bottom,
+      var(--hero-scrim-strong) 0px,
+      color-mix(in srgb, var(--hero-scrim-strong) 72%, transparent) 68px,
+      transparent 136px
+    );
+  }
+
+  /* Gallery (features/gallery/gallery-hero.tsx): h-28rem band, no photo —
+     this page's photography lives in the full grid below (photo-grid.tsx),
+     a second photo in its own hero would be redundant. Same 2-col shape as
+     About (copy left, 2x2 stat grid right) so it gets the same scrim-sweep
+     idea at --hero-scrim strength (not -strong, nothing to protect against
+     but the decorative wash itself) rather than the photo-legibility scrim. */
+  .hero-glow-gallery {
+    background:
+      radial-gradient(55% 48% at 25% 15%, var(--hero-scrim) 0%, transparent 66%),
+      radial-gradient(62% 50% at 90% 100%, var(--hero-glow-secondary) 0%, transparent 70%),
+      linear-gradient(125deg, var(--hero-glow-primary) 0%, transparent 44%);
+  }
+
+  /* Help (features/help/help-hero.tsx): h-26rem band, narrow centered
+     column, a support/reference page rather than a sales pitch. Deliberately
+     the quietest of the eight — two soft layers, both dampened via
+     color-mix rather than the full-strength tokens the marketing pages use,
+     no beam/scrim layer at all, so it stays a calm backdrop instead of
+     competing with the role-selection cards below it. */
+  .hero-glow-help {
+    background:
+      radial-gradient(
+        55% 55% at 50% 12%,
+        color-mix(in srgb, var(--hero-glow-primary) 55%, transparent) 0%,
+        transparent 70%
+      ),
+      radial-gradient(
+        60% 42% at 50% 100%,
+        color-mix(in srgb, var(--hero-glow-secondary) 55%, transparent) 0%,
+        transparent 70%
+      );
+  }
+
+  /* Footer (components/layout/footer.tsx): h-28rem band across the closing
+     section, already dimmed further by `opacity-70` at the call site. No
+     scrim layer — a footer has no single headline to protect, and the
+     column copy already renders in --muted-foreground against the shared
+     --bg-secondary footer surface, independent of this glow. Top-left beam
+     echoes the brand block that opens the column grid; the bottom-right
+     floor rises toward the oversized ghost wordmark that closes the page,
+     so the last thing a visitor sees is the brightest part of the
+     composition rather than the plain radial it replaces. */
+  .hero-glow-footer {
+    background:
+      radial-gradient(58% 48% at 15% 0%, var(--hero-glow-primary) 0%, transparent 65%),
+      radial-gradient(68% 58% at 85% 100%, var(--hero-glow-secondary) 0%, transparent 70%);
+  }
+
+  /* Login (app/(auth)/login/page.tsx): applied to the FULL-PAGE wrapping
+     div, not a short band — `.login-orb-a`/`.login-orb-b` (below) already
+     carry this page's real texture, measured off the reference and locked
+     by .claude/rules/20-design-fidelity.md, layered as separate elements
+     ON TOP of this rule (a class's own `background` is always that
+     element's bottom-most paint, so DOM children painting above it need no
+     z-index to win). This composition only needs to be a quiet ground
+     underneath them, so both layers are dampened via color-mix the same way
+     .hero-glow-help is — full-strength tokens here would fight the orbs
+     instead of sitting behind them. */
+  .hero-glow-login {
+    background:
+      radial-gradient(
+        50% 40% at 18% 0%,
+        color-mix(in srgb, var(--hero-glow-primary) 50%, transparent) 0%,
+        transparent 65%
+      ),
+      radial-gradient(
+        55% 45% at 100% 100%,
+        color-mix(in srgb, var(--hero-glow-secondary) 55%, transparent) 0%,
+        transparent 70%
+      );
+  }
+
+  /* Forgot-password (app/(auth)/forgot-password/page.tsx): also applied to
+     a full-height wrapping div, but a narrow `max-w-md` single card column
+     rather than a full-bleed page — there is no room for a diagonal beam to
+     read as directional at that width, so this is a simple vertical wash
+     (glow above the card, a softer floor below it) rather than forcing the
+     home hero's angled-beam shape onto a box too narrow for it to make
+     sense in. */
+  .hero-glow-forgot-password {
+    background:
+      radial-gradient(80% 55% at 50% 0%, var(--hero-glow-primary) 0%, transparent 66%),
+      radial-gradient(72% 48% at 50% 100%, var(--hero-glow-secondary) 0%, transparent 70%);
+  }
+
+  /* Bottom feather for the three photo-backed marketing heroes (about,
+   * programs, contact). Their <Image> layer is a fixed-height band, so
+   * without this it terminates on a hard horizontal seam — an abrupt cut
+   * from photograph to page ground that reads as a rendering fault rather
+   * than a composition. Caught on a browser screenshot pass; neither
+   * typecheck nor lint can see a seam.
+   *
+   * mask-image rather than stacking one more gradient <div>: this fades the
+   * IMAGE itself, so the scrim/bloom/beam layers above keep their own
+   * intended falloff instead of being flattened under a shared cover. The
+   * -webkit- prefix is still required for Safari.
+   *
+   * The hold sits at 62% because the scrim above is already near-transparent
+   * past ~68%; feathering earlier would dim the photo while the scrim is
+   * still doing its legibility job. */
+  /* Two values below were established empirically — by screenshotting the seam
+   * and hiding each layer in turn — not chosen by eye. Do not "simplify" them:
+   *
+   * 1. The ramp reaches FULL transparency at 94%, NOT at 100%. A fade ending
+   *    exactly on the container edge still leaves 2-3% of a bright photo alive
+   *    on the last row; against this near-black ground that residue is plainly
+   *    visible and then stops dead — the very seam this rule exists to remove.
+   *    Finishing early leaves a clean run-out band.
+   * 2. The mid stops ease the falloff. A straight linear ramp bands visibly
+   *    across a photograph this large.
+   *
+   * Isolation testing confirmed the .hero-glow-* layer above contributes no
+   * seam of its own, so it deliberately carries no mask. */
+  .hero-photo-fade {
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      #000 0%,
+      #000 55%,
+      rgb(0 0 0 / 0.55) 74%,
+      rgb(0 0 0 / 0.15) 87%,
+      transparent 94%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      #000 0%,
+      #000 55%,
+      rgb(0 0 0 / 0.55) 74%,
+      rgb(0 0 0 / 0.15) 87%,
+      transparent 94%
     );
   }
 
@@ -569,7 +934,28 @@ body {
    * underneath it. `pointer-events: none` on top of that means neither pass
    * can ever intercept a click regardless of stacking.
    *
-   * The alphas (0.035, 0.04) are tiny on purpose. Do not round them up. */
+   * 2026-08-26 client direction (verbatim): "dont use blunt and lame pure
+   * black bg and dotted ... use gradients". The 1px dot-matrix grain that
+   * used to live in ::after is REMOVED site-wide on that instruction — it
+   * read as noise/texture, not as an intentional ground, on every route.
+   * (An earlier version of this comment said "the alphas are tiny on
+   * purpose, do not round them up" — that defended the dot grid's alpha
+   * specifically; it does not apply to what replaced it, and is recorded
+   * here rather than silently deleted so the next person doesn't reinstate
+   * the grain thinking this was an oversight.)
+   *
+   * Replacement: one coherent two-layer gradient field spanning ::before and
+   * ::after, rather than a bloom pass + a texture pass that don't relate to
+   * each other. Both blooms sit at the SAME two hues the per-section
+   * `.hero-glow-*` compositions below already use (brand green via
+   * --neon-rgb, cool blue via --chart-blue-rgb) — reusing --chart-blue-rgb
+   * specifically (not --accent-blue) because it is this file's existing
+   * "measured off the reference, not derived" chart blue and needed no new
+   * token. That means the page's ambient ground and every section's own
+   * glow read as one system instead of a generic backdrop plus unrelated
+   * per-section accents. Both alphas stay low (0.05-0.06) on purpose: this
+   * layer sits UNDER every section's own hero-glow-* composition and must
+   * read as atmosphere, not compete with it for attention. */
   .cyber-bg {
     position: relative;
   }
@@ -583,23 +969,29 @@ body {
     pointer-events: none;
   }
 
-  /* Soft green bloom hanging from the top edge. */
+  /* Top-left bloom — brand green, anchored off-center so it reads as a light
+     source rather than a centered vignette. */
   .cyber-bg::before {
     background-image: radial-gradient(
-      80% 60% at 50% -5%,
-      rgb(var(--neon-rgb) / 0.04),
-      transparent 65%
+      65% 55% at 8% -10%,
+      rgb(var(--neon-rgb) / 0.06),
+      transparent 62%
     );
   }
 
-  /* The grain — a 1px dot matrix on a 28px grid. */
+  /* Bottom-right counter-bloom (cool blue) plus a faint vertical falloff so
+     the very top and bottom of a tall page have slightly more depth than its
+     middle, instead of the flat, unbroken fill the dot grid sat on top of. */
   .cyber-bg::after {
-    background-image: radial-gradient(
-      circle,
-      rgb(255 255 255 / 0.035) 1px,
-      transparent 1px
-    );
-    background-size: 28px 28px;
+    background-image:
+      radial-gradient(60% 50% at 95% 108%, rgb(var(--chart-blue-rgb) / 0.05), transparent 65%),
+      linear-gradient(
+        180deg,
+        rgb(var(--neon-rgb) / 0.02) 0%,
+        transparent 20%,
+        transparent 80%,
+        rgb(var(--chart-blue-rgb) / 0.025) 100%
+      );
   }
 
   /* /login-only technical grid, layered above `.cyber-bg`. Scoped to the

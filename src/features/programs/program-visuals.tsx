@@ -10,7 +10,7 @@
 // render") because a component picked by a function call isn't statically
 // provable to be stable across renders, even though this lookup is a pure,
 // deterministic table.
-import { Code2, Cpu, GraduationCap, Smartphone } from "lucide-react";
+import { Cpu, GraduationCap, Smartphone } from "lucide-react";
 
 export interface AccentTokens {
   /** Text color utility, e.g. for the icon glyph and price. */
@@ -26,7 +26,6 @@ type AccentKey = "green" | "blue" | "purple" | "orange";
 export const SUPPORTED_PROGRAM_NAMES = [
   "Computer Hardware Servicing",
   "Cellphone Hardware Servicing",
-  "I.T. Software Development",
 ] as const;
 
 export type SupportedProgramName = (typeof SUPPORTED_PROGRAM_NAMES)[number];
@@ -65,14 +64,13 @@ export interface ProgramImagery {
  * Curated gallery photos that genuinely depict each program's training —
  * hand-picked, not name-matched by coincidence. `public/images/gallery`
  * (prisma/seed.ts GALLERY_PHOTOS) is entirely repair-bench, soldering, and
- * certificate photos. Only the three active HardTech programs are mapped
+ * certificate photos. Only the two active HardTech programs are mapped
  * here; unsupported legacy rows fail closed elsewhere before reaching public
  * selectors/cards.
  */
 const CURATED_PROGRAM_PHOTOS: Record<string, string> = {
   "Computer Hardware Servicing": "/images/gallery/gallery-01.jpg",
   "Cellphone Hardware Servicing": "/images/gallery/gallery-08.jpg",
-  "I.T. Software Development": "/images/gallery/gallery-15.jpg",
   "Networking Basics": "/images/gallery/gallery-05.jpg",
   "CCTV Installation": "/images/gallery/gallery-11.jpg",
 };
@@ -99,10 +97,14 @@ export function resolveProgramImagery(program: {
  * Resolves `Program.iconName` to a lucide glyph. Defaults to a generic cap
  * for anything unrecognized.
  *
- * Keys below match prisma/seed.ts's active seeded values exactly: "Cpu",
- * "Smartphone", and "Code". A handful of lowercase/kebab aliases are kept
- * alongside so this stays correct if a future seed uses a different casing
- * convention.
+ * Keys below match prisma/seed.ts's active seeded values exactly: "Cpu" and
+ * "Smartphone". A handful of lowercase/kebab aliases are kept alongside so
+ * this stays correct if a future seed uses a different casing convention.
+ *
+ * The "Code"/"software" branch was removed with the I.T. Software Development
+ * program — no seeded program resolves to it any more, and a switch arm no
+ * input can reach is dead weight that reads as still-supported. A future
+ * software course adds it back along with its seed row.
  */
 export function renderProgramIcon(iconName: string | null | undefined, className?: string) {
   switch (iconName?.toLowerCase().trim()) {
@@ -116,12 +118,6 @@ export function renderProgramIcon(iconName: string | null | undefined, className
     case "mobile":
     case "cellphone-hardware":
       return <Smartphone className={className} aria-hidden />;
-    case "code":
-    case "code-2":
-    case "software":
-    case "dev":
-    case "it-software":
-      return <Code2 className={className} aria-hidden />;
     default:
       return <GraduationCap className={className} aria-hidden />;
   }

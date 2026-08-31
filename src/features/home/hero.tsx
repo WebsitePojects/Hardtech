@@ -23,7 +23,7 @@ export async function HomeHero() {
 
   return (
     <section className="relative overflow-hidden">
-      <div className="hero-glow pointer-events-none absolute inset-x-0 top-0 -z-10 h-[36rem]" />
+      <div className="hero-glow hero-glow-home pointer-events-none absolute inset-x-0 top-0 -z-10 h-[36rem]" />
       {/*
         pt-20 (80px): the navbar is `fixed` (navbar-shell.tsx) and reserves no
         flow space, so this section starts at viewport y=0 — directly behind
@@ -41,12 +41,23 @@ export async function HomeHero() {
           choreography" block): fires once on mount, on its own timeline —
           not the scroll-reveal system. Each headline line masks up from
           translateY(100%); the badge and CTA row slide in from the left.
-          Staggered via inline --reveal-delay custom properties (badge 0.1s,
-          headline lines 0.3s/0.5s, subtext 0.9s, CTAs 1.1s) so the eye
-          finishes reading before the button asks for a click, matching the
-          measured cadence in vgldesign technique #2. Pure CSS — no
-          "use client" needed, this stays a Server Component.
+          Staggered via inline --reveal-delay custom properties (mobile
+          updates teaser 0.05s, badge 0.1s, headline lines 0.3s/0.5s, subtext
+          0.9s, CTAs 1.1s) so the eye finishes reading before the button asks
+          for a click, matching the measured cadence in vgldesign technique
+          #2. Pure CSS — no "use client" needed, this stays a Server
+          Component.
         */}
+        {/*
+          In-flow mobile/tablet/laptop teaser: first item in this column, so
+          it reserves its own space above the badge instead of floating over
+          it. Only `announcements` (plain serialized data) crosses the
+          Server->Client boundary — never a function — per the /forum
+          incident in the lessons log. Hidden at 2xl, where the floating
+          right-rail variant below takes over; see announcements-card.tsx for
+          why 2xl is the split.
+        */}
+        <AnnouncementsCard announcements={announcements} variant="mobile" />
         <div
           className="hero-fade-slide inline-flex items-center gap-1.5 rounded-full border border-primary/40 px-3 py-1 text-xs font-semibold tracking-wide text-primary"
           style={{ "--reveal-delay": "0.1s" } as React.CSSProperties}
@@ -68,7 +79,7 @@ export async function HomeHero() {
           className="hero-fade-slide max-w-2xl text-lg leading-relaxed text-muted-foreground lg:text-xl"
           style={{ "--reveal-delay": "0.9s" } as React.CSSProperties}
         >
-          Get professionally trained in Computer Hardware Servicing, Cellphone Repair, and I.T. Software Development through immersive hands-on learning.
+          Get professionally trained in Computer Hardware Servicing and Cellphone Repair through immersive hands-on learning.
         </p>
         <div
           className="hero-fade-slide flex flex-col gap-3 sm:flex-row"
@@ -81,7 +92,7 @@ export async function HomeHero() {
           {TRUST_ITEMS.map((item) => <li key={item.label} className="flex items-center gap-1.5"><CircleCheckBig className={`size-4 ${item.colorClass}`} />{item.label}</li>)}
         </ul>
       </div>
-      <AnnouncementsCard announcements={announcements} />
+      <AnnouncementsCard announcements={announcements} variant="floating" />
     </section>
   );
 }

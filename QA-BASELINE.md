@@ -33,10 +33,10 @@ Scope: read-only frontend, backend, and security review before implementation
 
 - Severity: medium; visible on the homepage and programs catalog.
 - Evidence: `src/features/programs/program-visuals.tsx` maps photos only for
-  Computer Hardware Servicing, Cellphone Hardware Servicing, and I.T.
-  Software Development. Networking Basics and CCTV Installation deliberately
-  resolve to an icon panel. This avoids a blank card, but it still violates the
-  product expectation that every program card has a training image.
+  Computer Hardware Servicing and Cellphone Hardware Servicing. Networking
+  Basics and CCTV Installation deliberately resolve to an icon panel. This
+  avoids a blank card, but it still violates the product expectation that
+  every program card has a training image.
 - Expected: every seeded program has a stable local image asset, or the UI
   clearly treats an intentionally designed illustration as the program visual.
 

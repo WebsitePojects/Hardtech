@@ -298,10 +298,9 @@ model TrainerProfile {
 // Programs, batches, enrollment & payment
 // ---------------------------------------------------------------------------
 
-/// The program catalog (5 rows: Computer Hardware Servicing, Cellphone
-/// Hardware Servicing, I.T. Software Development, Networking Basics, CCTV
-/// Installation). Drives /programs, /enroll Step 1, and every admin Program
-/// select (desktop-02 #6).
+/// The program catalog (4 rows: Computer Hardware Servicing, Cellphone
+/// Hardware Servicing, Networking Basics, CCTV Installation). Drives
+/// /programs, /enroll Step 1, and every admin Program select (desktop-02 #6).
 model Program {
   id                       String   @id @default(cuid())
   name                     String   @unique

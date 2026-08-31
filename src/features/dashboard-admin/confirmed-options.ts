@@ -30,7 +30,6 @@ export const ADMIN_STATUS_OPTIONS: { value: UserStatus; label: string }[] = [
 export const ADMIN_PROGRAM_OPTIONS: string[] = [
   "Computer Hardware",
   "Cellphone Repair",
-  "Software Dev",
 ];
 
 /** User Management's top filter Select (mobile-05.md #7): a role filter,

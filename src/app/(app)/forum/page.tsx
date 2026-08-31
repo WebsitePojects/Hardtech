@@ -239,12 +239,18 @@ export default async function ForumPage(props: ForumPageProps) {
                     No posts yet.
                   </div>
                 ) : (
-                  <div
-                    className="max-h-[min(68dvh,52rem)] space-y-4 overflow-y-auto overscroll-contain pr-2"
-                    tabIndex={0}
-                    data-lenis-prevent
-                    aria-label="Forum posts"
-                  >
+                  /* Flows with the page deliberately. This was a capped
+                     sub-scroller: max-h + overflow-y-auto + overscroll-contain
+                     + data-lenis-prevent. overscroll-contain's whole job is to
+                     BLOCK scroll chaining, so reaching the last post dead-ended
+                     the wheel instead of handing scroll back to the page — you
+                     had to move the pointer off the feed to keep going.
+                     Chaining out of a natively-scrolled box into Lenis-driven
+                     page scroll is unreliable enough that bounding the feed is
+                     not worth it. An unbounded list cannot trap scroll at all.
+                     tabIndex/data-lenis-prevent went with it: a non-scrollable
+                     div has no business being a tab stop. */
+                  <div className="space-y-4">
                     {(tab === "bookmarks" ? bookmarkedPosts : posts).map((post) => (
                       <PostCard key={post.id} post={post} />
                     ))}
