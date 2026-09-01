@@ -740,6 +740,14 @@ model ForumPost {
   @@index([viewCount])
   @@index([replyCount])
   @@index([authorId])
+  /// Serves getPopularHashtags (forum.service.ts): filters WHERE status =
+  /// 'PUBLISHED' AND createdAt >= <30 days ago>, unnest(hashtags), GROUP BY.
+  /// Column order follows the query's filter order — status is the equality
+  /// filter, createdAt is the range filter — so this index alone satisfies
+  /// "status = X AND createdAt >= Y" without a separate bitmap-and of the two
+  /// single-column indexes above. See migration
+  /// 20260831120000_forum_post_status_created_at_index.
+  @@index([status, createdAt])
 }
 
 /// A reply to a post (mobile-01 #29-30). One level deep in practice, with a

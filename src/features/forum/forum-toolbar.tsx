@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition, type KeyboardEvent } from "react";
 import { ArrowUpDown, ChevronDown, CircleCheck, Search } from "lucide-react";
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -22,11 +21,16 @@ import type { ForumSort } from "./types";
 const SORT_VALUES: ForumSort[] = ["newest", "most_active", "most_viewed", "most_reactions"];
 
 /**
- * Search input + sort control, shared by desktop and mobile
- * (desktop-01.md #11: search + "↕ Newest ⌄"; mobile-01.md #24-26: same
- * search + sort icon-button, plus a collapsible "Filter by Category / Tag"
- * chip row that desktop instead renders as the always-visible left rail).
- * Client component: both fields navigate by pushing an updated query string.
+ * Search input, sort control, and category chip row — shared by every
+ * breakpoint. The category chips used to be collapsed behind a "Filter by
+ * Category / Tag" toggle on mobile only, with a separate always-visible
+ * left rail carrying the same filter on desktop (see the 2026-08 forum
+ * docs/screens spec). The social-feed rebuild (page.tsx) drops that left
+ * rail entirely — its Categories module was the only piece of it with real
+ * behaviour — so category filtering now lives in exactly one place, always
+ * visible, instead of two places with two different visibility rules for
+ * the same control. Client component: both fields navigate by pushing an
+ * updated query string.
  */
 export function ForumToolbar({
   basePath,
@@ -43,7 +47,6 @@ export function ForumToolbar({
 }) {
   const router = useRouter();
   const [searchValue, setSearchValue] = useState(search ?? "");
-  const [categoryFilterOpen, setCategoryFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [isSortPending, startSortTransition] = useTransition();
 
@@ -161,44 +164,38 @@ export function ForumToolbar({
         </DropdownMenu>
       </div>
 
-      {/* Mobile-only category chips — desktop's LeftRail carries this
-          instead (removed entirely on mobile, not relocated, per the
-          contract and mobile-01.md's layout rules). */}
-      <Collapsible open={categoryFilterOpen} onOpenChange={setCategoryFilterOpen} className="lg:hidden">
-        <CollapsibleTrigger asChild>
-          <Button variant="outline" className="w-full justify-between">
-            <span>Filter by Category / Tag</span>
-            <ChevronDown className={cn("size-4 transition-transform", categoryFilterOpen && "rotate-180")} aria-hidden />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-2">
-          <div className="flex flex-wrap gap-2">
+      {/* Category chip row — always visible now (see the docstring above).
+          Horizontally scrollable rather than wrapping: on a 320px viewport
+          a wrapped six-category row would push the feed down by two extra
+          lines before a single post is visible, and a single scrollable
+          row keeps every tap target at the same reachable height. */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        <Button
+          type="button"
+          variant={!activeCategory ? "default" : "outline"}
+          size="sm"
+          className="shrink-0"
+          onClick={() => navigate({ category: undefined })}
+        >
+          All
+        </Button>
+        {FORUM_CATEGORIES.map((category) => {
+          const Icon = CATEGORY_ICONS[category];
+          return (
             <Button
+              key={category}
               type="button"
-              variant={!activeCategory ? "default" : "outline"}
+              variant={activeCategory === category ? "default" : "outline"}
               size="sm"
-              onClick={() => navigate({ category: undefined })}
+              className="shrink-0"
+              onClick={() => navigate({ category })}
             >
-              All
+              <Icon className="size-3.5" aria-hidden />
+              {categoryLabel(category)}
             </Button>
-            {FORUM_CATEGORIES.map((category) => {
-              const Icon = CATEGORY_ICONS[category];
-              return (
-                <Button
-                  key={category}
-                  type="button"
-                  variant={activeCategory === category ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => navigate({ category })}
-                >
-                  <Icon className="size-3.5" aria-hidden />
-                  {categoryLabel(category)}
-                </Button>
-              );
-            })}
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+          );
+        })}
+      </div>
     </div>
   );
 }

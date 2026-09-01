@@ -136,4 +136,45 @@ export const forumPostRepository = {
     });
     return rows.map((row) => row.authorId);
   },
+
+  /**
+   * Most-replied posts for one status, id/title/replyCount only — the right
+   * rail "top questions" module never needs the body. Covered by the
+   * existing @@index([replyCount]); `limit` is clamped by the caller
+   * (forum.service.ts) before it reaches here.
+   */
+  findTopByReplyCount(status: PostStatus, limit: number) {
+    return db.forumPost.findMany({
+      where: { status },
+      orderBy: { replyCount: "desc" },
+      take: limit,
+      select: { id: true, title: true, replyCount: true },
+    });
+  },
+
+  /**
+   * Hashtag usage counts across posts of one status created since `since`,
+   * most-used first. `String[]` columns can't be unnested through Prisma's
+   * query builder, so this is raw SQL — parameterized via tagged-template
+   * interpolation only (.claude/rules/50-database.md), never string
+   * concatenation. Filters on (status, createdAt), served by the compound
+   * index added in migration 20260831120000_forum_post_status_created_at_index.
+   */
+  async groupHashtagsSince(status: PostStatus, since: Date, limit: number) {
+    // COUNT(*)::int rather than the default int8/bigint: Postgres' bigint
+    // return type serializes inconsistently across driver adapters (some
+    // hand back a JS `bigint`, some a numeric string), and a hashtag's post
+    // count on this table can never realistically exceed the int4 range, so
+    // casting in SQL sidesteps the ambiguity entirely rather than coercing
+    // an untyped value after the fact.
+    return db.$queryRaw<{ tag: string; postCount: number }[]>`
+      SELECT tag, COUNT(*)::int AS "postCount"
+      FROM "ForumPost", unnest("hashtags") AS tag
+      WHERE "status" = ${status}::"PostStatus"
+        AND "createdAt" >= ${since}
+      GROUP BY tag
+      ORDER BY "postCount" DESC
+      LIMIT ${limit}
+    `;
+  },
 };

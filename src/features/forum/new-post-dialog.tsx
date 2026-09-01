@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -25,16 +25,26 @@ import { useGuardedMutation } from "./use-guarded-mutation";
 import type { ForumCategory } from "@/../generated/prisma/enums";
 
 /**
- * "+ New Post" compose dialog (desktop-02.md #30 top-right button). Trainee
- * posts require approval (desktop-01.md guideline 5) — the copy below sets
- * that expectation up front rather than implying an instant publish.
+ * Compose dialog for a new forum post. Trainee posts require approval
+ * (desktop-01.md guideline 5) — the copy below sets that expectation up
+ * front rather than implying an instant publish.
  *
  * Guards: Publish button disabled until the schema passes and again while
  * pending; handler early-return via useGuardedMutation.
  * `idempotencyKey` is minted once per dialog mount (one compose intent),
  * not per submit attempt, so a retry after a dropped response would replay.
+ *
+ * `trigger` lets a caller swap in its own opener(s) while reusing this same
+ * dialog body/mutation/state — Radix's `Dialog.Root` accepts any number of
+ * `Dialog.Trigger` descendants, so an array here maps each entry to its own
+ * trigger under one dialog instance instead of duplicating the compose
+ * form. The social-feed composer row (post-composer.tsx) uses two
+ * `NewPostDialog` instances — one per visual row (prompt+Publish, then the
+ * category/hashtag hints) — each opening from either of its two triggers.
+ * A single node still works for the original "+ New Post" call site.
+ * Defaults to the original button so no other call site is affected.
  */
-export function NewPostDialog() {
+export function NewPostDialog({ trigger }: { trigger?: ReactNode | ReactNode[] } = {}) {
   const [open, setOpen] = useState(false);
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [title, setTitle] = useState("");
@@ -67,13 +77,20 @@ export function NewPostDialog() {
     await run(parsed.data);
   }
 
+  const defaultTrigger = (
+    <Button type="button">
+      <Plus className="size-4" aria-hidden /> New Post
+    </Button>
+  );
+  const triggers = Array.isArray(trigger) ? trigger : [trigger ?? defaultTrigger];
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button type="button">
-          <Plus className="size-4" aria-hidden /> New Post
-        </Button>
-      </DialogTrigger>
+      {triggers.map((triggerNode, index) => (
+        <DialogTrigger asChild key={index}>
+          {triggerNode}
+        </DialogTrigger>
+      ))}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>New Post</DialogTitle>

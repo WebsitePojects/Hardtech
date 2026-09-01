@@ -1,0 +1,21 @@
+-- Compound index for the forum right-rail "popular hashtags" module.
+--
+-- getPopularHashtags (src/server/services/forum.service.ts) filters
+-- ForumPost WHERE status = 'PUBLISHED' AND createdAt >= now() - 30 days,
+-- then unnest(hashtags) and GROUP BY. Today ForumPost carries only the
+-- separate single-column @@index([status]) and @@index([createdAt]); a
+-- query filtering both needs Postgres to bitmap-AND two indexes or fall
+-- back to a sequential scan. A compound index on (status, createdAt),
+-- column order following the query's equality-then-range filter shape,
+-- lets Postgres satisfy "status = X AND createdAt >= Y" directly off one
+-- index, then unnest only the matching rows.
+--
+-- Online/backfill-safe strategy:
+-- - No column changes, so no table rewrite and no lock escalation from
+--   that. The only risk is the index build itself.
+-- - CREATE INDEX CONCURRENTLY takes a lower lock (SHARE UPDATE EXCLUSIVE)
+--   that does not block concurrent reads or writes, at the cost of two
+--   table scans instead of one. It must not run inside a transaction
+--   block, so this file intentionally has no BEGIN/COMMIT.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "ForumPost_status_createdAt_idx"
+  ON "ForumPost"("status", "createdAt");

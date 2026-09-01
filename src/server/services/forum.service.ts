@@ -482,6 +482,52 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Right-rail modules (top questions, popular hashtags)
+// ---------------------------------------------------------------------------
+
+/** Server-side clamp for any caller-supplied rail limit: never let a caller ask for an unbounded list. */
+const MAX_RAIL_LIMIT = 20;
+
+function clampLimit(limit: number): number {
+  return Number.isInteger(limit) && limit > 0 ? Math.min(limit, MAX_RAIL_LIMIT) : 5;
+}
+
+/**
+ * Most-replied posts, for the forum right rail's "Top Questions" module.
+ * Same fail-closed visibility as every other read in this file: only
+ * PUBLISHED posts, hardcoded — see the module header. Cheap by construction:
+ * `@@index([replyCount])` on ForumPost lets Postgres satisfy
+ * `ORDER BY replyCount DESC LIMIT N` with an index scan instead of sorting
+ * the whole table.
+ */
+export async function getTopQuestions(
+  limit: number,
+): Promise<Array<{ id: string; title: string; replyCount: number }>> {
+  const safeLimit = clampLimit(limit);
+  const posts = await forumPostRepository.findTopByReplyCount("PUBLISHED", safeLimit);
+  return posts.map((post) => ({ id: post.id, title: post.title, replyCount: post.replyCount }));
+}
+
+/**
+ * Most-used hashtags across PUBLISHED posts created in the last 30 days, for
+ * the forum right rail's "Popular Hashtags" module. `ForumPost.hashtags` is a
+ * `String[]`, which Prisma's query builder cannot unnest/group, so the
+ * aggregation lives in forum-post.repository.ts as a parameterized
+ * `$queryRaw` (tagged-template interpolation only — never string
+ * concatenation, per .claude/rules/50-database.md). The (status, createdAt)
+ * filter is served by the compound index added in migration
+ * 20260831120000_forum_post_status_created_at_index.
+ */
+export async function getPopularHashtags(
+  limit: number,
+): Promise<Array<{ tag: string; postCount: number }>> {
+  const safeLimit = clampLimit(limit);
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const rows = await forumPostRepository.groupHashtagsSince("PUBLISHED", thirtyDaysAgo, safeLimit);
+  return rows.map((row) => ({ tag: row.tag, postCount: row.postCount }));
+}
+
 export async function getForumStats(): Promise<ForumStats> {
   const [totalPosts, totalReplies, totalViews, postAuthorIds, replyAuthorIds, categoryCountRows] =
     await Promise.all([

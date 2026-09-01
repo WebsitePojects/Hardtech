@@ -1,109 +1,131 @@
 import Link from "next/link";
-import { Bookmark, TrendingUp } from "lucide-react";
+import { Hash, MessageCircleQuestion, Trophy } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { ForumPostSummary, LeaderboardEntry } from "./types";
+import { RailModule } from "./rail-module";
+import type { LeaderboardEntry } from "./types";
 
-const MEDALS = ["🥇", "🥈", "🥉"];
+export type TopQuestionItem = { id: string; title: string; replyCount: number };
+export type PopularHashtagItem = { tag: string; postCount: number };
 
 /**
- * Right rail: Trending 1-5, My Bookmarks, Rating Leaderboard with medal
- * ranks and star scores (desktop-01.md #11-13, desktop-02.md #28).
- * Hidden on mobile — removed entirely per the contract, not relocated.
+ * Right rail for the social-feed rebuild (client reference image, not
+ * docs/screens — see the note at the top of page.tsx). Three modules: Top
+ * Contributors, Top Questions, Popular Hashtags This Month. Sticky on
+ * desktop; on mobile it renders in normal document flow below the feed
+ * (see the layout decision in page.tsx) rather than a drawer, because this
+ * is browse-more content a trainee would scroll past on the way out of the
+ * feed, not something that needs to interrupt the primary reading path.
+ *
+ * Every list here degrades to however many real rows the service returned
+ * — never padded to a fixed count — and every empty case gets an honest,
+ * specific sentence instead of a generic "nothing here" (per the
+ * orchestrator's data-update note on getPopularHashtags: it correctly
+ * returns [] right now because every published post is outside the 30-day
+ * window, and that fact is worth stating, not hiding).
  */
 export function RightRail({
-  trendingPosts,
-  bookmarkedPosts,
   leaderboard,
+  topQuestions,
+  popularHashtags,
 }: {
-  trendingPosts: Pick<ForumPostSummary, "id" | "title">[];
-  bookmarkedPosts: Pick<ForumPostSummary, "id" | "title">[];
   leaderboard: LeaderboardEntry[];
+  topQuestions: TopQuestionItem[];
+  popularHashtags: PopularHashtagItem[];
 }) {
   return (
-    <div className="flex w-full shrink-0 flex-col gap-4 lg:w-[220px]">
-      <Card className="border border-glass-border bg-surface-card ring-0">
-        <CardHeader className="px-3.5 pb-1 pt-3.5">
-          <CardTitle className="flex items-center gap-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-            <TrendingUp className="size-4 text-brand-orange" aria-hidden />
-            Trending
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 px-3.5 pb-3.5">
-          {trendingPosts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No trending posts yet.</p>
-          ) : (
-            <ol className="space-y-2.5">
-              {trendingPosts.map((post, index) => (
-                <li key={post.id} className="flex gap-2 text-sm">
-                  <span className="font-semibold text-brand-orange">{index + 1}</span>
-                  <Link href={`/forum/${post.id}`} className="line-clamp-2 text-foreground hover:text-primary">
-                    {post.title}
-                  </Link>
+    <aside className="flex w-full shrink-0 flex-col gap-5 lg:sticky lg:top-24 lg:w-[280px] lg:gap-4 lg:self-start">
+      <RailModule icon={Trophy} title="Top Contributors">
+        {leaderboard.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No contributors have been rated yet.
+          </p>
+        ) : (
+          <ol className="divide-y divide-glass-border">
+            {leaderboard.slice(0, 5).map((entry, index) => {
+              const rank = index + 1;
+              const initials = `${entry.firstName[0] ?? ""}${entry.lastName[0] ?? ""}`.toUpperCase();
+              return (
+                <li key={entry.userId} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                  {/* Tabular rank numeral, not a medal emoji — a set of three
+                      icons that stops meaning anything past #3 is exactly the
+                      template-looking pattern the client called out. */}
+                  <span className="w-4 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
+                    {rank}
+                  </span>
+                  <Avatar size="sm">
+                    <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                    {entry.firstName} {entry.lastName}
+                  </span>
+                  {/* Labelled "ratings", not "answers" — ratingCount is a count
+                      of stars received (authorRatingRepository.aggregateAll),
+                      not a count of authored replies. The reference's copy
+                      doesn't match what this data actually measures, and
+                      real-data-only wins over matching the reference's label. */}
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    {entry.ratingCount} {entry.ratingCount === 1 ? "rating" : "ratings"}
+                  </span>
                 </li>
-              ))}
-            </ol>
-          )}
-        </CardContent>
-      </Card>
+              );
+            })}
+          </ol>
+        )}
+      </RailModule>
 
-      <Card className="border border-glass-border bg-surface-card ring-0">
-        <CardHeader className="px-3.5 pb-1 pt-3.5">
-          <CardTitle className="flex items-center gap-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-            <Bookmark className="size-4" aria-hidden />
-            My Bookmarks
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-3.5 pb-3.5">
-          {bookmarkedPosts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No bookmarks yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {bookmarkedPosts.map((post) => (
-                <li key={post.id}>
-                  <Link href={`/forum/${post.id}`} className="line-clamp-2 text-sm text-foreground hover:text-primary">
-                    {post.title}
+      <RailModule icon={MessageCircleQuestion} title="Top Questions">
+        {topQuestions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No questions yet.</p>
+        ) : (
+          <ol className="divide-y divide-glass-border">
+            {topQuestions.map((question, index) => (
+              <li key={question.id} className="flex gap-2.5 py-2.5 first:pt-0 last:pb-0">
+                <span className="w-4 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
+                  {index + 1}
+                </span>
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <Link
+                    href={`/forum/${question.id}`}
+                    className="line-clamp-2 text-sm text-foreground hover:text-primary"
+                  >
+                    {question.title}
                   </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+                  <p className="text-xs tabular-nums text-muted-foreground">
+                    {question.replyCount} {question.replyCount === 1 ? "reply" : "replies"}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+      </RailModule>
 
-      <Card className="border border-glass-border bg-surface-card ring-0">
-        <CardHeader className="px-3.5 pb-1 pt-3.5">
-          <CardTitle className="flex items-center gap-2 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-            ⭐ Rating Leaderboard
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 px-3.5 pb-3.5">
-          {leaderboard.map((entry, index) => {
-            const rank = index + 1;
-            const initials = `${entry.firstName[0] ?? ""}${entry.lastName[0] ?? ""}`.toUpperCase();
-            return (
-              <div key={entry.userId} className="flex items-center gap-2.5">
-                <span className="w-5 shrink-0 text-center text-sm">
-                  {rank <= 3 ? MEDALS[rank - 1] : `#${rank}`}
+      <RailModule icon={Hash} title="Popular Hashtags This Month">
+        {popularHashtags.length === 0 ? (
+          // Honest, specific fact rather than "no hashtags exist": nothing
+          // has published in the 30-day window this module reads. Same
+          // vertical rhythm as a populated list (py-0.5) so the module
+          // neither collapses to nothing nor reserves a big dead box.
+          <p className="py-0.5 text-sm text-muted-foreground">
+            No posts have published in the last 30 days, so nothing is
+            trending this month yet.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {popularHashtags.map((hashtag) => (
+              <li key={hashtag.tag} className="flex items-center justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate text-foreground">#{hashtag.tag}</span>
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                  {hashtag.postCount} {hashtag.postCount === 1 ? "post" : "posts"}
                 </span>
-                <Avatar size="sm">
-                  <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="flex-1 truncate text-sm text-foreground">
-                  {entry.firstName} {entry.lastName}
-                </span>
-                <Badge className="border-primary/40 bg-primary/10 text-primary" variant="outline">
-                  {entry.ratingAverage.toFixed(1)}★
-                </Badge>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-    </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </RailModule>
+    </aside>
   );
 }
