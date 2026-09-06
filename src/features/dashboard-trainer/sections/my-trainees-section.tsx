@@ -17,7 +17,7 @@ export function MyTraineesSection({ trainees }: { trainees: TrainerTraineeRoster
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {trainees.map((trainee) => (
-            <EvaluationFormCard key={trainee.id} trainee={trainee} />
+            <EvaluationFormCard key={trainee.enrollmentId} trainee={trainee} />
           ))}
         </div>
       )}

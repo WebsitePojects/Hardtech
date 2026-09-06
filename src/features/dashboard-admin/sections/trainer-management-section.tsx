@@ -1,7 +1,8 @@
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
-import { getAdminTrainerRoster } from "@/server/services/dashboard.service";
+import { getAdminTrainerRoster, getAdminUnassignedActiveEnrollments } from "@/server/services/dashboard.service";
 import { TrainerCard, type TrainerManagementItem } from "../components/trainer-card";
 import { DataNotConnectedNote } from "../components/data-not-connected-note";
+import { UnassignedEnrollmentList } from "../components/unassigned-enrollment-list";
 
 function initialsFor(name: string): string {
   return name
@@ -24,7 +25,11 @@ function statusLabel(status: string | null): string {
  * "Trainer Management" (desktop-02.md #8, mobile-05.md #12-14).
  */
 export async function TrainerManagementSection() {
-  const trainers: TrainerManagementItem[] = (await getAdminTrainerRoster()).map((trainer) => ({
+  const [trainerRoster, unassignedEnrollments] = await Promise.all([
+    getAdminTrainerRoster(),
+    getAdminUnassignedActiveEnrollments(),
+  ]);
+  const trainers: TrainerManagementItem[] = trainerRoster.map((trainer) => ({
     id: trainer.trainerId,
     name: trainer.name,
     initials: initialsFor(trainer.name),
@@ -42,6 +47,8 @@ export async function TrainerManagementSection() {
   return (
     <div className="space-y-6">
       <DashboardPageHeader title="Trainer Management" />
+
+      <UnassignedEnrollmentList enrollments={unassignedEnrollments} />
 
       {trainers.length === 0 ? (
         <DataNotConnectedNote detail="No trainers found." />

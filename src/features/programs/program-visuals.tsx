@@ -23,17 +23,6 @@ export interface AccentTokens {
 
 type AccentKey = "green" | "blue" | "purple" | "orange";
 
-export const SUPPORTED_PROGRAM_NAMES = [
-  "Computer Hardware Servicing",
-  "Cellphone Hardware Servicing",
-] as const;
-
-export type SupportedProgramName = (typeof SUPPORTED_PROGRAM_NAMES)[number];
-
-export function isSupportedProgramName(name: string): name is SupportedProgramName {
-  return SUPPORTED_PROGRAM_NAMES.includes(name as SupportedProgramName);
-}
-
 const ACCENTS: Record<AccentKey, AccentTokens> = {
   green: { text: "text-primary", bg: "bg-primary/10", border: "border-primary/30" },
   blue: { text: "text-brand-blue", bg: "bg-brand-blue/10", border: "border-brand-blue/30" },
@@ -101,10 +90,11 @@ export function resolveProgramImagery(program: {
  * "Smartphone". A handful of lowercase/kebab aliases are kept alongside so
  * this stays correct if a future seed uses a different casing convention.
  *
- * The "Code"/"software" branch was removed with the I.T. Software Development
- * program — no seeded program resolves to it any more, and a switch arm no
- * input can reach is dead weight that reads as still-supported. A future
- * software course adds it back along with its seed row.
+ * The "Code"/"software" branch was removed along with the school's third
+ * course, fully retired and removed from the catalog — no seeded program
+ * resolves to it any more, and a switch arm no input can reach is dead
+ * weight that reads as still-supported. A future software course adds it
+ * back along with its seed row.
  */
 export function renderProgramIcon(iconName: string | null | undefined, className?: string) {
   switch (iconName?.toLowerCase().trim()) {

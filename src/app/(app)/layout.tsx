@@ -1,4 +1,19 @@
+import type { Metadata } from "next";
+
 import { Navbar } from "@/components/layout/navbar";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    noimageindex: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
+};
 
 /**
  * Shared chrome for every route in the (app) group (forum, communities).

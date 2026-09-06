@@ -101,6 +101,40 @@ export async function removeAssignedTrainee(input: { actorId: string; actorRole:
   return changed ? { ok: true } : { ok: false, error: "Trainee is no longer assigned to this batch." };
 }
 
+/** Assign an active enrollment to a batch in the same program. */
+export async function assignEnrollmentToBatch(input: { actorId: string; actorRole: UserRole; enrollmentId: string; batchId: string }): Promise<Result> {
+  if (!(await isAdmin(input.actorId, input.actorRole))) return { ok: false, error: "Not authorized." };
+
+  const [enrollment, batch] = await Promise.all([
+    enrollmentRepository.findForBatchAssignment(input.enrollmentId),
+    batchRepository.findById(input.batchId),
+  ]);
+  if (!enrollment) return { ok: false, error: "Enrollment not found." };
+  if (!batch) return { ok: false, error: "Batch not found." };
+  if (enrollment.programId !== batch.programId) return { ok: false, error: "Enrollment and batch programs must match." };
+  if (enrollment.batchId === batch.id) return { ok: true };
+  if (enrollment.batchId !== null) return { ok: false, error: "Enrollment is already assigned to another batch." };
+  if (enrollment.status !== "ACTIVE") return { ok: false, error: "Only active enrollments can be assigned." };
+
+  const changed = await auditLogRepository.transaction(async (tx) => {
+    const result = await batchRepository.assignActiveEnrollment(tx, input.enrollmentId, input.batchId, batch.programId);
+    if (result.count !== 1) return false;
+    await auditLogRepository.create(tx, {
+      category: "ENROLLMENT",
+      action: "batch_assign",
+      description: `Enrollment assigned to batch ${batch.code}.`,
+      referenceId: input.enrollmentId,
+      actorUserId: input.actorId,
+    });
+    return true;
+  });
+  if (changed) return { ok: true };
+
+  const current = await enrollmentRepository.findForBatchAssignment(input.enrollmentId);
+  if (current?.batchId === input.batchId) return { ok: true };
+  return { ok: false, error: current?.batchId ? "Enrollment is already assigned to another batch." : "Enrollment is no longer eligible for assignment." };
+}
+
 export async function savePaymentMethod(input: { actorId: string; actorRole: UserRole; method: "GCASH" | "MAYA" | "BANK_TRANSFER" | "CARD"; displayName: string; accountNumber: string | null; accountName: string | null; bankName: string | null; note: string | null; isEnabled: boolean }): Promise<Result> {
   if (!(await isAdmin(input.actorId, input.actorRole))) return { ok: false, error: "Not authorized." };
   try {

@@ -1,11 +1,15 @@
 import { EnrollWizard } from "@/features/enroll/enroll-wizard";
+import { createSiteMetadata } from "@/lib/site-origin";
 import type { EnrollPaymentMethod, EnrollProgram } from "@/features/enroll/types";
 import { decimalToCentavos } from "@/features/programs/format-currency";
 import { getPaymentMethods, getPrograms } from "@/server/services/marketing.service";
 
-export const metadata = {
+export const metadata = createSiteMetadata({
   title: "Online Enrollment | HardTech IT Corp",
-};
+  description:
+    "Review HardTech IT Corp training programs and submit an online enrollment application.",
+  path: "/enroll",
+});
 
 export default async function EnrollPage() {
   const [programs, paymentMethods] = await Promise.all([getPrograms(), getPaymentMethods()]);

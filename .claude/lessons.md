@@ -713,3 +713,22 @@ shell; all content is assembled after the JS executes.
 **Rule:** For any SPA, do not judge the site by its server HTML. Either drive it
 with a headless browser, or — faster and more exact — download and mine the JS
 bundle directly.
+
+## 2026-09-05 — Review the latest local build before production
+
+Symptom: browser QA flagged an old hero frame on hardtech.pro while its removal was already present locally. Cause: production had not received the uncommitted work. Rule: on a resumed task, establish the current checkout and local preview first; label production observations as deployment differences, and verify the domain only after the intended commit deploys.
+
+---
+
+## 2026-09-06 — Bound dashboard collections and select relation fields explicitly
+
+**Symptom:** The lifecycle dashboard additions introduced unbounded `findMany`
+queries, while an existing enrollment relation include could return user password
+hashes to callers that only needed display data.
+
+**Cause:** The dashboard-specific repository methods treated their small seed
+results as a fixed ceiling and used broad relation reads for convenience.
+
+**Rule:** Every dashboard collection has a bounded server-side page size, and
+every relation query selects only the fields its caller renders. Never use a
+broad user relation include in a dashboard read.

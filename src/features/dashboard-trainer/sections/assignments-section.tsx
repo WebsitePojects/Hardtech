@@ -1,12 +1,12 @@
 import { ClipboardList } from "lucide-react";
 
-import type { TrainerAssignmentItem } from "@/server/services/dashboard.service";
+import type { TrainerAssignmentItem, TrainerBatchOption } from "@/server/services/dashboard.service";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { AssignmentCreateForm } from "../assignment-create-form";
 import { formatDateOnly } from "../format";
 
-export function AssignmentsSection({ assignments }: { assignments: TrainerAssignmentItem[] }) {
+export function AssignmentsSection({ assignments, batches }: { assignments: TrainerAssignmentItem[]; batches: TrainerBatchOption[] }) {
   return (
     <div className="space-y-6">
       <DashboardPageHeader
@@ -14,7 +14,7 @@ export function AssignmentsSection({ assignments }: { assignments: TrainerAssign
         description="Post tasks for your trainees. They'll get a real-time notification and can submit image, video, or document files."
       />
 
-      <AssignmentCreateForm />
+      <AssignmentCreateForm batches={batches} />
 
       {assignments.length === 0 ? (
         <Card>

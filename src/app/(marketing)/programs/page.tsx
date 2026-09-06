@@ -1,18 +1,22 @@
 import Image from "next/image";
 import { Award, Users, Zap } from "lucide-react";
 
+import { createSiteMetadata } from "@/lib/site-origin";
 import { Badge } from "@/components/ui/badge";
 import { ProgramCard } from "@/features/programs/program-card";
 import { getPrograms, getTrainers } from "@/server/services/marketing.service";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
 
-export const metadata = {
+export const metadata = createSiteMetadata({
   title: "Our Core Programs | HardTech IT Corp",
-};
+  description:
+    "Explore HardTech IT Corp training programs for practical computer and cellphone hardware servicing skills.",
+  path: "/programs",
+});
 
 const TRUST_ROW = [
   { icon: Award, label: "Skills-First Training" },
-  { icon: Users, label: "50+ Expert Trainers" },
+  { icon: Users, label: "Expert Trainers" },
   { icon: Zap, label: "Hands-On Labs" },
 ];
 

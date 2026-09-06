@@ -1,4 +1,5 @@
 import type { EvaluationRating, SubmissionType, UserRole } from "@/../generated/prisma/client";
+import { db } from "@/server/db";
 import { assignmentRepository } from "@/server/repositories/assignment.repository";
 import { assignmentSubmissionRepository } from "@/server/repositories/assignment-submission.repository";
 import { authorRatingRepository } from "@/server/repositories/author-rating.repository";
@@ -47,19 +48,23 @@ export async function evaluateTrainee(input: {
 }
 
 export async function createAssignment(input: {
-  trainerId: string; trainerRole: UserRole; title: string; instructions: string;
+  trainerId: string; trainerRole: UserRole; batchId: string; title: string; instructions: string;
   dueDate: string; dueTime: string; allowedSubmissionTypes: SubmissionType[]; idempotencyKey: string;
 }): Promise<Result> {
   if (!(await verifiedTrainer(input.trainerId, input.trainerRole))) return { ok: false, error: "Not authorized." };
-  const batch = await assignmentRepository.findBatchByTrainerId(input.trainerId);
-  if (!batch) return { ok: false, error: "No training batch is assigned to you." };
   const dueDate = new Date(input.dueDate);
   if (Number.isNaN(dueDate.getTime())) return { ok: false, error: "Invalid due date." };
   try {
-    await assignmentRepository.create({
-    batchId: batch.id, trainerId: input.trainerId, title: input.title, instructions: input.instructions,
-    dueDate, dueTime: input.dueTime, allowedSubmissionTypes: input.allowedSubmissionTypes, idempotencyKey: input.idempotencyKey,
+    const created = await db.$transaction(async (tx) => {
+      const batches = await assignmentRepository.findAndLockBatchByIdAndTrainerId(tx, input.batchId, input.trainerId);
+      if (batches.length !== 1) return false;
+      await assignmentRepository.create(tx, {
+        batchId: batches[0].id, trainerId: input.trainerId, title: input.title, instructions: input.instructions,
+        dueDate, dueTime: input.dueTime, allowedSubmissionTypes: input.allowedSubmissionTypes, idempotencyKey: input.idempotencyKey,
+      });
+      return true;
     });
+    if (!created) return { ok: false, error: "Selected batch is not assigned to you." };
   } catch (error) {
     if (!(typeof error === "object" && error !== null && "code" in error && error.code === "P2002")) return { ok: false, error: "Unable to create assignment." };
     const existing = await assignmentRepository.findByIdempotencyKey(input.idempotencyKey);

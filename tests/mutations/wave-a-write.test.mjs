@@ -56,7 +56,7 @@ test("wave A writes are real and duplicate-safe", async () => {
   assert.equal((await Promise.all([createAnnouncement(announcementInput), createAnnouncement(announcementInput)])).every((result) => result.ok), true);
   assert.equal((await withClient((client) => client.query('SELECT count(*)::int AS count FROM "Announcement" WHERE "idempotencyKey"=$1', [announcementInput.idempotencyKey]))).rows[0].count, 1);
 
-  const assignmentInput = { trainerId: fixture.trainerId, trainerRole: "TRAINER", title: `Test assignment ${suffix}`, instructions: "Do the work.", dueDate: "2026-12-01", dueTime: "09:00", allowedSubmissionTypes: ["DOCUMENT"], idempotencyKey: `assignment-${suffix}` };
+  const assignmentInput = { trainerId: fixture.trainerId, trainerRole: "TRAINER", batchId: fixture.batchId, title: `Test assignment ${suffix}`, instructions: "Do the work.", dueDate: "2026-12-01", dueTime: "09:00", allowedSubmissionTypes: ["DOCUMENT"], idempotencyKey: `assignment-${suffix}` };
   assert.equal((await createAssignment(assignmentInput)).ok, true);
   assert.equal((await createAssignment(assignmentInput)).ok, true);
   assert.equal((await Promise.all([createAssignment(assignmentInput), createAssignment(assignmentInput)])).every((result) => result.ok), true);

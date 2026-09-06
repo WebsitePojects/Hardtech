@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 
@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { evaluateTrainee, type EvaluateTraineeInput } from "./mutations/evaluate-trainee";
+import { completeEnrollment, setEnrollmentProgress } from "./mutations/enrollment-progress";
+import { Input } from "@/components/ui/input";
 
 const RATINGS: { value: EvaluateTraineeInput["rating"]; label: string }[] = [
   { value: "CERTIFIED", label: "Certified" },
@@ -36,12 +38,23 @@ export function EvaluationFormCard({ trainee }: { trainee: TrainerTraineeRosterI
   const [rating, setRating] = useState<EvaluateTraineeInput["rating"]>("CERTIFIED");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const progressPendingRef = useRef(false);
+  const completionPendingRef = useRef(false);
+  const [isProgressPending, setIsProgressPending] = useState(false);
+  const [isCompletionPending, setIsCompletionPending] = useState(false);
+  const [progressPercent, setProgressPercent] = useState(trainee.progressPercent);
+  const [savedProgressPercent, setSavedProgressPercent] = useState(trainee.progressPercent);
+  const [isCompleted, setIsCompleted] = useState(trainee.isCompleted);
+  const progressIntentKeyRef = useRef(crypto.randomUUID());
+  const completionIntentKeyRef = useRef(crypto.randomUUID());
   const [error, setError] = useState<string | null>(null);
   const notesId = useId();
 
   async function handleSubmit() {
-    if (isSubmitting) return;
+    if (submittingRef.current) return;
 
+    submittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -53,10 +66,49 @@ export function EvaluationFormCard({ trainee }: { trainee: TrainerTraineeRosterI
         notes,
       });
     } catch {
-      toast.error("Evaluation submission isn't wired up yet in this build.");
-      setError("Submission is not available yet - this ships in a later wave.");
+      toast.error("Unable to submit the evaluation.");
+      setError("Unable to submit the evaluation. Please try again.");
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleProgressSave() {
+    if (progressPendingRef.current || completionPendingRef.current || !Number.isInteger(progressPercent) || progressPercent < 0 || progressPercent > 100) return;
+    progressPendingRef.current = true;
+    setIsProgressPending(true);
+    try {
+      await setEnrollmentProgress({
+        enrollmentId: trainee.enrollmentId,
+        progressPercent,
+        idempotencyKey: progressIntentKeyRef.current,
+      });
+      setSavedProgressPercent(progressPercent);
+      toast.success("Progress updated.");
+      progressIntentKeyRef.current = crypto.randomUUID();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update progress.");
+    } finally {
+      progressPendingRef.current = false;
+      setIsProgressPending(false);
+    }
+  }
+
+  async function handleCompletion() {
+    if (completionPendingRef.current || progressPendingRef.current || savedProgressPercent !== 100 || isCompleted) return;
+    completionPendingRef.current = true;
+    setIsCompletionPending(true);
+    try {
+      await completeEnrollment({ enrollmentId: trainee.enrollmentId, idempotencyKey: completionIntentKeyRef.current });
+      setIsCompleted(true);
+      toast.success("Training marked complete. Certificate request created.");
+      completionIntentKeyRef.current = crypto.randomUUID();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to complete training.");
+    } finally {
+      completionPendingRef.current = false;
+      setIsCompletionPending(false);
     }
   }
 
@@ -79,10 +131,37 @@ export function EvaluationFormCard({ trainee }: { trainee: TrainerTraineeRosterI
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Progress</span>
-            <span className="font-semibold text-primary">{trainee.progressPercent}%</span>
+            <span className="font-semibold text-primary">{savedProgressPercent}%</span>
           </div>
-          <Progress value={trainee.progressPercent} />
+          <Progress value={savedProgressPercent} />
         </div>
+
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="min-w-24 flex-1 space-y-1 text-xs text-muted-foreground" htmlFor={`progress-${trainee.enrollmentId}`}>
+            Update progress
+            <Input
+              id={`progress-${trainee.enrollmentId}`}
+              type="number"
+              min={0}
+              max={100}
+              value={progressPercent}
+              onChange={(event) => setProgressPercent(Number(event.target.value))}
+              disabled={isProgressPending || isCompletionPending || isCompleted}
+            />
+          </label>
+          <Button type="button" size="sm" disabled={isProgressPending || isCompletionPending || isCompleted} onClick={() => void handleProgressSave()}>
+            {isProgressPending ? "Saving…" : "Save progress"}
+          </Button>
+        </div>
+        <Button
+          type="button"
+          className="w-full"
+          disabled={isProgressPending || isCompletionPending || isCompleted || savedProgressPercent !== 100}
+          onClick={() => void handleCompletion()}
+        >
+          {isCompleted ? "Training completed" : isCompletionPending ? "Completing…" : "Mark training complete"}
+        </Button>
+        {!isCompleted && savedProgressPercent !== 100 ? <p className="text-xs text-muted-foreground">Save progress at 100% before marking training complete.</p> : null}
 
         <div className="flex flex-wrap gap-2">
           {trainee.isPaid ? (

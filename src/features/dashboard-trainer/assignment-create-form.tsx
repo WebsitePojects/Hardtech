@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { createAssignment } from "./mutations/create-assignment";
+import type { TrainerBatchOption } from "@/server/services/dashboard.service";
 
 const SUBMISSION_TYPE_OPTIONS: { value: SubmissionType; label: string }[] = [
   { value: "IMAGE", label: "Image" },
@@ -25,17 +26,19 @@ function todayInPh(): string {
   return ph.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
 }
 
-export function AssignmentCreateForm() {
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+export function AssignmentCreateForm({ batches }: { batches: TrainerBatchOption[] }) {
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [instructions, setInstructions] = useState("");
   const [dueDate, setDueDate] = useState(() => todayInPh());
   const [dueTime, setDueTime] = useState("11:59 PM");
   const [allowedSubmissionTypes, setAllowedSubmissionTypes] = useState<SubmissionType[]>(["IMAGE", "VIDEO", "DOCUMENT"]);
+  const [batchId, setBatchId] = useState(batches[0]?.id ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
-  const canPublish = title.trim() !== "" && instructions.trim() !== "" && allowedSubmissionTypes.length > 0 && !isSubmitting;
+  const canPublish = title.trim() !== "" && instructions.trim() !== "" && batchId !== "" && allowedSubmissionTypes.length > 0 && !isSubmitting;
   const helperText = useMemo(
     () => (allowedSubmissionTypes.length === 0 ? "Select at least one allowed submission type." : null),
     [allowedSubmissionTypes.length],
@@ -48,27 +51,35 @@ export function AssignmentCreateForm() {
   }
 
   async function handlePublish() {
-    if (isSubmitting) return;
+    if (submittingRef.current) return;
     if (!canPublish) {
       setError(helperText ?? "Add a title and instructions first.");
       return;
     }
 
+    submittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
       await createAssignment({
         idempotencyKey,
+        batchId,
         title: title.trim(),
         instructions: instructions.trim(),
         dueDate,
         dueTime,
         allowedSubmissionTypes,
       });
+      toast.success("Assignment published.");
+      setTitle("");
+      setInstructions("");
+      setIdempotencyKey(crypto.randomUUID());
+      setIsOpen(false);
     } catch {
-      toast.error("Assignment publishing isn't wired up yet in this build.");
-      setError("Publishing is not available yet - this ships in a later wave.");
+      toast.error("Unable to publish assignment.");
+      setError("Unable to publish assignment. Please try again.");
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   }
@@ -85,6 +96,19 @@ export function AssignmentCreateForm() {
             <CardTitle>Create Assignment</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="assignment-batch">Batch</Label>
+              <select
+                id="assignment-batch"
+                value={batchId}
+                onChange={(event) => setBatchId(event.target.value)}
+                disabled={isSubmitting || batches.length === 0}
+                className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm text-foreground disabled:opacity-50"
+              >
+                {batches.length === 0 ? <option value="">No assigned batches</option> : null}
+                {batches.map((batch) => <option key={batch.id} value={batch.id}>{batch.label} · {batch.programName}</option>)}
+              </select>
+            </div>
             <Input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
@@ -143,6 +167,7 @@ export function AssignmentCreateForm() {
               </div>
             </div>
             {helperText ? <p className="text-sm text-muted-foreground">{helperText}</p> : null}
+            {batches.length === 0 ? <p className="text-sm text-muted-foreground">You need an assigned batch before publishing.</p> : null}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <Button type="button" className="w-full" disabled={!canPublish} onClick={() => void handlePublish()}>
               {isSubmitting ? "Publishing..." : "Publish Assignment"}

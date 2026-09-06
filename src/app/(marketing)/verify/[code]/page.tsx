@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { BadgeCheck, ShieldAlert } from "lucide-react";
+import type { Metadata } from "next";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { createSiteMetadata } from "@/lib/site-origin";
 import { getPublicCertificate } from "@/server/services/certificate-verify.service";
 
 /**
@@ -17,6 +19,19 @@ import { getPublicCertificate } from "@/server/services/certificate-verify.servi
  * An unknown code renders the same "not verified" panel as a rejected one, so
  * the page cannot be used to enumerate which codes exist.
  */
+export async function generateMetadata(
+  props: PageProps<"/verify/[code]">,
+): Promise<Metadata> {
+  const { code } = await props.params;
+
+  return createSiteMetadata({
+    title: "Certificate Verification | HardTech IT Corp",
+    description: "Verify a HardTech IT Corp training certificate.",
+    path: `/verify/${encodeURIComponent(code)}`,
+    noIndex: true,
+  });
+}
+
 export default async function VerifyCertificatePage(
   props: PageProps<"/verify/[code]">,
 ) {

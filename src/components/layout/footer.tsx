@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ExternalLink, Mail, MapPin, Phone } from "lucide-react";
+import { Mail, MapPin } from "lucide-react";
 
 import { SiteLogo } from "./site-logo";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { GradientWordmark } from "@/components/ui/gradient-wordmark";
+import { OFFICES } from "@/features/contact/offices";
 
 /**
  * Global site footer (docs/screens/desktop-01.md #5, docs/screens/
@@ -30,6 +31,8 @@ const quickLinks = [
   { label: "Contact", href: "/contact" },
 ];
 
+const primaryOffice = OFFICES[0];
+
 export function Footer() {
   return (
     <footer className="relative overflow-hidden border-t border-glass-border bg-surface-secondary">
@@ -47,20 +50,6 @@ export function Footer() {
           <p className="max-w-xs text-sm text-muted-foreground">
             Professional IT training for tomorrow&apos;s tech leaders.
           </p>
-          {/*
-            The design source has no confirmed HardTech company Facebook
-            page URL (only individual staff profiles), so this links nowhere
-            real yet. lucide-react also ships no Facebook brand glyph
-            (brand icons were dropped from the package) — ExternalLink
-            stands in for it.
-          */}
-          <a
-            href="#"
-            className="inline-flex min-h-11 w-fit items-center gap-2 rounded-full border border-glass-border px-4 py-2 text-sm font-medium text-foreground transition-[background-color,border-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:border-[var(--glass-border-strong)] hover:bg-glass-hover hover:shadow-glow-sm motion-reduce:transition-none"
-          >
-            <ExternalLink className="size-4" aria-hidden />
-            Follow on Facebook
-          </a>
         </ScrollReveal>
 
         <ScrollReveal delayMs={80} className="flex flex-col gap-3">
@@ -88,21 +77,14 @@ export function Footer() {
           <div className="flex flex-col gap-2 text-sm text-muted-foreground">
             <span className="flex items-start gap-2">
               <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
-              673 Quirino Highway, Novaliches, QC
+              {primaryOffice.addressFull}
             </span>
             <a
-              href="tel:1234567890"
-              className="flex min-h-11 items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:text-foreground motion-reduce:transition-none"
-            >
-              <Phone className="size-4 shrink-0" aria-hidden />
-              (123) 456-7890
-            </a>
-            <a
-              href="mailto:hardtechitcorp@gmail.com"
+              href={`mailto:${primaryOffice.email}`}
               className="flex min-h-11 items-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:text-foreground motion-reduce:transition-none"
             >
               <Mail className="size-4 shrink-0" aria-hidden />
-              hardtechitcorp@gmail.com
+              {primaryOffice.email}
             </a>
           </div>
         </ScrollReveal>
@@ -138,9 +120,7 @@ export function Footer() {
       <div className="relative border-t border-glass-border">
         <p className="mx-auto max-w-6xl px-4 py-6 text-center text-xs text-muted-foreground sm:px-6">
           © 2026 HardTech IT Corp. All rights reserved. · Powered by{" "}
-          <a href="#" className="font-medium text-neon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:underline">
-            Prince IT Solutions
-          </a>
+          <span className="font-medium text-neon">Prince IT Solutions</span>
         </p>
       </div>
     </footer>

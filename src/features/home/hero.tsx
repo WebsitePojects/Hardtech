@@ -5,8 +5,6 @@ import { getAdminAnnouncements } from "@/server/services/dashboard.service";
 import { Button } from "@/components/ui/button";
 import { AnnouncementsCard } from "./announcements-card";
 import { HeroBackground } from "./hero-background";
-import { HeroFrame } from "./hero-frame";
-import { HeroFrameChrome } from "./hero-frame-chrome";
 
 const TRUST_ITEMS = [
   { label: "Skills-First Training", colorClass: "text-primary" },
@@ -49,19 +47,6 @@ export async function HomeHero() {
       */}
       <style>{`.hero-full-bleed { min-height: 100vh; min-height: 100dvh; }`}</style>
       <HeroBackground />
-      <HeroFrame />
-      {/*
-        HeroFrameChrome renders the in-frame header/scroll-down/social
-        controls that live inside HeroFrame's frame and hand off to the
-        real navbar on scroll (see that file's own doc comment for the
-        occlusion strategy and hero-frame.tsx for the ScrollTrigger driving
-        the handoff). Only plain JSX crosses this Server->Client boundary —
-        no props at all, let alone a function — per the /forum incident in
-        the lessons log: both client components below are fully
-        self-contained and coordinate with each other only through a DOM
-        attribute (`html[data-hero-open]`), never through React props.
-      */}
-      <HeroFrameChrome />
       {/*
         pt-20/lg:pt-24 (80/96px) lives on the section itself, not the
         centred column below, so navbar clearance (navbar-shell.tsx is
@@ -76,56 +61,13 @@ export async function HomeHero() {
         this is ever revisited.
       */}
       {/*
-        Horizontal padding here is a safe-area against HeroFrame, not a
-        typography choice. HeroFrame is `fixed inset-5 sm:inset-8` — its
-        border sits 20px off the viewport edge below the `sm` breakpoint and
-        32px at `sm` and up — and it paints at z-[9000], above this column.
-        px-9/sm:px-12 (36px/48px) each clear their matching frame inset by a
-        real 16px, not by rounding up to it, so the border line can never
-        land on a glyph even if either value is retuned later. Keep these two
-        paddings numerically ahead of HeroFrame's two insets by that same
-        margin if either file changes.
-
-        The `max-height` variant is HeroFrame's *vertical* safe-area case.
-        HeroFrame insets from all four edges, not just the two handled
-        above, and on a short landscape phone (740x360, the specific
-        below-500px-tall shape this section is required to support by
-        scrolling rather than clipping — see the min-height comment on the
-        section) this column's item stack (teaser, H1, subheading, CTAs,
-        trust row) is naturally taller than the room between HeroFrame's top
-        and bottom borders. Measured before this fix: the frame's bottom
-        border sat at y=330 while the subheading's own box ran 304.7-359.6,
-        straddling it — and the gap below the border down to the true
-        viewport edge (330-360, 30px) is shorter than the subheading's own
-        height (~55px), so pushing the subheading *down* past the border
-        can't work — it would land mostly off-screen instead (verified by
-        re-measuring: contrast collapsed to ~1:1 because most of the box was
-        outside the captured viewport). The only geometry that keeps the
-        text fully visible AND off the border is shrinking the stack so it
-        finishes clear of y=330 on its own — and only the two gaps *above*
-        the subheading (teaser-to-H1, H1-to-subheading) contribute to that,
-        since `gap` is one CSS property and the two gaps below it don't move
-        it. `gap-2` cuts each of those two gaps from ~22.5px to ~7.5px,
-        verified empirically in Playwright rather than computed by hand
-        (this codebase has twice been burned by rem-scaling assumptions not
-        matching rendered pixels — see `.claude/lessons.md`, 2026-07-29 and
-        2026-08-09 entries). `gap-0` was tried first and does clear the
-        border, but it also zeroes the H1-to-subheading gap specifically,
-        and the subheading's own opaque contrast scrim (the two divs above,
-        off-limits per the task's hard constraints) intentionally extends
-        past the subheading's own box on every side — with zero gap it bled
-        up into the H1's line, and a screenshot pixel-sample caught the
-        H1's green gradient text inside what should have been a clean
-        background sample. `gap-2` leaves enough room for that scrim to
-        clear the H1 line above it; the rest of the needed space comes from
-        hiding the announcements teaser below, not from gap size. This
-        doesn't touch `pt-20` (navbar clearance, preserved per the
-        section-level comment) or any element's own size/copy.
-        `max-height:480px` comfortably excludes the shortest *portrait*
-        viewport verified here (568px tall). Re-measure in Playwright if the
-        stack's content changes.
+        px-4/sm:px-6 (16px/24px) is plain content-column padding — the frame
+        that used to require an extra safe-area margin here is gone (see
+        .claude/lessons.md and this feature's removal history). No other
+        element in this column insets from the viewport edge, so there is
+        nothing left to clear but ordinary edge-to-text breathing room.
       */}
-      <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-4 px-9 pb-8 text-center sm:gap-6 sm:px-12 sm:pb-16 lg:max-w-5xl lg:gap-7 lg:pb-24 [@media(max-height:480px)]:gap-2">
+      <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-4 px-4 pb-8 text-center sm:gap-6 sm:px-6 sm:pb-16 lg:max-w-5xl lg:gap-7 lg:pb-24">
         {/*
           vgldesign hero load choreography (globals.css, "hero load
           choreography" block): fires once on mount, on its own timeline —
@@ -149,21 +91,7 @@ export async function HomeHero() {
           right-rail variant below takes over; see announcements-card.tsx for
           why 2xl is the split.
         */}
-        {/*
-          Hidden only below max-height:480px (see the gap-0 note above): even
-          with the four inter-item gaps collapsed to 0, H1 + subheading + CTA
-          row alone don't clear HeroFrame's bottom border on a 740x360
-          landscape phone — there isn't a spacing knob left to turn. The
-          teaser is supplementary (this same component already disappears at
-          the opposite end, 2xl+, in favour of the floating rail variant —
-          see announcements-card.tsx), so dropping it on this one extreme
-          aspect ratio frees the ~90px the required elements (H1, subheading,
-          CTA) actually need, verified in Playwright, rather than compressing
-          copy or touching HeroFrame's own insets.
-        */}
-        <div className="[@media(max-height:480px)]:hidden">
-          <AnnouncementsCard announcements={announcements} variant="mobile" />
-        </div>
+        <AnnouncementsCard announcements={announcements} variant="mobile" />
         <h1 className="text-4xl font-bold leading-[1.08] text-balance sm:text-5xl lg:text-7xl">
           <span className="hero-reveal-line block">
             <span style={{ "--reveal-delay": "0.2s" } as React.CSSProperties}>Build Your Future</span>

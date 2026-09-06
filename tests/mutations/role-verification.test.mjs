@@ -110,7 +110,7 @@ test("createAssignment rejects a suspended trainer even though the claimed role 
     const idempotencyKey = `role-verify-assignment-${tag}`;
     try {
       const result = await createAssignment({
-        trainerId: trainer, trainerRole: "TRAINER", title: "Should not be created",
+        trainerId: trainer, trainerRole: "TRAINER", batchId: "not-owned-batch", title: "Should not be created",
         instructions: "n/a", dueDate: "2026-12-01", dueTime: "09:00",
         allowedSubmissionTypes: ["DOCUMENT"], idempotencyKey,
       });

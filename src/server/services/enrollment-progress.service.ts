@@ -71,7 +71,20 @@ export async function setEnrollmentProgress(input: {
     return { ok: false, error: "Only an active enrollment can be updated." };
   }
 
-  await enrollmentRepository.setProgress(input.enrollmentId, percent);
+  const batchId = enrollment.batch?.id;
+  if (!batchId) return { ok: false, error: "Enrollment is not assigned to a batch." };
+
+  const changed = await enrollmentRepository.setProgress(
+    input.enrollmentId,
+    batchId,
+    input.actorRole === "TRAINER" ? input.actorId : null,
+    percent,
+  );
+  if (changed === 0) {
+    const current = await enrollmentRepository.findForCompletion(input.enrollmentId);
+    if (current?.status === "ACTIVE" && current.batch?.id === batchId && current.progressPercent === percent) return { ok: true };
+    return { ok: false, error: "Enrollment is no longer available to update." };
+  }
   // A no-op replay (already at this percentage) is success, not failure —
   // matching every other admin mutation's contract.
   return { ok: true };
@@ -104,11 +117,21 @@ export async function completeEnrollment(input: {
   if (enrollment.status !== "ACTIVE") {
     return { ok: false, error: "Only an active enrollment can be completed." };
   }
+  if (enrollment.progressPercent !== 100) {
+    return { ok: false, error: "Enrollment progress must be 100% before completion." };
+  }
+  const batchId = enrollment.batch?.id;
+  if (!batchId) return { ok: false, error: "Enrollment is not assigned to a batch." };
 
   const completedAt = new Date();
 
   const changed = await db.$transaction(async (tx) => {
-    const count = await enrollmentRepository.complete(tx, input.enrollmentId);
+    const count = await enrollmentRepository.complete(
+      tx,
+      input.enrollmentId,
+      batchId,
+      input.actorRole === "TRAINER" ? input.actorId : null,
+    );
     if (count !== 1) return false;
 
     // Only the winning transaction reaches here, so exactly one request is
@@ -134,7 +157,12 @@ export async function completeEnrollment(input: {
     return true;
   });
 
-  return changed
+  if (changed) return { ok: true };
+
+  // A concurrent or sequential replay can lose the conditional transition
+  // only because the winning request already completed this enrollment.
+  const current = await enrollmentRepository.findForCompletion(input.enrollmentId);
+  return current?.status === "COMPLETED"
     ? { ok: true }
     : { ok: false, error: "Enrollment is no longer active." };
 }

@@ -11,6 +11,11 @@ export const updateUserProgramSchema = z.object({ userId, programId: z.string().
 export const updateUserStatusSchema = z.object({ userId, status, idempotencyKey });
 export const removeUserSchema = z.object({ userId, idempotencyKey });
 export const removeAssignedTraineeSchema = z.object({ enrollmentId: userId, batchId: userId, idempotencyKey });
+export const assignEnrollmentToBatchSchema = z.object({
+  enrollmentId: userId,
+  batchId: userId,
+  idempotencyKey: z.string().uuid(),
+});
 export const savePaymentMethodSchema = z.object({
   method: paymentMethod,
   displayName: z.string().trim().min(1),

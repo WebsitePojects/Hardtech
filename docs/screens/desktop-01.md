@@ -1,3 +1,14 @@
+> **Note on "I.T. Software Development":** this document and the other screen
+> transcriptions in `docs/screens/` are factual transcriptions of the original
+> Figma reference screenshots and are left as-is — `.claude/rules/20-design-fidelity.md`
+> treats them as ground truth, and rewriting a historical record to match a
+> later product decision would destroy provenance. "I.T. Software Development"
+> appears throughout these transcriptions only because it was one of three
+> programs in that original design. The client discontinued it (2026-08-26)
+> and it has since been removed from the codebase, seed data, and database.
+> HardTech's actual product is the two remaining programs: Computer Hardware
+> Servicing and Cellphone Hardware Servicing.
+
 # Desktop Screenshot Spec — Slice 1 (screenshots 1–32)
 
 Source folder: `D:\Win10_UserData\Downloads\Hardtech\Desktop\*.png`, sorted ascending by filename,

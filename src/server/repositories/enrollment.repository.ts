@@ -1,10 +1,24 @@
 import { db } from "@/server/db";
 import { Prisma, type EnrollmentStatus } from "@/../generated/prisma/client";
 
-const withProgramAndBatch = {
-  program: true,
-  batch: { include: { trainer: true } },
-} satisfies Prisma.EnrollmentInclude;
+const DASHBOARD_LIST_LIMIT = 100;
+
+const traineeDashboardEnrollmentSelect = {
+  id: true,
+  programId: true,
+  batchId: true,
+  status: true,
+  progressPercent: true,
+  startDate: true,
+  program: { select: { shortName: true } },
+  batch: {
+    select: {
+      id: true,
+      code: true,
+      trainer: { select: { firstName: true, lastName: true } },
+    },
+  },
+} satisfies Prisma.EnrollmentSelect;
 
 /** Pure data access for Enrollment. */
 export const enrollmentRepository = {
@@ -22,10 +36,16 @@ export const enrollmentRepository = {
    * Returns rows changed: 0 means the enrollment was not ACTIVE, or already
    * sat at exactly this percentage (an idempotent replay).
    */
-  setProgress(enrollmentId: string, progressPercent: number) {
+  setProgress(enrollmentId: string, batchId: string, trainerId: string | null, progressPercent: number) {
     return db.enrollment
       .updateMany({
-        where: { id: enrollmentId, status: "ACTIVE", progressPercent: { not: progressPercent } },
+        where: {
+          id: enrollmentId,
+          batchId,
+          status: "ACTIVE",
+          progressPercent: { not: progressPercent },
+          ...(trainerId ? { batch: { trainerId } } : {}),
+        },
         data: { progressPercent },
       })
       .then((result) => result.count);
@@ -39,10 +59,16 @@ export const enrollmentRepository = {
    * one goes on to create the certificate request. This is the
    * state-transition half of non-negotiable rule 2.
    */
-  complete(tx: Prisma.TransactionClient, enrollmentId: string) {
+  complete(tx: Prisma.TransactionClient, enrollmentId: string, batchId: string, trainerId: string | null) {
     return tx.enrollment
       .updateMany({
-        where: { id: enrollmentId, status: "ACTIVE" },
+        where: {
+          id: enrollmentId,
+          batchId,
+          status: "ACTIVE",
+          progressPercent: 100,
+          ...(trainerId ? { batch: { trainerId } } : {}),
+        },
         data: { status: "COMPLETED", progressPercent: 100 },
       })
       .then((result) => result.count);
@@ -58,13 +84,23 @@ export const enrollmentRepository = {
         status: true,
         progressPercent: true,
         traineeId: true,
-        batch: { select: { trainerId: true } },
+        batch: { select: { id: true, trainerId: true } },
         certificateRequests: { select: { id: true }, take: 1 },
       },
     });
   },
+  findForBatchAssignment(enrollmentId: string) {
+    return db.enrollment.findUnique({
+      where: { id: enrollmentId },
+      select: { id: true, status: true, batchId: true, programId: true },
+    });
+  },
   findProgramsByIds(programIds: string[]) {
-    return db.program.findMany({ where: { id: { in: programIds } }, select: { id: true, priceAmount: true } });
+    return db.program.findMany({
+      where: { id: { in: programIds } },
+      select: { id: true, priceAmount: true },
+      take: Math.min(programIds.length, DASHBOARD_LIST_LIMIT),
+    });
   },
 
   async findOrCreateApplicant(input: { email: string; firstName: string; lastName: string; phone: string; passwordHash: string }) {
@@ -84,16 +120,57 @@ export const enrollmentRepository = {
   findManyByTraineeId(traineeId: string) {
     return db.enrollment.findMany({
       where: { traineeId },
-      include: withProgramAndBatch,
+      select: traineeDashboardEnrollmentSelect,
       orderBy: { createdAt: "desc" },
+      take: DASHBOARD_LIST_LIMIT,
     });
   },
 
-  /** Includes the linked payment so callers can read its verification status (e.g. a "Paid" badge). */
+  /** Includes only the linked payment status and trainee display fields. */
   findManyByBatchId(batchId: string) {
     return db.enrollment.findMany({
       where: { batchId },
-      include: { trainee: true, payment: true },
+      select: {
+        id: true,
+        traineeId: true,
+        programId: true,
+        batchId: true,
+        status: true,
+        progressPercent: true,
+        trainee: { select: { id: true, firstName: true, lastName: true, email: true } },
+        payment: { select: { id: true, status: true } },
+      },
+      orderBy: { createdAt: "asc" },
+      take: DASHBOARD_LIST_LIMIT,
+    });
+  },
+
+  findManyByTrainerId(trainerId: string) {
+    return db.enrollment.findMany({
+      where: { batch: { trainerId } },
+      select: {
+        id: true,
+        status: true,
+        progressPercent: true,
+        trainee: { select: { id: true, firstName: true, lastName: true, email: true } },
+        payment: { select: { status: true } },
+      },
+      orderBy: { createdAt: "asc" },
+      take: DASHBOARD_LIST_LIMIT,
+    });
+  },
+
+  findManyActiveUnassigned() {
+    return db.enrollment.findMany({
+      where: { status: "ACTIVE", batchId: null },
+      select: {
+        id: true,
+        programId: true,
+        trainee: { select: { firstName: true, lastName: true } },
+        program: { select: { shortName: true } },
+      },
+      orderBy: { createdAt: "asc" },
+      take: DASHBOARD_LIST_LIMIT,
     });
   },
 

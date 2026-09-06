@@ -62,7 +62,7 @@ export function StepSelectPlan({
           Choose Your Programs
         </h2>
         <p className="text-sm text-muted-foreground">
-          Pick one or more programs — combine 2 or 3 if you want to learn multiple tracks.
+          Pick one or both programs if you want to learn multiple tracks.
         </p>
       </div>
 

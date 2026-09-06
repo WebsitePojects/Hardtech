@@ -1,10 +1,30 @@
 import Link from "next/link";
 import { ArrowLeft, CalendarDays, Pin } from "lucide-react";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { createSiteMetadata } from "@/lib/site-origin";
 import { getPublicAnnouncement } from "@/server/services/marketing.service";
+
+export async function generateMetadata(
+  props: PageProps<"/announcements/[id]">,
+): Promise<Metadata> {
+  const { id } = await props.params;
+  const announcement = await getPublicAnnouncement(id);
+
+  return createSiteMetadata({
+    title: announcement
+      ? `${announcement.title} | HardTech IT Corp`
+      : "Announcement not found | HardTech IT Corp",
+    description: announcement
+      ? announcement.body.slice(0, 160)
+      : "This HardTech IT Corp announcement is no longer available.",
+    path: `/announcements/${encodeURIComponent(id)}`,
+    noIndex: !announcement,
+  });
+}
 
 export default async function AnnouncementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

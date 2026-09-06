@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
 import { requireSession } from "@/server/auth/session";
 import { getDashboardUser } from "@/server/services/dashboard.service";
@@ -10,6 +11,19 @@ import type { UserRole } from "@/../generated/prisma/enums";
 import { logoutAction } from "./actions";
 
 const RECOGNIZED_ROLES: readonly UserRole[] = ["ADMIN", "TRAINER", "TRAINEE"];
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    noimageindex: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
+};
 
 /**
  * Authenticated shell for every `/dashboard/*` route (this layout, the

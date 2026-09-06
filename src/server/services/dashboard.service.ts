@@ -491,6 +491,13 @@ export async function getAdminUserList(params: AdminUserListParams = {}): Promis
 
 export type TrainerRosterTrainee = { id: string; enrollmentId: string; batchId: string; name: string; program: string };
 
+export type AdminUnassignedEnrollmentItem = {
+  enrollmentId: string;
+  traineeName: string;
+  programName: string;
+  eligibleBatches: { id: string; label: string; trainerName: string }[];
+};
+
 export type TrainerRosterItem = {
   trainerId: string;
   name: string;
@@ -530,6 +537,32 @@ export async function getAdminTrainerRoster(): Promise<TrainerRosterItem[]> {
       trainees: Array.from(traineesById.values()),
     };
   });
+}
+
+/** Active enrollments waiting for an administrator to attach them to a
+ * matching trainer batch. Batch eligibility is derived on the server so the
+ * client never decides which program relationship is valid. */
+export async function getAdminUnassignedActiveEnrollments(): Promise<AdminUnassignedEnrollmentItem[]> {
+  const [enrollments, batches] = await Promise.all([
+    enrollmentRepository.findManyActiveUnassigned(),
+    batchRepository.findManyWithProgramAndTrainer(),
+  ]);
+  const batchesByProgram = new Map<string, AdminUnassignedEnrollmentItem["eligibleBatches"]>();
+  for (const batch of batches) {
+    const candidates = batchesByProgram.get(batch.programId) ?? [];
+    candidates.push({
+      id: batch.id,
+      label: batch.code,
+      trainerName: `${batch.trainer.firstName} ${batch.trainer.lastName}`,
+    });
+    batchesByProgram.set(batch.programId, candidates);
+  }
+  return enrollments.map((enrollment) => ({
+    enrollmentId: enrollment.id,
+    traineeName: `${enrollment.trainee.firstName} ${enrollment.trainee.lastName}`,
+    programName: enrollment.program.shortName,
+    eligibleBatches: batchesByProgram.get(enrollment.programId) ?? [],
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -755,17 +788,19 @@ async function findActiveEnrollmentForTrainee(traineeId: string) {
 
 export type TrainerTraineeRosterItem = {
   id: string;
+  enrollmentId: string;
   name: string;
   email: string;
   progressPercent: number;
   isPaid: boolean;
   isTrained: boolean;
+  isCompleted: boolean;
 };
 
 /**
  * Viewer-scoped: `viewerRole` must be TRAINER, and the roster returned is
- * always the *viewer's own* trainees (their primary batch's enrollments) —
- * there is no id parameter to spoof another trainer's roster with. Any
+ * always the *viewer's own* trainees across every batch they own — there is
+ * no id parameter to spoof another trainer's roster with. Any
  * other role fails closed to an empty array.
  */
 export async function getTrainerTraineeRoster(
@@ -776,10 +811,7 @@ export async function getTrainerTraineeRoster(
   if (!parsedId.success || viewerRole !== "TRAINER") return []; // fail closed
 
   const trainerId = parsedId.data;
-  const batch = await batchRepository.findFirstByTrainerId(trainerId);
-  if (!batch) return [];
-
-  const enrollments = await enrollmentRepository.findManyByBatchId(batch.id);
+  const enrollments = await enrollmentRepository.findManyByTrainerId(trainerId);
   const evaluations = await evaluationRepository.findManyActiveByEnrollmentIds(
     enrollments.map((enrollment) => enrollment.id),
   );
@@ -787,12 +819,24 @@ export async function getTrainerTraineeRoster(
 
   return enrollments.map((enrollment) => ({
     id: enrollment.trainee.id,
+    enrollmentId: enrollment.id,
     name: `${enrollment.trainee.firstName} ${enrollment.trainee.lastName}`,
     email: enrollment.trainee.email,
     progressPercent: enrollment.progressPercent,
     isPaid: enrollment.payment.status === "VERIFIED",
     isTrained: trainedEnrollmentIds.has(enrollment.id),
+    isCompleted: enrollment.status === "COMPLETED",
   }));
+}
+
+export type TrainerBatchOption = { id: string; label: string; programName: string };
+
+/** Viewer-scoped batch choices for a trainer's assignment composer. */
+export async function getTrainerBatchOptions(viewerId: string, viewerRole: UserRole): Promise<TrainerBatchOption[]> {
+  const parsedId = userIdSchema.safeParse(viewerId);
+  if (!parsedId.success || viewerRole !== "TRAINER") return [];
+  const batches = await batchRepository.findManyByTrainerId(parsedId.data);
+  return batches.map((batch) => ({ id: batch.id, label: batch.code, programName: batch.program.shortName }));
 }
 
 // ---------------------------------------------------------------------------

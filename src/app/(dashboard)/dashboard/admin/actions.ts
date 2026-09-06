@@ -8,8 +8,8 @@ import { approveCertificate, rejectCertificate, verifyPayment, rejectPayment } f
 import { approveForumPost, rejectForumPost } from "@/server/services/forum-write.service";
 import { createAnnouncement, deleteAnnouncement } from "@/server/services/announcement-write.service";
 import { announcementWriteSchema, deleteAnnouncementSchema } from "@/server/schemas/dashboard-write.schema";
-import { removeAssignedTraineeSchema, removeUserSchema, savePaymentMethodSchema, updateUserProgramSchema, updateUserRoleSchema, updateUserStatusSchema } from "@/server/schemas/admin-write.schema";
-import { removeAssignedTrainee, removeUser, savePaymentMethod, updateUserProgram, updateUserRole, updateUserStatus } from "@/server/services/admin-write.service";
+import { assignEnrollmentToBatchSchema, removeAssignedTraineeSchema, removeUserSchema, savePaymentMethodSchema, updateUserProgramSchema, updateUserRoleSchema, updateUserStatusSchema } from "@/server/schemas/admin-write.schema";
+import { assignEnrollmentToBatch, removeAssignedTrainee, removeUser, savePaymentMethod, updateUserProgram, updateUserRole, updateUserStatus } from "@/server/services/admin-write.service";
 
 async function adminSession() {
   const session = await getSession();
@@ -142,6 +142,16 @@ export async function removeAssignedTraineeAction(input: unknown) {
   const session = await adminSession();
   if (!session) return { ok: false as const, error: "Not authorized." };
   const result = await removeAssignedTrainee({ ...parsed.data, actorId: session.userId, actorRole: session.role });
+  if (result.ok) updateTag("dashboard");
+  return result;
+}
+
+export async function assignEnrollmentToBatchAction(input: unknown) {
+  const parsed = assignEnrollmentToBatchSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Invalid batch assignment request." };
+  const session = await adminSession();
+  if (!session) return { ok: false as const, error: "Not authorized." };
+  const result = await assignEnrollmentToBatch({ ...parsed.data, actorId: session.userId, actorRole: session.role });
   if (result.ok) updateTag("dashboard");
   return result;
 }

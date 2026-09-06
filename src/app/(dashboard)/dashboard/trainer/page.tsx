@@ -2,6 +2,7 @@ import { requireRole } from "@/server/auth/session";
 import {
   getDashboardUser,
   getTrainerAssignments,
+  getTrainerBatchOptions,
   getTrainerCalendarSessions,
   getTrainerModules,
   getTrainerOverview,
@@ -33,13 +34,14 @@ function toCalendarView(
 
 export default async function TrainerDashboardPage() {
   const session = await requireRole("TRAINER");
-  const [user, overview, sessions, trainees, assignments, modules] = await Promise.all([
+  const [user, overview, sessions, trainees, assignments, modules, batches] = await Promise.all([
     getDashboardUser(session.userId),
     getTrainerOverview(session.userId),
     getTrainerCalendarSessions(session.userId, session.role),
     getTrainerTraineeRoster(session.userId, session.role),
     getTrainerAssignments(session.userId, session.role),
     getTrainerModules(session.userId, session.role),
+    getTrainerBatchOptions(session.userId, session.role),
   ]);
   const displayName = user?.name ? `Mr. ${user.name}` : "Trainer";
 
@@ -48,7 +50,7 @@ export default async function TrainerDashboardPage() {
       <DashboardSection section="overview"><OverviewSection displayName={displayName} overview={overview} /></DashboardSection>
       <DashboardSection section="calendar"><CalendarSection sessions={toCalendarView(sessions)} /></DashboardSection>
       <DashboardSection section="my-trainees"><MyTraineesSection trainees={trainees} /></DashboardSection>
-      <DashboardSection section="assignments"><AssignmentsSection assignments={assignments} /></DashboardSection>
+      <DashboardSection section="assignments"><AssignmentsSection assignments={assignments} batches={batches} /></DashboardSection>
       <DashboardSection section="modules"><ModulesSection modules={modules} /></DashboardSection>
     </>
   );

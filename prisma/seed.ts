@@ -88,9 +88,10 @@ const TRAINERS = [
       "Visual Graphic Design NC III",
     ],
     facebookUrl: "https://facebook.com/Dongdylan",
-    // No primary program: he led "I.T. Software Development", which the
-    // client discontinued 2026-08-26. Do not silently reassign him to a
-    // program he doesn't teach (Computer Hardware / Cellphone Repair).
+    // No primary program: he led the school's third course, fully retired
+    // and removed from the catalog at the client's direction on 2026-08-26.
+    // Do not silently reassign him to a program he doesn't teach (Computer
+    // Hardware / Cellphone Repair).
     primaryProgramKey: null,
   },
   {
@@ -139,12 +140,13 @@ const LEGACY_HENRY_EMAIL = "henry.lopez@hardtechitcorp.com";
 // Client-discontinued or otherwise unsupported catalog rows. Never upserted
 // above; if a matching row still exists from a prior seed run, the cleanup
 // loop right after the PROGRAMS upsert deletes it (or preserves + warns if
-// real dependent records point at it). "I.T. Software Development" was
-// retired 2026-08-26 — the client discontinued the course.
+// real dependent records point at it). The school's third course (retired
+// 2026-08-26 at the client's direction) is wiped from the database directly
+// rather than through this list — see .claude/lessons.md for the removal —
+// so only the two names below remain as this seed's legacy-cleanup targets.
 const LEGACY_UNSUPPORTED_PROGRAM_NAMES = [
   "Networking Basics",
   "CCTV Installation",
-  "I.T. Software Development",
 ] as const;
 
 const PROGRAMS = [

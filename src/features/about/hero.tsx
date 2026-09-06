@@ -24,13 +24,16 @@ const STATS = [
   { value: "20+", label: "YEARS OF EXPERIENCE" },
   { value: "10,000+", label: "PEOPLE TRAINED" },
   { value: "4", label: "MASTER TRAINERS" },
-  // Was "3" until I.T. Software Development was discontinued. This is a
-  // hardcoded marketing stat, NOT derived from the Program table, so nothing
-  // failed when the catalog shrank — the page simply advertised a course that
-  // no longer exists. If a program is ever added or retired again, this number
-  // has to be changed by hand; it is the only place on this page that counts
-  // them. (The other three stats above are deliberately unverified marketing
-  // claims — see this file's header comment.)
+  // HardTech's catalog is Computer Hardware Servicing and Cellphone Hardware
+  // Servicing — 2 programs. A third course was discontinued and fully
+  // removed from the codebase/seed/database at the client's direction (see
+  // .claude/lessons.md); this stat was "3" before that and has since been
+  // updated by hand. This is a hardcoded marketing stat, NOT derived from
+  // the Program table, so a future catalog change won't fail loudly here —
+  // it is the only place on this page that counts programs, and has to be
+  // changed by hand again if the catalog changes. (The other three stats
+  // above are deliberately unverified marketing claims — see this file's
+  // header comment.)
   { value: "2", label: "CORE PROGRAMS" },
 ] as const;
 

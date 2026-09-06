@@ -225,7 +225,7 @@ test("rejectCertificate mutates, is duplicate-safe under concurrency, and fails 
   });
 });
 
-test("approveCertificate accepts a spoofed ADMIN role claim from a real trainee actor", async () => {
+test("approveCertificate rejects a spoofed ADMIN role claim from a real trainee actor", async () => {
   assert.ok(connectionString, "database is configured");
   await withClient(async (client) => {
     const tag = suffix();
@@ -242,7 +242,7 @@ test("approveCertificate accepts a spoofed ADMIN role claim from a real trainee 
   });
 });
 
-test("rejectCertificate accepts a spoofed ADMIN role claim from a real trainee actor", async () => {
+test("rejectCertificate rejects a spoofed ADMIN role claim from a real trainee actor", async () => {
   assert.ok(connectionString, "database is configured");
   await withClient(async (client) => {
     const tag = suffix();
@@ -286,7 +286,7 @@ test("rejectPayment mutates, is duplicate-safe under concurrency, and fails clos
   });
 });
 
-test("verifyPayment accepts a spoofed ADMIN role claim from a real trainee actor", async () => {
+test("verifyPayment rejects a spoofed ADMIN role claim from a real trainee actor", async () => {
   assert.ok(connectionString, "database is configured");
   await withClient(async (client) => {
     const tag = suffix();
@@ -303,7 +303,7 @@ test("verifyPayment accepts a spoofed ADMIN role claim from a real trainee actor
   });
 });
 
-test("rejectPayment accepts a spoofed ADMIN role claim from a real trainee actor", async () => {
+test("rejectPayment rejects a spoofed ADMIN role claim from a real trainee actor", async () => {
   assert.ok(connectionString, "database is configured");
   await withClient(async (client) => {
     const tag = suffix();
@@ -369,7 +369,7 @@ test("deleteAnnouncement mutates, fails closed on an unknown id, and rejects a s
   });
 });
 
-test("updateUserProgram mutates a trainee's enrollment and a trainer's profile, but a duplicate call for an unchanged program incorrectly reports failure", async () => {
+test("updateUserProgram mutates a trainee's enrollment and a trainer's profile, and replays an unchanged program successfully", async () => {
   assert.ok(connectionString, "database is configured");
   await withClient(async (client) => {
     const tag = suffix();

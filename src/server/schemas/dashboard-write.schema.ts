@@ -15,11 +15,23 @@ export const evaluateTraineeSchema = z.object({
 
 export const createAssignmentSchema = z.object({
   idempotencyKey: idempotencyKeySchema,
+  batchId: idSchema,
   title: z.string().trim().min(1).max(200),
   instructions: z.string().trim().min(1).max(10000),
   dueDate: z.string().trim().min(1).max(100),
   dueTime: z.string().trim().min(1).max(50),
   allowedSubmissionTypes: z.array(submissionTypeSchema).min(1).max(3),
+});
+
+export const setEnrollmentProgressSchema = z.object({
+  idempotencyKey: idempotencyKeySchema,
+  enrollmentId: idSchema,
+  progressPercent: z.number().int().min(0).max(100),
+});
+
+export const completeEnrollmentSchema = z.object({
+  idempotencyKey: idempotencyKeySchema,
+  enrollmentId: idSchema,
 });
 
 export const submitAssignmentSchema = z.object({
@@ -50,4 +62,6 @@ export const paymentTransitionSchema = z.object({
 
 export type EvaluateTraineeInput = z.infer<typeof evaluateTraineeSchema>;
 export type CreateAssignmentInput = z.infer<typeof createAssignmentSchema>;
+export type SetEnrollmentProgressInput = z.infer<typeof setEnrollmentProgressSchema>;
+export type CompleteEnrollmentInput = z.infer<typeof completeEnrollmentSchema>;
 export type SubmitAssignmentInput = z.infer<typeof submitAssignmentSchema>;

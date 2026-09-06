@@ -4,6 +4,7 @@ import "./globals.css";
 import { CustomCursor } from "@/components/motion/custom-cursor";
 import { SmoothScrollProvider } from "@/components/motion/smooth-scroll-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { getSiteOrigin } from "@/lib/site-origin";
 
 /**
  * The design system declares three families (docs/research/01-design-source.md):
@@ -38,9 +39,26 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: getSiteOrigin(),
   title: "HardTech IT Corp",
   description:
     "Comprehensive training in computer and cellphone hardware servicing, featuring online enrollment, interactive dashboards, and a sleek, futuristic design.",
+  openGraph: {
+    title: "HardTech IT Corp",
+    description:
+      "Comprehensive training in computer and cellphone hardware servicing, featuring online enrollment, interactive dashboards, and a sleek, futuristic design.",
+    siteName: "HardTech IT Corp",
+    locale: "en_PH",
+    type: "website",
+    images: [{ url: "/images/brand/hardtech-logo.png", alt: "HardTech IT Corp" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "HardTech IT Corp",
+    description:
+      "Comprehensive training in computer and cellphone hardware servicing, featuring online enrollment, interactive dashboards, and a sleek, futuristic design.",
+    images: ["/images/brand/hardtech-logo.png"],
+  },
   icons: {
     icon: "/images/brand/hardtech-logo.png",
     shortcut: "/images/brand/hardtech-logo.png",

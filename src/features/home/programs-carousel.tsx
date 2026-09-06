@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ChevronLeft, ChevronRight, Code2, Cpu, Smartphone } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { isSupportedProgramName, resolveProgramImagery } from "@/features/programs/program-visuals";
+import { resolveProgramImagery } from "@/features/programs/program-visuals";
 
 export interface ProgramsCarouselProgram {
   id: string;
@@ -29,10 +29,6 @@ function resolveIcon(iconName: string | null): LucideIcon { return iconName ? PR
 function resolveAccent(accentColor: string | null): string { return accentColor ? ACCENT_CLASSES[accentColor.toLowerCase()] ?? ACCENT_CLASSES.green : ACCENT_CLASSES.green; }
 
 export function ProgramsCarousel({ programs }: { programs: ProgramsCarouselProgram[] }) {
-  const supportedPrograms = useMemo(
-    () => programs.filter((program) => isSupportedProgramName(program.name)),
-    [programs],
-  );
   // Clamped during render rather than corrected afterwards in an effect. If
   // the programme list shrinks, an effect would first render one frame
   // pointing past the end of the array, then fix itself — and a setState
@@ -40,28 +36,29 @@ export function ProgramsCarousel({ programs }: { programs: ProgramsCarouselProgr
   // compute. `requestedIndex` is what the user asked for; `selectedIndex` is
   // what the current list can actually honour.
   const [requestedIndex, setRequestedIndex] = useState(0);
-  const lastIndex = Math.max(0, supportedPrograms.length - 1);
+  const lastIndex = Math.max(0, programs.length - 1);
   const selectedIndex = Math.min(requestedIndex, lastIndex);
 
-  if (supportedPrograms.length === 0) return null;
-  const previous = () => setRequestedIndex((selectedIndex - 1 + supportedPrograms.length) % supportedPrograms.length);
-  const next = () => setRequestedIndex((selectedIndex + 1) % supportedPrograms.length);
+  if (programs.length === 0) return null;
+  const previous = () => setRequestedIndex((selectedIndex - 1 + programs.length) % programs.length);
+  const next = () => setRequestedIndex((selectedIndex + 1) % programs.length);
 
             return (
     <div className="relative mx-auto w-full max-w-5xl overflow-x-clip px-1 sm:px-8 lg:px-12">
       <button type="button" aria-label="Previous program" onClick={previous} className="absolute left-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-glass-border bg-background/80 p-3 text-muted-foreground transition-[border-color,box-shadow,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-primary hover:text-primary hover:shadow-glow-sm motion-reduce:transition-none lg:block"><ChevronLeft className="size-4" /></button>
       <button type="button" aria-label="Next program" onClick={next} className="absolute right-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-glass-border bg-background/80 p-3 text-muted-foreground transition-[border-color,box-shadow,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary hover:border-primary hover:text-primary hover:shadow-glow-sm motion-reduce:transition-none lg:block"><ChevronRight className="size-4" /></button>
-      {/* Merge resolution: the responsive track sizing below comes from the
-          responsive-density pass on main, but the list stays `supportedPrograms`
-          — every other consumer in this file (the offset wraparound on the next
-          line, the bounds in `previous`/`next`, and the indicator dots) is keyed
-          to the filtered list, so mapping the unfiltered `programs` here would
-          render cards the dots and the wraparound arithmetic do not account
-          for. */}
+      {/* The carousel renders whatever `programs` it is given — there is no
+          name-based allow-list filtering it any more (see
+          src/features/programs/program-visuals.tsx and .claude/lessons.md
+          for why one existed and why it was removed). Every consumer in
+          this file — the offset wraparound on the next line, the bounds in
+          `previous`/`next` above, and the indicator dots below — is keyed
+          to this same `programs` array, so they stay in lockstep with what
+          actually renders. */}
       <div className="relative top-0 mx-auto h-[180px] w-full max-w-4xl [--carousel-step:min(74vw,260px)] [perspective:1100px] sm:h-[220px] sm:[--carousel-step:240px] lg:top-0 lg:h-[292px] lg:[--carousel-step:180px]">
-        {supportedPrograms.map((program, index) => {
+        {programs.map((program, index) => {
           const rawOffset = index - selectedIndex;
-          const offset = rawOffset > supportedPrograms.length / 2 ? rawOffset - supportedPrograms.length : rawOffset < -supportedPrograms.length / 2 ? rawOffset + supportedPrograms.length : rawOffset;
+          const offset = rawOffset > programs.length / 2 ? rawOffset - programs.length : rawOffset < -programs.length / 2 ? rawOffset + programs.length : rawOffset;
           const distance = Math.abs(offset);
           const Icon = resolveIcon(program.iconName);
           const active = offset === 0;
@@ -94,7 +91,7 @@ export function ProgramsCarousel({ programs }: { programs: ProgramsCarouselProgr
         Playwright boundingBox(), well under the 44px minimum.
       */}
       <div className="mt-4 flex justify-center gap-3 lg:mt-5">
-        {supportedPrograms.map((program, index) => <button key={program.id} type="button" aria-label={`Go to ${program.name}`} onClick={() => setRequestedIndex(index)} className={`relative h-1.5 rounded-full transition-all after:absolute after:-inset-3.5 after:content-[''] motion-reduce:transition-none ${index === selectedIndex ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/40"}`} />)}
+        {programs.map((program, index) => <button key={program.id} type="button" aria-label={`Go to ${program.name}`} onClick={() => setRequestedIndex(index)} className={`relative h-1.5 rounded-full transition-all after:absolute after:-inset-3.5 after:content-[''] motion-reduce:transition-none ${index === selectedIndex ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/40"}`} />)}
       </div>
     </div>
   );
