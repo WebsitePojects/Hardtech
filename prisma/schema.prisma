@@ -551,16 +551,20 @@ model Assignment {
   @@index([dueDate])
 }
 
-/// A trainee's submitted link/file for one assignment. Re-submitting
-/// updates this row rather than inserting a duplicate (mobile-03:
-/// "you can re-submit to update your answer before the deadline").
+/// A trainee's submitted asset for one assignment. `idempotencyKey` names one
+/// user intent: replaying that intent preserves this submission, while a new
+/// key is an intentional re-submission that replaces its attached asset.
 model AssignmentSubmission {
   id             String     @id @default(cuid())
   assignmentId   String
   assignment     Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   traineeId      String
   trainee        User       @relation("SubmissionTrainee", fields: [traineeId], references: [id], onDelete: Restrict)
+  /// Retained only for legacy dashboard rendering. New writes derive it from
+  /// the owned MediaAsset and never accept a client-supplied URL.
   submissionLink String
+  idempotencyKey String?    @unique
+  mediaAsset     MediaAsset?
   submittedAt    DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
@@ -1055,6 +1059,11 @@ model MediaAsset {
   /// a base64 data: URI in EnrollmentPayment.proofImageUrl.
   enrollmentPaymentId String?            @unique
   enrollmentPayment   EnrollmentPayment? @relation(fields: [enrollmentPaymentId], references: [id], onDelete: SetNull)
+  /// One confirmed direct upload per AssignmentSubmission. SetNull preserves
+  /// this registry row's Cloudinary deletion handle when a submission is
+  /// removed or deliberately replaced, so the purge outbox can reclaim it.
+  assignmentSubmissionId String?                @unique
+  assignmentSubmission   AssignmentSubmission? @relation(fields: [assignmentSubmissionId], references: [id], onDelete: SetNull)
   /// Not unique: a Message may carry up to 5 attachments (private
   /// messaging), same many-per-owner shape as postId/replyId above.
   messageId      String?

@@ -7,7 +7,13 @@ export type TraineeAssignmentListItem = {
   dueDate: string;
   dueTime: string;
   allowedSubmissionTypes: SubmissionType[];
-  submission: { submissionLink: string; submittedAt: string } | null;
+  submission: {
+    submittedAt: string;
+    delivery:
+      | { state: "READY"; url: string; type: SubmissionType }
+      | { state: "PROCESSING"; type: SubmissionType }
+      | { state: "LEGACY"; url: string };
+  } | null;
 };
 
 export type TraineeSessionView = {

@@ -1,4 +1,4 @@
-import type { EvaluationRating, SubmissionType, UserRole } from "@/../generated/prisma/client";
+import type { EvaluationRating, MediaResourceType, SubmissionType, UserRole } from "@/../generated/prisma/client";
 import { db } from "@/server/db";
 import { assignmentRepository } from "@/server/repositories/assignment.repository";
 import { assignmentSubmissionRepository } from "@/server/repositories/assignment-submission.repository";
@@ -8,6 +8,7 @@ import { certificateRequestRepository } from "@/server/repositories/certificate-
 import { enrollmentPaymentRepository } from "@/server/repositories/enrollment-payment.repository";
 import { enrollmentRepository } from "@/server/repositories/enrollment.repository";
 import { evaluationRepository } from "@/server/repositories/evaluation.repository";
+import { mediaAssetRepository } from "@/server/repositories/media-asset.repository";
 import { verifiedActor } from "@/server/services/actor-verification.service";
 import { issueCertificate } from "@/server/services/certificate-issue.service";
 
@@ -74,15 +75,105 @@ export async function createAssignment(input: {
 }
 
 export async function submitAssignment(input: {
-  traineeId: string; traineeRole: UserRole; assignmentId: string; submissionLink: string; idempotencyKey: string;
+  traineeId: string; traineeRole: UserRole; assignmentId: string; mediaAssetId: string; idempotencyKey: string;
 }): Promise<Result> {
   if (!(await verifiedTrainee(input.traineeId, input.traineeRole))) return { ok: false, error: "Not authorized." };
-  const assignment = await assignmentRepository.findById(input.assignmentId);
-  if (!assignment) return { ok: false, error: "Assignment not found." };
-  const enrollment = await enrollmentRepository.findByTraineeAndBatch(input.traineeId, assignment.batchId);
-  if (!enrollment) return { ok: false, error: "Assignment is not available to you." };
-  await assignmentSubmissionRepository.upsert(input.assignmentId, input.traineeId, input.submissionLink);
-  return { ok: true };
+
+  try {
+    const result = await db.$transaction(async (tx) => {
+      const assignments = await assignmentSubmissionRepository.findAndLockEligibleAssignment(
+        tx,
+        input.assignmentId,
+        input.traineeId,
+      );
+      if (assignments.length !== 1) return { ok: false, error: "Assignment is not available to you." } as const;
+
+      // The idempotency key is checked under the assignment lock before the
+      // supplied asset. A retry cannot replace the original intent with a
+      // different file; a distinct key is the explicit re-submission signal.
+      const priorIntent = await assignmentSubmissionRepository.findByIdempotencyKey(tx, input.idempotencyKey);
+      if (priorIntent) {
+        if (priorIntent.assignmentId === input.assignmentId && priorIntent.traineeId === input.traineeId) {
+          return { ok: true } as const;
+        }
+        return { ok: false, error: "Unable to submit assignment." } as const;
+      }
+
+      const asset = await mediaAssetRepository.findActiveUnattachedAssignmentSubmissionAsset(
+        tx,
+        input.mediaAssetId,
+        input.traineeId,
+      );
+      if (!asset) return { ok: false, error: "Unable to submit assignment." } as const;
+
+      const submissionType = submissionTypeForResource(asset.resourceType);
+      if (!submissionType || !assignments[0].allowedSubmissionTypes.includes(submissionType)) {
+        return { ok: false, error: "This file type is not accepted for this assignment." } as const;
+      }
+
+      const priorSubmission = await assignmentSubmissionRepository.findByAssignmentAndTrainee(
+        tx,
+        input.assignmentId,
+        input.traineeId,
+      );
+      const submission = priorSubmission
+        ? await assignmentSubmissionRepository.replaceForNewIntent(
+            tx,
+            priorSubmission.id,
+            input.idempotencyKey,
+            asset.url ?? "",
+          )
+        : await assignmentSubmissionRepository.create(tx, {
+            assignmentId: input.assignmentId,
+            traineeId: input.traineeId,
+            idempotencyKey: input.idempotencyKey,
+            submissionLink: asset.url ?? "",
+          });
+
+      // A replacement must release its old object through the same deletion
+      // outbox before the unique 1:1 attachment can move to the new object.
+      // Everything is in this transaction: a failed attach rolls this release
+      // and the submission update back together.
+      if (priorSubmission) {
+        await mediaAssetRepository.markPendingForOwner({ assignmentSubmissionId: submission.id }, tx);
+      }
+      const attached = await mediaAssetRepository.attachToOwner(
+        asset.id,
+        { assignmentSubmissionId: submission.id },
+        tx,
+      );
+      if (attached !== 1) throw new AssignmentSubmissionConflictError();
+
+      return { ok: true } as const;
+    });
+    return result;
+  } catch (error) {
+    if (error instanceof AssignmentSubmissionConflictError) {
+      return { ok: false, error: "Unable to submit assignment." };
+    }
+    // A race on either database uniqueness guard is safe to replay by
+    // inspecting the stored intent on the next request; this response never
+    // reports false success for an ambiguous, different-key write.
+    return { ok: false, error: "Unable to submit assignment." };
+  }
+}
+
+class AssignmentSubmissionConflictError extends Error {}
+
+function submissionTypeForResource(resourceType: MediaResourceType): SubmissionType | null {
+  switch (resourceType) {
+    case "IMAGE":
+      return "IMAGE";
+    case "VIDEO":
+      return "VIDEO";
+    case "RAW":
+      return "DOCUMENT";
+    default: {
+      const _exhaustive: never = resourceType;
+      void _exhaustive;
+      return null;
+    }
+  }
 }
 
 async function transitionCertificate(adminId: string, role: UserRole, id: string, next: "APPROVED" | "REJECTED", reason?: string): Promise<Result> {

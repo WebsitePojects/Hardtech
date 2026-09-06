@@ -46,7 +46,7 @@ function toAssignmentView(
     allowedSubmissionTypes: assignment.allowedSubmissionTypes,
     submission: assignment.submission
       ? {
-          submissionLink: assignment.submission.submissionLink,
+          delivery: assignment.submission.delivery,
           submittedAt: assignment.submission.submittedAt.toLocaleDateString("en-US", {
             month: "short",
             day: "2-digit",

@@ -14,7 +14,7 @@ export async function requestPasswordReset(rawInput: unknown): Promise<ForgotPas
   const parsed = forgotPasswordSchema.safeParse(rawInput);
   if (!parsed.success) return { ok: false, error: GENERIC_ERROR };
   const ip = await getClientIp();
-  const rateLimit = checkRateLimit(`forgot-password:${ip}`);
+  const rateLimit = await checkRateLimit(`forgot-password:${ip}`);
   if (!rateLimit.allowed) return { ok: false, error: RATE_LIMITED_ERROR };
   return createPasswordReset(parsed.data.email);
 }

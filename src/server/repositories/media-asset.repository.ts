@@ -13,6 +13,7 @@ export type MediaAssetOwnerRef =
   | { postId: string }
   | { replyId: string }
   | { enrollmentPaymentId: string }
+  | { assignmentSubmissionId: string }
   | { messageId: string };
 
 export type MediaAssetReserveInput = {
@@ -98,6 +99,29 @@ export const mediaAssetRepository = {
   },
 
   /**
+   * Reads the one kind of asset that can be submitted for an assignment.
+   * The caller supplies the transaction that also locks the assignment, so
+   * eligibility and attachment are one atomic decision. This deliberately
+   * uses stored folder/state/uploader facts, never an untrusted delivery URL.
+   */
+  findActiveUnattachedAssignmentSubmissionAsset(
+    tx: Prisma.TransactionClient,
+    id: string,
+    uploadedByUserId: string,
+  ) {
+    return tx.mediaAsset.findFirst({
+      where: {
+        id,
+        uploadedByUserId,
+        folder: "hardtech/assignment-submissions",
+        purgeState: "ACTIVE",
+        assignmentSubmissionId: null,
+      },
+      select: { id: true, resourceType: true, url: true },
+    });
+  },
+
+  /**
    * RESERVED -> ACTIVE, storing the facts Cloudinary reported back. Guarded
    * on `purgeState = 'RESERVED'` so a replayed confirm (duplicate webhook,
    * retried client call) cannot resurrect a row that has since moved on —
@@ -176,6 +200,14 @@ export const mediaAssetRepository = {
         })
         .then((result) => result.count);
     }
+    if ("assignmentSubmissionId" in owner) {
+      return tx.mediaAsset
+        .updateMany({
+          where: { id, purgeState: "ACTIVE", assignmentSubmissionId: null },
+          data: { assignmentSubmissionId: owner.assignmentSubmissionId },
+        })
+        .then((result) => result.count);
+    }
     return tx.mediaAsset
       .updateMany({
         where: { id, purgeState: "ACTIVE", messageId: null },
@@ -240,6 +272,14 @@ export const mediaAssetRepository = {
         .updateMany({
           where: { enrollmentPaymentId: owner.enrollmentPaymentId, purgeState: claimableStates },
           data: { purgeState: "PENDING", enrollmentPaymentId: null },
+        })
+        .then((result) => result.count);
+    }
+    if ("assignmentSubmissionId" in owner) {
+      return tx.mediaAsset
+        .updateMany({
+          where: { assignmentSubmissionId: owner.assignmentSubmissionId, purgeState: claimableStates },
+          data: { purgeState: "PENDING", assignmentSubmissionId: null },
         })
         .then((result) => result.count);
     }

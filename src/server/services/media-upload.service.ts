@@ -52,12 +52,13 @@ const UNSUPPORTED_FILE_TYPE = "That file type is not supported here.";
  * so the folder and the allowed-role list for a given destination are
  * defined exactly once (DRY: the same two facts, reused, not duplicated).
  */
-type MediaCategory = "MODULE" | "GALLERY" | "ANNOUNCEMENT" | "FORUM" | "MESSAGE";
+type MediaCategory = "MODULE" | "GALLERY" | "ANNOUNCEMENT" | "ASSIGNMENT" | "FORUM" | "MESSAGE";
 
 const FOLDER_BY_CATEGORY: Record<MediaCategory, string> = {
   MODULE: "hardtech/modules",
   GALLERY: "hardtech/gallery",
   ANNOUNCEMENT: "hardtech/announcements",
+  ASSIGNMENT: "hardtech/assignment-submissions",
   FORUM: "hardtech/forum",
   MESSAGE: "hardtech/messages",
 };
@@ -66,6 +67,7 @@ const ALLOWED_ROLES_BY_CATEGORY: Record<MediaCategory, readonly UserRole[]> = {
   MODULE: ["TRAINER", "ADMIN"],
   GALLERY: ["ADMIN"],
   ANNOUNCEMENT: ["ADMIN"],
+  ASSIGNMENT: ["TRAINEE"],
   FORUM: ["TRAINEE", "TRAINER", "ADMIN"],
   MESSAGE: ["TRAINEE", "TRAINER", "ADMIN"],
 };
@@ -84,6 +86,7 @@ const ALLOWED_RESOURCE_TYPES_BY_KIND: Record<UploadKind, readonly UploadResource
   MODULE_FILE: ["image", "video", "raw"],
   GALLERY_PHOTO: ["image"],
   ANNOUNCEMENT_MEDIA: ["image", "video"],
+  ASSIGNMENT_SUBMISSION: ["image", "video", "raw"],
   POST_ATTACHMENT: ["image", "raw"],
   REPLY_ATTACHMENT: ["image", "raw"],
   MESSAGE_ATTACHMENT: ["image", "video", "raw"],
@@ -109,6 +112,8 @@ function categoryForKind(kind: UploadKind): MediaCategory | null {
       return "GALLERY";
     case "ANNOUNCEMENT_MEDIA":
       return "ANNOUNCEMENT";
+    case "ASSIGNMENT_SUBMISSION":
+      return "ASSIGNMENT";
     case "POST_ATTACHMENT":
       return "FORUM";
     case "REPLY_ATTACHMENT":
@@ -130,6 +135,7 @@ function categoryForOwner(owner: MediaAssetOwnerRef): MediaCategory {
   if ("moduleId" in owner) return "MODULE";
   if ("galleryPhotoId" in owner) return "GALLERY";
   if ("announcementId" in owner) return "ANNOUNCEMENT";
+  if ("assignmentSubmissionId" in owner) return "ASSIGNMENT";
   if ("messageId" in owner) return "MESSAGE";
   return "FORUM"; // postId or replyId
 }
@@ -141,6 +147,7 @@ function ownerMatches(asset: MediaAsset, owner: MediaAssetOwnerRef): boolean {
   if ("postId" in owner) return asset.postId === owner.postId;
   if ("replyId" in owner) return asset.replyId === owner.replyId;
   if ("enrollmentPaymentId" in owner) return asset.enrollmentPaymentId === owner.enrollmentPaymentId;
+  if ("assignmentSubmissionId" in owner) return asset.assignmentSubmissionId === owner.assignmentSubmissionId;
   return asset.messageId === owner.messageId;
 }
 

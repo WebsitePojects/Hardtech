@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -16,37 +16,65 @@ const SUBMISSION_TYPE_LABEL: Record<string, string> = {
   DOCUMENT: "Document",
 };
 
+const ACCEPT_BY_SUBMISSION_TYPE: Record<string, string[]> = {
+  IMAGE: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  VIDEO: ["video/mp4", "video/webm", "video/quicktime"],
+  DOCUMENT: [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ],
+};
+
 export type AssignmentSubmissionFormProps = {
   assignment: TraineeAssignmentListItem;
 };
 
 export function AssignmentSubmissionForm({ assignment }: AssignmentSubmissionFormProps) {
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
-  const [submissionLink, setSubmissionLink] = useState("");
+  const intentKeyRef = useRef(crypto.randomUUID());
+  const pendingRef = useRef(false);
+  const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputId = useId();
+  const acceptedTypes = assignment.allowedSubmissionTypes.flatMap((type) => ACCEPT_BY_SUBMISSION_TYPE[type] ?? []);
+
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    if (pendingRef.current) return;
+    setFile(event.target.files?.[0] ?? null);
+    setError(null);
+    setProgress(null);
+    // Selecting a file is an explicit fresh intent. A retry of the selected
+    // file keeps this key so the server can replay instead of duplicate.
+    intentKeyRef.current = crypto.randomUUID();
+  }
 
   async function handleSubmit() {
-    if (isSubmitting) return;
-
-    if (!submissionLink.trim()) {
-      setError("Add a link to your submission first.");
+    if (pendingRef.current) return;
+    if (!file) {
+      setError("Choose a file to submit first.");
       return;
     }
 
+    pendingRef.current = true;
     setIsSubmitting(true);
     setError(null);
+    setProgress(0);
     try {
       await submitAssignmentSubmission({
-        idempotencyKey,
         assignmentId: assignment.id,
-        submissionLink: submissionLink.trim(),
+        idempotencyKey: intentKeyRef.current,
+        file,
+        onProgress: setProgress,
       });
-    } catch {
-      toast.error("Assignment submission isn't wired up yet in this build.");
-      setError("Submission is not available yet - this ships in a later wave.");
+      toast.success("Assignment submitted.");
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Assignment submission failed. Please try again.";
+      setError(message);
+      toast.error(message);
     } finally {
+      pendingRef.current = false;
       setIsSubmitting(false);
     }
   }
@@ -72,19 +100,21 @@ export function AssignmentSubmissionForm({ assignment }: AssignmentSubmissionFor
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor={inputId}>Submission link</Label>
+        <Label htmlFor={inputId}>Submission file</Label>
         <Input
           id={inputId}
-          value={submissionLink}
-          onChange={(event) => setSubmissionLink(event.target.value)}
-          placeholder="https://..."
+          type="file"
+          accept={acceptedTypes.join(",")}
+          onChange={handleFileChange}
           disabled={isSubmitting}
         />
+        {file ? <p className="text-xs text-muted-foreground">{file.name}</p> : null}
+        {progress !== null && isSubmitting ? <p className="text-xs text-muted-foreground">Uploading {progress}%</p> : null}
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <Button type="button" disabled={isSubmitting} onClick={() => void handleSubmit()}>
+      <Button type="button" disabled={isSubmitting || !file} onClick={() => void handleSubmit()}>
         {isSubmitting ? "Submitting..." : "Submit Assignment"}
       </Button>
     </div>

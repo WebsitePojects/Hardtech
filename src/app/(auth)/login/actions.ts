@@ -42,7 +42,7 @@ export async function loginAction(rawInput: unknown): Promise<LoginActionResult>
   }
 
   const ip = await getClientIp();
-  const rateLimit = checkRateLimit(`login:${ip}`);
+  const rateLimit = await checkRateLimit(`login:${ip}`);
   if (!rateLimit.allowed) {
     return { ok: false, error: RATE_LIMITED_ERROR };
   }

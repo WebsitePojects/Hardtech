@@ -1,6 +1,5 @@
 import { certificateRequestRepository } from "@/server/repositories/certificate-request.repository";
 import { renderCertificate } from "@/server/certificates/certificate-render.service";
-import { db } from "@/server/db";
 import { destroyAsset, isStorageConfigured, uploadAsset } from "@/server/storage/cloudinary";
 
 /**
@@ -26,9 +25,29 @@ import { destroyAsset, isStorageConfigured, uploadAsset } from "@/server/storage
 
 export const CERTIFICATE_FOLDER = "hardtech/certificates";
 
-type IssueResult =
+export type CertificateIssueResult =
   | { ok: true; publicId: string; alreadyIssued: boolean }
   | { ok: false; error: string };
+
+export const CERTIFICATE_RECOVERY_BATCH_SIZE = 25;
+
+type CertificateIssueDependencies = {
+  isStorageConfigured: typeof isStorageConfigured;
+  findForIssuance: typeof certificateRequestRepository.findForIssuance;
+  attachAsset: typeof certificateRequestRepository.attachAsset;
+  renderCertificate: typeof renderCertificate;
+  uploadAsset: typeof uploadAsset;
+};
+
+const productionIssueDependencies: CertificateIssueDependencies = {
+  isStorageConfigured,
+  findForIssuance: certificateRequestRepository.findForIssuance,
+  attachAsset: certificateRequestRepository.attachAsset,
+  renderCertificate,
+  uploadAsset,
+};
+
+const inFlightIssues = new Map<string, Promise<CertificateIssueResult>>();
 
 /**
  * The public_id LEAF for a certificate code — deliberately without the folder.
@@ -56,12 +75,31 @@ function fullName(trainee: { firstName: string; lastName: string }): string {
  * carried an asset, so a caller can distinguish "nothing to do" from "issued
  * just now" without treating the replay as a failure.
  */
-export async function issueCertificate(certificateRequestId: string): Promise<IssueResult> {
-  if (!isStorageConfigured()) {
+export async function issueCertificate(
+  certificateRequestId: string,
+  dependencies: CertificateIssueDependencies = productionIssueDependencies,
+): Promise<CertificateIssueResult> {
+  const inFlight = inFlightIssues.get(certificateRequestId);
+  if (inFlight) return inFlight;
+
+  const run = issueCertificateOnce(certificateRequestId, dependencies);
+  inFlightIssues.set(certificateRequestId, run);
+  try {
+    return await run;
+  } finally {
+    if (inFlightIssues.get(certificateRequestId) === run) inFlightIssues.delete(certificateRequestId);
+  }
+}
+
+async function issueCertificateOnce(
+  certificateRequestId: string,
+  dependencies: CertificateIssueDependencies,
+): Promise<CertificateIssueResult> {
+  if (!dependencies.isStorageConfigured()) {
     return { ok: false, error: "File storage is not configured." };
   }
 
-  const request = await certificateRequestRepository.findForIssuance(certificateRequestId);
+  const request = await dependencies.findForIssuance(certificateRequestId);
   if (!request) return { ok: false, error: "Certificate request not found." };
 
   // Fail closed: only an approved request may produce a document. A pending or
@@ -74,39 +112,38 @@ export async function issueCertificate(certificateRequestId: string): Promise<Is
     return { ok: true, publicId: request.certificatePublicId, alreadyIssued: true };
   }
 
-  const timezoneRecord = await db.certificateRequest.findUnique({
-    where: { id: request.id },
-    select: { enrollment: { select: { trainee: { select: { timezone: true } } } } },
-  });
+  try {
+    const { bytes } = await dependencies.renderCertificate({
+      recipientName: fullName(request.enrollment.trainee),
+      programName: request.enrollment.program.name,
+      programHours: null,
+      completedAt: request.completedAt,
+      traineeTimeZone: request.enrollment.trainee.timezone,
+      certificateCode: request.certificateCode,
+    });
 
-  const { bytes } = await renderCertificate({
-    recipientName: fullName(request.enrollment.trainee),
-    programName: request.enrollment.program.name,
-    programHours: null,
-    completedAt: request.completedAt,
-    traineeTimeZone: timezoneRecord?.enrollment.trainee.timezone,
-    certificateCode: request.certificateCode,
-  });
+    const publicId = certificatePublicIdFor(request.certificateCode);
+    const asset = await dependencies.uploadAsset({
+      bytes,
+      folder: CERTIFICATE_FOLDER,
+      publicId,
+      resourceType: "image",
+    });
 
-  const publicId = certificatePublicIdFor(request.certificateCode);
-
-  const asset = await uploadAsset({
-    bytes,
-    folder: CERTIFICATE_FOLDER,
-    publicId,
-    resourceType: "image",
-  });
-
-  const attached = await certificateRequestRepository.attachAsset(request.id, asset.publicId);
-
-  if (attached === 0) {
-    // A concurrent issuance won. Ours uploaded to the SAME deterministic
-    // public_id, so it overwrote identical bytes rather than creating an
-    // orphan — nothing to clean up, and the winner's handle is authoritative.
-    return { ok: true, publicId: asset.publicId, alreadyIssued: true };
+    const attached = await dependencies.attachAsset(request.id, asset.publicId);
+    if (attached === 0) {
+      // A second process may have issued the same request. Both target the
+      // deterministic public id, while the conditional attachment makes one
+      // database state transition the durable winner.
+      return { ok: true, publicId: asset.publicId, alreadyIssued: true };
+    }
+    return { ok: true, publicId: asset.publicId, alreadyIssued: false };
+  } catch {
+    // Do not persist a handle or expose a provider error when rendering or
+    // storage fails. The unchanged APPROVED/null row remains discoverable by
+    // the next bounded recovery run.
+    return { ok: false, error: "Certificate issuance failed." };
   }
-
-  return { ok: true, publicId: asset.publicId, alreadyIssued: false };
 }
 
 /**
@@ -116,19 +153,38 @@ export async function issueCertificate(certificateRequestId: string): Promise<Is
  * uploads. Returns a per-row outcome; the caller decides whether to alert.
  */
 export async function reissuePendingCertificates(
-  limit = 25,
-): Promise<{ attempted: number; issued: number; failed: string[] }> {
-  const rows = await certificateRequestRepository.findAwaitingIssuance(limit);
-  const failed: string[] = [];
+  input: { limit?: number } = {},
+  dependencies: {
+    findAwaitingIssuance: typeof certificateRequestRepository.findAwaitingIssuance;
+    issueCertificate: typeof issueCertificate;
+  } = {
+    findAwaitingIssuance: certificateRequestRepository.findAwaitingIssuance,
+    issueCertificate,
+  },
+): Promise<{ attempted: number; issued: number; alreadyIssued: number; failed: number }> {
+  const requestedLimit = input.limit ?? CERTIFICATE_RECOVERY_BATCH_SIZE;
+  const normalizedLimit = Number.isFinite(requestedLimit) ? Math.trunc(requestedLimit) : 1;
+  const limit = Math.min(Math.max(normalizedLimit, 1), CERTIFICATE_RECOVERY_BATCH_SIZE);
+  const rows = await dependencies.findAwaitingIssuance(limit);
+  let alreadyIssued = 0;
+  let failed = 0;
   let issued = 0;
 
   for (const row of rows) {
-    const result = await issueCertificate(row.id);
-    if (result.ok && !result.alreadyIssued) issued += 1;
-    if (!result.ok) failed.push(row.id);
+    try {
+      const result = await dependencies.issueCertificate(row.id);
+      if (!result.ok) failed += 1;
+      else if (result.alreadyIssued) alreadyIssued += 1;
+      else issued += 1;
+    } catch {
+      // A dependency failure must not abort the rest of the batch or make the
+      // failed request disappear. The row was never attached, so it remains
+      // in the APPROVED/null recovery queue.
+      failed += 1;
+    }
   }
 
-  return { attempted: rows.length, issued, failed };
+  return { attempted: rows.length, issued, alreadyIssued, failed };
 }
 
 /**

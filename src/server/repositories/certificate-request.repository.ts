@@ -16,7 +16,7 @@ export const certificateRequestRepository = {
         completedAt: true,
         enrollment: {
           select: {
-            trainee: { select: { firstName: true, lastName: true } },
+            trainee: { select: { firstName: true, lastName: true, timezone: true } },
             program: { select: { name: true, durationLabel: true } },
           },
         },
@@ -68,11 +68,12 @@ export const certificateRequestRepository = {
    *  The row itself is the work item, so an issuance that dies mid-flight is
    *  still discoverable after a restart rather than lost (rule 7). */
   findAwaitingIssuance(limit: number) {
+    const normalizedLimit = Number.isFinite(limit) ? Math.trunc(limit) : 1;
     return db.certificateRequest.findMany({
       where: { status: "APPROVED", certificatePublicId: null },
       select: { id: true },
       orderBy: { approvedAt: "asc" },
-      take: limit,
+      take: Math.min(Math.max(normalizedLimit, 1), 25),
     });
   },
 

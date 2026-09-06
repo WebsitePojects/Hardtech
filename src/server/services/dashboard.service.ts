@@ -33,6 +33,7 @@ import type {
   UserStatus,
   TrainerStatus,
   TrainingSession,
+  MediaResourceType,
   Notification,
   UserRole,
 } from "@/../generated/prisma/client";
@@ -923,7 +924,13 @@ export async function getTrainerCalendarSessions(
 // Trainee — Assignments (desktop-02.md #24)
 // ---------------------------------------------------------------------------
 
-export type TraineeAssignmentSubmissionState = { submissionLink: string; submittedAt: Date };
+export type TraineeAssignmentSubmissionState = {
+  submittedAt: Date;
+  delivery:
+    | { state: "READY"; url: string; type: SubmissionType }
+    | { state: "PROCESSING"; type: SubmissionType }
+    | { state: "LEGACY"; url: string };
+};
 
 export type TraineeAssignmentReadItem = {
   id: string;
@@ -970,11 +977,43 @@ export async function getTraineeAssignments(
       dueDate: assignment.dueDate,
       dueTime: assignment.dueTime,
       allowedSubmissionTypes: assignment.allowedSubmissionTypes,
-      submission: submission
-        ? { submissionLink: submission.submissionLink, submittedAt: submission.submittedAt }
-        : null,
+      submission: submission ? toTraineeAssignmentSubmissionState(submission) : null,
     };
   });
+}
+
+/** New rows always own a MediaAsset. The old URL field is read only for rows
+ * predating that relation, so no newly uploaded assignment can surface a
+ * client-supplied link. */
+function toTraineeAssignmentSubmissionState(submission: {
+  submissionLink: string;
+  submittedAt: Date;
+  mediaAsset: { url: string | null; resourceType: MediaResourceType; purgeState: string } | null;
+}): TraineeAssignmentSubmissionState {
+  if (!submission.mediaAsset) {
+    return { submittedAt: submission.submittedAt, delivery: { state: "LEGACY", url: submission.submissionLink } };
+  }
+
+  const type = submissionTypeForMediaResource(submission.mediaAsset.resourceType);
+  if (submission.mediaAsset.purgeState === "ACTIVE" && submission.mediaAsset.url) {
+    return { submittedAt: submission.submittedAt, delivery: { state: "READY", url: submission.mediaAsset.url, type } };
+  }
+  return { submittedAt: submission.submittedAt, delivery: { state: "PROCESSING", type } };
+}
+
+function submissionTypeForMediaResource(resourceType: MediaResourceType): SubmissionType {
+  switch (resourceType) {
+    case "IMAGE":
+      return "IMAGE";
+    case "VIDEO":
+      return "VIDEO";
+    case "RAW":
+      return "DOCUMENT";
+    default: {
+      const _exhaustive: never = resourceType;
+      return _exhaustive;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

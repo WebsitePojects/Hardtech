@@ -37,7 +37,7 @@ export const completeEnrollmentSchema = z.object({
 export const submitAssignmentSchema = z.object({
   idempotencyKey: idempotencyKeySchema,
   assignmentId: idSchema,
-  submissionLink: z.string().trim().url().max(2000),
+  mediaAssetId: idSchema,
 });
 
 export const announcementWriteSchema = z.object({

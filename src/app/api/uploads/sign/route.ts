@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authorized." }, { status: 401 });
   }
 
-  const rateLimit = checkRateLimit(`uploads:sign:${session.userId}`);
+  const rateLimit = await checkRateLimit(`uploads:sign:${session.userId}`);
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: "Too many upload requests. Please wait a moment and try again." },

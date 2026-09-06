@@ -52,14 +52,29 @@ export function AssignmentsSection({ assignments }: AssignmentsSectionProps) {
                 {assignment.submission ? (
                   <div className="rounded-lg border border-glass-border p-3 text-sm">
                     <p className="font-medium text-foreground">Submitted {assignment.submission.submittedAt}</p>
-                    <a
-                      href={assignment.submission.submissionLink}
-                      className="break-all text-primary hover:underline"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {assignment.submission.submissionLink}
-                    </a>
+                    {assignment.submission.delivery.state === "READY" ? (
+                      <a
+                        href={assignment.submission.delivery.url}
+                        className="text-primary hover:underline"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open submitted {assignment.submission.delivery.type.toLowerCase()}
+                      </a>
+                    ) : assignment.submission.delivery.state === "PROCESSING" ? (
+                      <p className="text-muted-foreground">
+                        Your {assignment.submission.delivery.type.toLowerCase()} is being verified and will be available here shortly.
+                      </p>
+                    ) : (
+                      <a
+                        href={assignment.submission.delivery.url}
+                        className="break-all text-primary hover:underline"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open legacy submission
+                      </a>
+                    )}
                   </div>
                 ) : (
                   <AssignmentSubmissionForm assignment={assignment} />
