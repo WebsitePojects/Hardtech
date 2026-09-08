@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { requireRole } from "@/server/auth/session";
 import { userRepository } from "@/server/repositories/user.repository";
 import { enrollmentRepository } from "@/server/repositories/enrollment.repository";
 import { enrollmentPaymentRepository } from "@/server/repositories/enrollment-payment.repository";
@@ -19,6 +20,13 @@ import {
   auditCategorySchema,
   auditLogLimitSchema,
   analyticsMonthsBackSchema,
+  adminQueueDateSchema,
+  adminQueuePageSchema,
+  adminQueuePagination,
+  adminQueueProgramIdSchema,
+  adminQueueSearchSchema,
+  certificateQueueStatusSchema,
+  paymentQueueStatusSchema,
 } from "@/server/schemas/dashboard.schema";
 import type {
   EnrollmentStatus,
@@ -351,7 +359,218 @@ export async function getAdminPendingEnrollmentQueue(): Promise<PendingEnrollmen
  * degrades to "no proof to show" instead of a 500.
  */
 export async function getPaymentProofUrl(paymentId: string): Promise<string | null> {
-  return enrollmentPaymentRepository.findProofImageUrl(paymentId);
+  await requireRole("ADMIN");
+  const parsedPaymentId = userIdSchema.safeParse(paymentId);
+  if (!parsedPaymentId.success) return null;
+  return enrollmentPaymentRepository.findProofImageUrl(parsedPaymentId.data);
+}
+
+// ---------------------------------------------------------------------------
+// Admin — operational payment/certificate queues
+// ---------------------------------------------------------------------------
+
+const ADMIN_QUEUE_PAGE_SIZE = 12;
+
+export type AdminOperationalQueueParams = {
+  page?: string;
+  search?: string;
+  status?: string;
+  program?: string;
+  from?: string;
+  to?: string;
+  /** Queue is action-only. History is terminal-review-only. */
+  view?: string;
+};
+
+type NormalizedQueueParams = {
+  page: number;
+  search?: string;
+  programId?: string;
+  from?: Date;
+  before?: Date;
+  view: "queue" | "history";
+  invalid: boolean;
+};
+
+function normalizeAdminQueueParams(params: AdminOperationalQueueParams): NormalizedQueueParams {
+  const page = adminQueuePageSchema.parse(params.page);
+  const search = adminQueueSearchSchema.parse(params.search ?? "");
+  const view = params.view === undefined || params.view === "queue" ? "queue" : params.view === "history" ? "history" : null;
+  const program = params.program === undefined || params.program === "ALL" ? undefined : adminQueueProgramIdSchema.safeParse(params.program);
+  const from = params.from === undefined ? undefined : adminQueueDateSchema.safeParse(params.from);
+  const to = params.to === undefined ? undefined : adminQueueDateSchema.safeParse(params.to);
+  if (!view || (program && !program.success) || (from && !from.success) || (to && !to.success)) {
+    return { page: 1, view: "queue", invalid: true };
+  }
+  const before = to?.data ? new Date(to.data.getTime() + 24 * 60 * 60 * 1000) : undefined;
+  if (from?.data && before && from.data >= before) return { page: 1, view, invalid: true };
+  return {
+    page,
+    search: search || undefined,
+    programId: program?.data,
+    from: from?.data,
+    before,
+    view,
+    invalid: false,
+  };
+}
+
+function emptyAdminQueue<T>() {
+  return { items: [] as T[], total: 0, page: 1, pageSize: ADMIN_QUEUE_PAGE_SIZE, totalPages: 1 };
+}
+
+type AdminQueuePage<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type AdminPaymentQueueItem = {
+  /** Stable unique React key and transition target; never a display reference. */
+  paymentId: string;
+  traineeName: string;
+  programNames: string[];
+  amount: number;
+  paymentMethod: PaymentMethod;
+  referenceCode: string;
+  status: "SUBMITTED" | "VERIFIED" | "REJECTED";
+  submittedAt: Date;
+  reviewedAt: Date | null;
+};
+
+export type AdminPaymentQueueResult = AdminQueuePage<AdminPaymentQueueItem> & {
+  summary: { pending: number; verified: number; rejected: number; missingProof: number };
+};
+
+/**
+ * A page contains only action-ready SUBMITTED payments or terminal review
+ * history, never both. `requireRole` makes this a verified server boundary
+ * even if another component later reuses the read outside the admin page.
+ */
+export async function getAdminPaymentQueue(params: AdminOperationalQueueParams = {}): Promise<AdminPaymentQueueResult> {
+  await requireRole("ADMIN");
+  const normalized = normalizeAdminQueueParams(params);
+  const summaryPromise = Promise.all([
+    enrollmentPaymentRepository.countByStatus("SUBMITTED"),
+    enrollmentPaymentRepository.countByStatus("VERIFIED"),
+    enrollmentPaymentRepository.countByStatus("REJECTED"),
+    enrollmentPaymentRepository.countMissingProofForStatuses(["SUBMITTED"]),
+  ]);
+  if (normalized.invalid) {
+    const [pending, verified, rejected, missingProof] = await summaryPromise;
+    return { ...emptyAdminQueue<AdminPaymentQueueItem>(), summary: { pending, verified, rejected, missingProof } };
+  }
+  const parsedStatus = paymentQueueStatusSchema.safeParse(params.status ?? "ALL");
+  if (!parsedStatus.success) {
+    const [pending, verified, rejected, missingProof] = await summaryPromise;
+    return { ...emptyAdminQueue<AdminPaymentQueueItem>(), summary: { pending, verified, rejected, missingProof } };
+  }
+  const defaultStatuses = normalized.view === "queue" ? ["SUBMITTED"] as const : ["VERIFIED", "REJECTED"] as const;
+  const allowedStatuses = parsedStatus.data === "ALL" ? defaultStatuses : parsedStatus.data === "SUBMITTED" && normalized.view === "queue" ? ["SUBMITTED"] as const : parsedStatus.data !== "SUBMITTED" && normalized.view === "history" ? [parsedStatus.data] as const : null;
+  if (!allowedStatuses) {
+    const [pending, verified, rejected, missingProof] = await summaryPromise;
+    return { ...emptyAdminQueue<AdminPaymentQueueItem>(), summary: { pending, verified, rejected, missingProof } };
+  }
+  const filter = {
+    statuses: [...allowedStatuses],
+    search: normalized.search,
+    programId: normalized.programId,
+    submittedFrom: normalized.from,
+    submittedBefore: normalized.before,
+  };
+  const [total, summary] = await Promise.all([enrollmentPaymentRepository.countForAdminQueue(filter), summaryPromise]);
+  const pagination = adminQueuePagination(total, normalized.page, ADMIN_QUEUE_PAGE_SIZE);
+  const rows = await enrollmentPaymentRepository.findManyForAdminQueue({ ...filter, skip: pagination.skip, take: ADMIN_QUEUE_PAGE_SIZE });
+  return {
+    items: rows.map((row) => ({
+      paymentId: row.id,
+      traineeName: `${row.trainee.firstName} ${row.trainee.lastName}`,
+      programNames: row.enrollments.map((enrollment) => enrollment.program.shortName),
+      amount: Number(row.totalAmount),
+      paymentMethod: row.paymentMethod,
+      referenceCode: row.referenceCode,
+      status: row.status,
+      submittedAt: row.submittedAt,
+      reviewedAt: row.verifiedAt ?? row.rejectedAt,
+    })),
+    total,
+    page: pagination.page,
+    pageSize: ADMIN_QUEUE_PAGE_SIZE,
+    totalPages: pagination.totalPages,
+    summary: { pending: summary[0], verified: summary[1], rejected: summary[2], missingProof: summary[3] },
+  };
+}
+
+export type AdminCertificateQueueItem = {
+  /** Stable unique React key and transition target; never certificateCode. */
+  certificateRequestId: string;
+  traineeName: string;
+  certificateCode: string;
+  programName: string;
+  trainerName: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  completedAt: Date;
+  requestedAt: Date;
+  reviewedAt: Date | null;
+};
+
+export type AdminCertificateQueueResult = AdminQueuePage<AdminCertificateQueueItem> & {
+  summary: { pending: number; approved: number; rejected: number };
+};
+
+export async function getAdminCertificateQueue(params: AdminOperationalQueueParams = {}): Promise<AdminCertificateQueueResult> {
+  await requireRole("ADMIN");
+  const normalized = normalizeAdminQueueParams(params);
+  const summaryPromise = Promise.all([
+    certificateRequestRepository.countByStatus("PENDING"),
+    certificateRequestRepository.countByStatus("APPROVED"),
+    certificateRequestRepository.countByStatus("REJECTED"),
+  ]);
+  if (normalized.invalid) {
+    const [pending, approved, rejected] = await summaryPromise;
+    return { ...emptyAdminQueue<AdminCertificateQueueItem>(), summary: { pending, approved, rejected } };
+  }
+  const parsedStatus = certificateQueueStatusSchema.safeParse(params.status ?? "ALL");
+  if (!parsedStatus.success) {
+    const [pending, approved, rejected] = await summaryPromise;
+    return { ...emptyAdminQueue<AdminCertificateQueueItem>(), summary: { pending, approved, rejected } };
+  }
+  const defaultStatuses = normalized.view === "queue" ? ["PENDING"] as const : ["APPROVED", "REJECTED"] as const;
+  const statuses = parsedStatus.data === "ALL" ? defaultStatuses : parsedStatus.data === "PENDING" && normalized.view === "queue" ? ["PENDING"] as const : parsedStatus.data !== "PENDING" && normalized.view === "history" ? [parsedStatus.data] : null;
+  if (!statuses) {
+    const [pending, approved, rejected] = await summaryPromise;
+    return { ...emptyAdminQueue<AdminCertificateQueueItem>(), summary: { pending, approved, rejected } };
+  }
+  const filter = { statuses: [...statuses], search: normalized.search, programId: normalized.programId, requestedFrom: normalized.from, requestedBefore: normalized.before };
+  const [total, summary] = await Promise.all([certificateRequestRepository.countForAdminQueue(filter), summaryPromise]);
+  const pagination = adminQueuePagination(total, normalized.page, ADMIN_QUEUE_PAGE_SIZE);
+  const rows = await certificateRequestRepository.findManyForAdminQueue({ ...filter, skip: pagination.skip, take: ADMIN_QUEUE_PAGE_SIZE });
+  return {
+    items: rows.map((row) => ({
+      certificateRequestId: row.id,
+      traineeName: `${row.enrollment.trainee.firstName} ${row.enrollment.trainee.lastName}`,
+      certificateCode: row.certificateCode,
+      programName: row.enrollment.program.shortName,
+      trainerName: row.enrollment.batch?.trainer ? `${row.enrollment.batch.trainer.firstName} ${row.enrollment.batch.trainer.lastName}` : null,
+      status: row.status,
+      completedAt: row.completedAt,
+      requestedAt: row.requestedAt,
+      reviewedAt: row.approvedAt,
+    })),
+    total,
+    page: pagination.page,
+    pageSize: ADMIN_QUEUE_PAGE_SIZE,
+    totalPages: pagination.totalPages,
+    summary: { pending: summary[0], approved: summary[1], rejected: summary[2] },
+  };
+}
+
+/** Minimal, non-sensitive labels for the program filter. */
+export async function getAdminQueuePrograms(): Promise<{ id: string; shortName: string }[]> {
+  await requireRole("ADMIN");
+  return programRepository.findAllQueueOptions();
 }
 
 // ---------------------------------------------------------------------------

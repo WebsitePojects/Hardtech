@@ -83,24 +83,26 @@ export function CertificateApprovalCard({ item }: { item: CertificateApprovalIte
             <Button
               type="button"
               variant="outline"
-              size="icon-sm"
-              aria-label="Approve certificate"
+              size="sm"
+              aria-label={approve.isPending ? "Approving certificate" : "Approve certificate"}
               disabled={anyPending}
               onClick={handleApprove}
               className="border-primary/40 text-primary hover:bg-primary/10"
             >
               <Check className="size-4" aria-hidden />
+              {approve.isPending ? "Approving…" : "Approve"}
             </Button>
             <Button
               type="button"
               variant="outline"
-              size="icon-sm"
-              aria-label="Reject certificate"
+              size="sm"
+              aria-label={reject.isPending ? "Rejecting certificate" : "Reject certificate"}
               disabled={anyPending}
               onClick={handleReject}
               className="border-destructive/40 text-destructive hover:bg-destructive/10"
             >
               <X className="size-4" aria-hidden />
+              {reject.isPending ? "Rejecting…" : "Reject"}
             </Button>
           </>
         ) : null}

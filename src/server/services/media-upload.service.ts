@@ -17,8 +17,9 @@ import {
   type SignedUploadTicket,
   type UploadResourceType,
 } from "@/server/storage/signed-upload";
-import { assertWithinSizeLimit, FileTooLargeError } from "@/server/storage/cloudinary";
+import { assertWithinSizeLimit, FileTooLargeError, maxBytesFor } from "@/server/storage/cloudinary";
 import {
+  allowedFormatsForMime,
   resourceTypeForMime,
   type confirmUploadRequestSchema,
   type signUploadRequestSchema,
@@ -103,6 +104,24 @@ const ALLOWED_RESOURCE_TYPES_BY_KIND: Record<UploadKind, readonly UploadResource
 const MAX_BYTES_OVERRIDE_BY_KIND: Partial<Record<UploadKind, number>> = {
   MESSAGE_ATTACHMENT: 10 * 1024 * 1024,
 };
+
+/** A signed direct upload must name a signed Cloudinary preset whose
+ * `max_file_size` equals this cap. The request-level signature pins the
+ * preset name, while the preset is the provider-side size enforcement point.
+ * One preset per kind keeps MESSAGE_ATTACHMENT's 10 MB ceiling intact even
+ * when other video uploads may use the plan-wide video maximum. */
+function uploadPresetForKind(kind: UploadKind): string {
+  const envName = `CLOUDINARY_DIRECT_UPLOAD_PRESET_${kind}`;
+  const value = process.env[envName]?.trim();
+  if (!value || !/^[A-Za-z0-9_-]{1,255}$/.test(value)) {
+    throw new Error(`Direct upload preset is not configured: ${envName}`);
+  }
+  return value;
+}
+
+function maxBytesForKind(kind: UploadKind, resourceType: UploadResourceType): number {
+  return Math.min(maxBytesFor(resourceType), MAX_BYTES_OVERRIDE_BY_KIND[kind] ?? Number.POSITIVE_INFINITY);
+}
 
 function categoryForKind(kind: UploadKind): MediaCategory | null {
   switch (kind) {
@@ -212,6 +231,31 @@ export function isAuthenticReturnedPublicId(
 }
 
 /**
+ * A signed webhook can only be associated with a reservation when the
+ * provider's object is exactly the requested leaf, optionally with the one
+ * extension Cloudinary places on a raw public id. This deliberately accepts
+ * a disallowed extension too: it is still our object and must be placed in
+ * the purge outbox rather than left unreachable. Format policy is checked
+ * separately against the signed reservation below.
+ */
+function isProviderOwnedReturnedPublicId(
+  claimedPublicId: string,
+  folder: string,
+  mintedPublicId: string,
+  format: string,
+): boolean {
+  const expected = `${folder}/${mintedPublicId}`;
+  return claimedPublicId === expected || claimedPublicId === `${expected}.${format}`;
+}
+
+function expectedFormatsForReservedAsset(asset: MediaAsset): readonly string[] | null {
+  if (asset.purgeState !== "RESERVED" || !asset.format || asset.bytes < 1) return null;
+  const formats = asset.format.split(",");
+  if (formats.length === 0 || formats.some((format) => !/^[a-z0-9]{1,16}$/.test(format))) return null;
+  return formats;
+}
+
+/**
  * Strip a known folder prefix and any single trailing `.<ext>` Cloudinary
  * may have appended, to recover the bare id this server originally minted
  * (see `requestUploadTicket`: always a `randomUUID()`, which never contains
@@ -281,6 +325,11 @@ export async function requestUploadTicket(
     return { ok: false, error: UNSUPPORTED_FILE_TYPE };
   }
 
+  const allowedFormats = allowedFormatsForMime(input.mimeType);
+  if (!allowedFormats) return { ok: false, error: UNSUPPORTED_FILE_TYPE };
+
+  const maxBytes = maxBytesForKind(input.kind, resourceType);
+
   try {
     assertWithinSizeLimit(input.byteSize, resourceType);
   } catch (error) {
@@ -291,16 +340,16 @@ export async function requestUploadTicket(
     throw error;
   }
 
-  const kindOverrideBytes = MAX_BYTES_OVERRIDE_BY_KIND[input.kind];
-  if (kindOverrideBytes !== undefined && input.byteSize > kindOverrideBytes) {
+  if (input.byteSize > maxBytes) {
     const mb = (n: number) => `${(n / (1024 * 1024)).toFixed(1)} MB`;
     return {
       ok: false,
-      error: `This file is ${mb(input.byteSize)}. The maximum is ${mb(kindOverrideBytes)}.`,
+      error: `This file is ${mb(input.byteSize)}. The maximum is ${mb(maxBytes)}.`,
     };
   }
 
   const folder = FOLDER_BY_CATEGORY[category];
+  const uploadPreset = uploadPresetForKind(input.kind);
   // Cryptographically random and opaque on purpose: not derived from the
   // filename, the kind, or the actor, so it cannot be guessed or enumerated
   // to probe for someone else's upload (rule 5's spirit applied to an
@@ -314,12 +363,17 @@ export async function requestUploadTicket(
     resourceType: toDbResourceType(resourceType),
     folder,
     uploadedByUserId: input.actorId,
+    expectedFormats: allowedFormats,
+    maxBytes,
   });
 
   const ticket = createSignedUploadTicket({
     folder,
     publicId,
     resourceType,
+    allowedFormats,
+    maxBytes,
+    uploadPreset,
     notificationUrl: uploadWebhookUrl(),
   });
 
@@ -344,13 +398,10 @@ export type ConfirmUploadResult = { ok: true } | { ok: false; error: string };
  * Its word is not authoritative. `confirmUploadRequestSchema` deliberately
  * carries nothing but `{ mediaAssetId, publicId }` — no client-reported
  * size, format or dimensions, because a client-sent fact is not a fact
- * (rule 4). This call therefore records placeholder facts and flips
- * RESERVED -> ACTIVE so `attachUpload` can proceed right away;
- * `applyUploadWebhook` below is the one that (usually) supplies the real
- * numbers Cloudinary itself reports. If the webhook happens to win the race
- * and gets there first, `confirm` is guarded to RESERVED-only and this call
- * affects zero rows — a harmless replay per rule 2, not an error, and
- * exactly what "return success" below does with it.
+ * (rule 4). This endpoint is deliberately a no-op acknowledgement: only a
+ * signature-verified provider webhook may transition a RESERVED row to
+ * ACTIVE. Until that notification arrives, attaching remains impossible and
+ * the stale-reservation reaper can reclaim an abandoned upload.
  */
 export async function confirmUpload(input: ConfirmUploadInput): Promise<ConfirmUploadResult> {
   const asset = await mediaAssetRepository.findById(input.mediaAssetId);
@@ -373,11 +424,8 @@ export async function confirmUpload(input: ConfirmUploadInput): Promise<ConfirmU
       return { ok: false, error: NOT_AUTHORIZED };
     }
 
-    // Promote the row to the id Cloudinary actually used BEFORE flipping to
-    // ACTIVE, so a later purge reads the one id capable of deleting the
-    // file (the fix for the raw-upload leak in the 2026-08-14 lesson).
-    // Guarded to RESERVED-only inside the repository.
-    await mediaAssetRepository.updatePublicId(asset.id, input.publicId);
+    // No database mutation here. The public id and every descriptive fact
+    // remain untrusted until Cloudinary sends its signed webhook.
   } else if (asset.publicId !== input.publicId) {
     // The row has already been promoted — by an earlier call to this same
     // function, or by the webhook winning the race — so `asset.publicId`
@@ -390,16 +438,6 @@ export async function confirmUpload(input: ConfirmUploadInput): Promise<ConfirmU
     // than silently accepted.
     return { ok: false, error: NOT_AUTHORIZED };
   }
-
-  const placeholderFacts: MediaAssetConfirmFacts = {
-    url: null,
-    bytes: 0,
-    format: null,
-    width: null,
-    height: null,
-    durationSec: null,
-  };
-  await mediaAssetRepository.confirm(asset.id, placeholderFacts);
 
   return { ok: true };
 }
@@ -468,9 +506,9 @@ export async function attachUpload(input: AttachUploadInput): Promise<AttachUplo
  */
 function factsFromWebhookPayload(payload: CloudinaryWebhookPayload): MediaAssetConfirmFacts {
   return {
-    url: payload.secure_url ?? null,
-    bytes: typeof payload.bytes === "number" ? payload.bytes : 0,
-    format: payload.format ?? null,
+    url: payload.secure_url,
+    bytes: payload.bytes,
+    format: payload.format,
     width: typeof payload.width === "number" ? payload.width : null,
     height: typeof payload.height === "number" ? payload.height : null,
     durationSec: typeof payload.duration === "number" ? Math.round(payload.duration) : null,
@@ -506,12 +544,10 @@ async function findAssetForWebhook(claimedPublicId: string): Promise<MediaAsset 
  * function does no authentication of its own because there is no actor
  * here, only a trusted provider callback.
  *
- * Persists `payload.public_id` as the row's authoritative publicId, same as
- * `confirmUpload` — but with no authenticity check first, because Cloudinary
- * itself is the source of this value (the signature already proved that),
- * unlike a client's own claim. `updatePublicId` is guarded to RESERVED-only,
- * so once a prior confirm/webhook has already promoted the row this is a
- * harmless no-op, not a re-write.
+ * Validates the provider's actual type, detected format, byte count, folder,
+ * and public-id ownership against the reservation before activating it. A
+ * provider-authenticated object that maps to the reservation but fails one
+ * of those facts is queued for purge with its real deletion handle instead.
  *
  * Idempotent by construction, not by a check added here: `confirm` is
  * guarded to RESERVED-only, so a duplicate delivery (Cloudinary retries
@@ -526,7 +562,37 @@ export async function applyUploadWebhook(payload: CloudinaryWebhookPayload): Pro
 
   const asset = await findAssetForWebhook(publicId);
   if (!asset) return;
+  if (asset.purgeState !== "RESERVED") return;
 
-  await mediaAssetRepository.updatePublicId(asset.id, publicId);
-  await mediaAssetRepository.confirm(asset.id, factsFromWebhookPayload(payload));
+  const expectedFormats = expectedFormatsForReservedAsset(asset);
+  if (!expectedFormats) return;
+
+  // A folder/id mismatch could refer to a different object. Do not put that
+  // foreign handle into this row, even for cleanup.
+  if (!isProviderOwnedReturnedPublicId(publicId, asset.folder, asset.publicId, payload.format)) return;
+
+  const providerResourceType = toDbResourceType(payload.resource_type);
+  const matchesPolicy =
+    providerResourceType === asset.resourceType &&
+    expectedFormats.includes(payload.format) &&
+    payload.bytes <= asset.bytes;
+  const facts = factsFromWebhookPayload(payload);
+
+  if (!matchesPolicy) {
+    await mediaAssetRepository.rejectProviderUpload({
+      id: asset.id,
+      expectedPublicId: asset.publicId,
+      publicId,
+      resourceType: providerResourceType,
+      facts,
+    });
+    return;
+  }
+
+  await mediaAssetRepository.confirmProviderUpload({
+    id: asset.id,
+    expectedPublicId: asset.publicId,
+    publicId,
+    facts,
+  });
 }

@@ -43,8 +43,16 @@ async function fixture(client, suffix) {
     );
     await client.query(
       `INSERT INTO "Enrollment" (id, "enrollmentRef", "traineeId", "programId", "batchId", "paymentId", amount, status, "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, $4, $5, $6, 100.00, 'PENDING_VERIFICATION', NOW(), NOW())`,
-      [enrollmentId, `TEST-ENR-${suffix}-${label}`, testTraineeId, program.id, batch.id, paymentId],
+       VALUES ($1, $2, $3, $4, $5, $6, 100.00, $7::"EnrollmentStatus", NOW(), NOW())`,
+      [
+        enrollmentId,
+        `TEST-ENR-${suffix}-${label}`,
+        testTraineeId,
+        program.id,
+        batch.id,
+        paymentId,
+        label === "evaluation" ? "ACTIVE" : "PENDING_VERIFICATION",
+      ],
     );
     return { paymentId, enrollmentId };
   }
@@ -52,10 +60,16 @@ async function fixture(client, suffix) {
   const paymentFixture = await createEnrollment("payment");
   const evaluationFixture = await createEnrollment("evaluation");
   const assignmentId = `test-assignment-${suffix}`;
+  const assignmentMediaAssetId = `test-assignment-media-${suffix}`;
   await client.query(
     `INSERT INTO "Assignment" (id, "batchId", "trainerId", title, instructions, "dueDate", "dueTime", "allowedSubmissionTypes", "createdAt", "updatedAt")
      VALUES ($1, $2, $3, $4, 'Submit a test link.', NOW() + INTERVAL '1 day', '11:59 PM', ARRAY['DOCUMENT']::"SubmissionType"[], NOW(), NOW())`,
     [assignmentId, batch.id, byEmail.get("trainer@gmail.com"), `Test assignment ${suffix}`],
+  );
+  await client.query(
+    `INSERT INTO "MediaAsset" (id, "publicId", "resourceType", folder, "uploadedByUserId", url, bytes, format, "purgeState", "createdAt", "updatedAt")
+     VALUES ($1, $2, 'RAW', 'hardtech/assignment-submissions', $3, 'https://example.com/test-assignment.pdf', 1024, 'pdf', 'ACTIVE', NOW(), NOW())`,
+    [assignmentMediaAssetId, `test-assignment-media-${suffix}`, testTraineeId],
   );
   const certificateId = `test-certificate-${suffix}`;
   await client.query(
@@ -69,6 +83,7 @@ async function fixture(client, suffix) {
     trainerId: byEmail.get("trainer@gmail.com"),
     traineeId: testTraineeId,
     assignmentId,
+    assignmentMediaAssetId,
     evaluationPaymentId: evaluationFixture.paymentId,
     evaluationEnrollmentId: evaluationFixture.enrollmentId,
     paymentId: paymentFixture.paymentId,
@@ -137,8 +152,16 @@ test("dashboard writes are real, duplicate-safe mutations", async () => {
       notes: "sequential replay",
       idempotencyKey: `rating-${suffix}`,
     };
-    assert.equal((await evaluateTrainee(ratingInput)).ok, true);
-    assert.equal((await evaluateTrainee({ ...ratingInput, notes: "updated answer" })).ok, true);
+    const initialRating = await evaluateTrainee(ratingInput);
+    assert.equal(initialRating.ok, true, initialRating.ok ? undefined : initialRating.error);
+    assert.equal(
+      (await evaluateTrainee({
+        ...ratingInput,
+        idempotencyKey: `rating-revision-${suffix}`,
+        notes: "updated answer",
+      })).ok,
+      true,
+    );
     assert.equal((await client.query('SELECT count(*)::int AS count FROM "AuthorRating" WHERE "ratedUserId" = $1 AND "raterUserId" = $2', [data.traineeId, data.trainerId])).rows[0].count, 1);
     assert.equal((await client.query('SELECT count(*)::int AS count FROM "Evaluation" WHERE "enrollmentId" = $1 AND "trainerId" = $2 AND "revokedAt" IS NULL', [data.evaluationEnrollmentId, data.trainerId])).rows[0].count, 1);
     const concurrentRatings = await Promise.all([evaluateTrainee(ratingInput), evaluateTrainee(ratingInput)]);
@@ -146,9 +169,15 @@ test("dashboard writes are real, duplicate-safe mutations", async () => {
     assert.equal((await client.query('SELECT count(*)::int AS count FROM "AuthorRating" WHERE "ratedUserId" = $1 AND "raterUserId" = $2', [data.traineeId, data.trainerId])).rows[0].count, 1);
     assert.equal((await client.query('SELECT count(*)::int AS count FROM "Evaluation" WHERE "enrollmentId" = $1 AND "trainerId" = $2 AND "revokedAt" IS NULL', [data.evaluationEnrollmentId, data.trainerId])).rows[0].count, 1);
 
-    const submission = { assignmentId: data.assignmentId, traineeId: data.traineeId, traineeRole: "TRAINEE", submissionLink: "https://example.com/first", idempotencyKey: `submission-${suffix}` };
+    const submission = {
+      assignmentId: data.assignmentId,
+      traineeId: data.traineeId,
+      traineeRole: "TRAINEE",
+      mediaAssetId: data.assignmentMediaAssetId,
+      idempotencyKey: `submission-${suffix}`,
+    };
     assert.equal((await submitAssignment(submission)).ok, true);
-    assert.equal((await submitAssignment({ ...submission, submissionLink: "https://example.com/updated" })).ok, true);
+    assert.equal((await submitAssignment(submission)).ok, true);
     assert.equal((await client.query('SELECT count(*)::int AS count FROM "AssignmentSubmission" WHERE "assignmentId" = $1 AND "traineeId" = $2', [data.assignmentId, data.traineeId])).rows[0].count, 1);
     const concurrentSubmissions = await Promise.all([submitAssignment(submission), submitAssignment(submission)]);
     assert.equal(concurrentSubmissions.every((result) => result.ok), true);
@@ -216,9 +245,16 @@ test("dashboard writes are real, duplicate-safe mutations", async () => {
   } finally {
     if (data) {
       await client.query('DELETE FROM "CertificateRequest" WHERE id = $1', [data.certificateId]);
+      await client.query(
+        `DELETE FROM "AuditLog" WHERE "referenceId" IN (
+          SELECT id FROM "EvaluationIntent" WHERE "enrollmentId" = $1
+        )`,
+        [data.evaluationEnrollmentId],
+      );
       await client.query('DELETE FROM "Evaluation" WHERE "enrollmentId" = $1', [data.evaluationEnrollmentId]);
       await client.query('DELETE FROM "AuditLog" WHERE "referenceId" IN ($1, $2)', [data.certificateId, data.paymentId]);
       await client.query('DELETE FROM "AssignmentSubmission" WHERE "assignmentId" = $1 AND "traineeId" = $2', [data.assignmentId, data.traineeId]);
+      await client.query('DELETE FROM "MediaAsset" WHERE id = $1', [data.assignmentMediaAssetId]);
       await client.query('DELETE FROM "Assignment" WHERE id = $1', [data.assignmentId]);
       await client.query('DELETE FROM "Enrollment" WHERE id IN ($1, $2)', [data.evaluationEnrollmentId, data.paymentEnrollmentId]);
       await client.query('DELETE FROM "EnrollmentPayment" WHERE id IN ($1, $2)', [data.evaluationPaymentId, data.paymentId]);

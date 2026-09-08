@@ -8,10 +8,9 @@ import { isDemoAuthEnabled } from "@/server/auth/demo-credentials";
  *
  * The helper line is the one piece that cannot be transcribed blindly. The
  * reference site runs with demo auth on, so "Password: any value" is true
- * there. Here it is only true when `isDemoAuthEnabled()` agrees — which in
- * production means `DEMO_AUTH=true` exactly. Printing it unconditionally told
- * every visitor to type anything, watched them fail, and made a working login
- * look broken.
+ * there. Here it is rendered only when `isDemoAuthEnabled()` confirms a local
+ * development environment. Rendering it unconditionally would invite real
+ * visitors to try a permissive development-only sign-in path.
  *
  * The real password is deliberately NOT rendered. These accounts exist on a
  * live site holding trainee records and payment references; a password shown
@@ -28,7 +27,7 @@ const DEMO_ACCOUNTS = [
 ] as const;
 
 export function TestCredentialsCard() {
-  const anyPasswordWorks = isDemoAuthEnabled();
+  if (!isDemoAuthEnabled()) return null;
 
   return (
     <div className="rounded-xl border border-glass-border bg-surface-secondary/60 p-4">
@@ -46,7 +45,7 @@ export function TestCredentialsCard() {
         ))}
       </ul>
       <p className="mt-2 text-xs text-muted-foreground">
-        {anyPasswordWorks ? "Password: any value" : "Ask an administrator for the password."}
+        Password: any value
       </p>
     </div>
   );

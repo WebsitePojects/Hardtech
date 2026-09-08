@@ -32,7 +32,7 @@ function hashBucketKey(key: string): string | null {
   if (
     key.length === 0 ||
     key.length > MAX_KEY_LENGTH ||
-    !/^(?:login|forgot-password|uploads:sign):[A-Za-z0-9._:-]+$/.test(key)
+    !/^(?:login|forgot-password|uploads:sign|enroll):[A-Za-z0-9._:-]+$/.test(key)
   ) {
     return null;
   }

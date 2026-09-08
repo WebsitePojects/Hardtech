@@ -1,6 +1,48 @@
 import { db } from "@/server/db";
 import type { CertificateStatus, Prisma } from "@/../generated/prisma/client";
 
+export type AdminCertificateQueueFilter = {
+  statuses: CertificateStatus[];
+  search?: string;
+  programId?: string;
+  requestedFrom?: Date;
+  requestedBefore?: Date;
+};
+
+function adminCertificateQueueWhere(filter: AdminCertificateQueueFilter): Prisma.CertificateRequestWhereInput {
+  const clauses: Prisma.CertificateRequestWhereInput[] = [{ status: { in: filter.statuses } }];
+  if (filter.search) {
+    clauses.push({
+      OR: [
+        { certificateCode: { contains: filter.search, mode: "insensitive" } },
+        { enrollment: { trainee: { firstName: { contains: filter.search, mode: "insensitive" } } } },
+        { enrollment: { trainee: { lastName: { contains: filter.search, mode: "insensitive" } } } },
+      ],
+    });
+  }
+  if (filter.programId) clauses.push({ enrollment: { programId: filter.programId } });
+  if (filter.requestedFrom || filter.requestedBefore) {
+    clauses.push({ requestedAt: { ...(filter.requestedFrom ? { gte: filter.requestedFrom } : {}), ...(filter.requestedBefore ? { lt: filter.requestedBefore } : {}) } });
+  }
+  return { AND: clauses };
+}
+
+const adminCertificateQueueSelect = {
+  id: true,
+  certificateCode: true,
+  status: true,
+  completedAt: true,
+  requestedAt: true,
+  approvedAt: true,
+  enrollment: {
+    select: {
+      trainee: { select: { firstName: true, lastName: true } },
+      program: { select: { id: true, shortName: true } },
+      batch: { select: { trainer: { select: { firstName: true, lastName: true } } } },
+    },
+  },
+} satisfies Prisma.CertificateRequestSelect;
+
 /** Pure data access for CertificateRequest. */
 export const certificateRequestRepository = {
   transition(tx: Prisma.TransactionClient, id: string, next: CertificateStatus, adminId: string, reason?: string) { return tx.certificateRequest.updateMany({ where: { id, status: "PENDING" }, data: next === "APPROVED" ? { status: next, approvedAt: new Date(), approvedByUserId: adminId } : { status: next, rejectionReason: reason ?? null } }).then((result) => result.count); },
@@ -92,6 +134,21 @@ export const certificateRequestRepository = {
       },
       orderBy: { requestedAt: "desc" },
     });
+  },
+
+  /** Bounded pending-first review/history read for the admin console. */
+  findManyForAdminQueue(params: AdminCertificateQueueFilter & { skip: number; take: number }) {
+    return db.certificateRequest.findMany({
+      where: adminCertificateQueueWhere(params),
+      select: adminCertificateQueueSelect,
+      orderBy: [{ requestedAt: params.statuses.length === 1 && params.statuses[0] === "PENDING" ? "asc" : "desc" }, { id: "asc" }],
+      skip: params.skip,
+      take: params.take,
+    });
+  },
+
+  countForAdminQueue(filter: AdminCertificateQueueFilter) {
+    return db.certificateRequest.count({ where: adminCertificateQueueWhere(filter) });
   },
 
   /** The most recent certificate request tied to one enrollment, for a trainee's own Credentials page. */

@@ -21,6 +21,10 @@ export type MediaAssetReserveInput = {
   resourceType: MediaResourceType;
   folder: string;
   uploadedByUserId?: string | null;
+  /** Direct uploads retain their provider policy while RESERVED. These fields
+   * are replaced by provider facts on an authoritative webhook. */
+  expectedFormats?: readonly string[];
+  maxBytes?: number;
 };
 
 /** Cloudinary's own report of the uploaded object, stored once at confirm time. */
@@ -86,6 +90,8 @@ export const mediaAssetRepository = {
         resourceType: input.resourceType,
         folder: input.folder,
         uploadedByUserId: input.uploadedByUserId ?? null,
+        format: input.expectedFormats?.join(",") ?? null,
+        bytes: input.maxBytes ?? 0,
       },
     });
   },
@@ -133,6 +139,53 @@ export const mediaAssetRepository = {
       .updateMany({
         where: { id, purgeState: "RESERVED" },
         data: { purgeState: "ACTIVE", ...facts },
+      })
+      .then((result) => result.count);
+  },
+
+  /**
+   * The only transition that activates a browser-direct upload. It carries
+   * all facts from Cloudinary in one conditional statement, so no client
+   * confirmation can race an incomplete public-id update into ACTIVE.
+   */
+  confirmProviderUpload(input: {
+    id: string;
+    expectedPublicId: string;
+    publicId: string;
+    facts: MediaAssetConfirmFacts;
+  }) {
+    return db.mediaAsset
+      .updateMany({
+        where: { id: input.id, publicId: input.expectedPublicId, purgeState: "RESERVED" },
+        data: { publicId: input.publicId, purgeState: "ACTIVE", ...input.facts },
+      })
+      .then((result) => result.count);
+  },
+
+  /**
+   * A provider-authenticated object that maps to this reservation but fails
+   * policy must never become ACTIVE. Persist its real deletion handle and
+   * resource type before queueing it, otherwise a raw suffix or wrong
+   * resource namespace would make the purge worker target a phantom object.
+   */
+  rejectProviderUpload(input: {
+    id: string;
+    expectedPublicId: string;
+    publicId: string;
+    resourceType: MediaResourceType;
+    facts: MediaAssetConfirmFacts;
+  }) {
+    return db.mediaAsset
+      .updateMany({
+        where: { id: input.id, publicId: input.expectedPublicId, purgeState: "RESERVED" },
+        data: {
+          publicId: input.publicId,
+          resourceType: input.resourceType,
+          purgeState: "PENDING",
+          leaseOwner: null,
+          leaseExpiresAt: null,
+          ...input.facts,
+        },
       })
       .then((result) => result.count);
   },

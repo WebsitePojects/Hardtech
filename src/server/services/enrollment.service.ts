@@ -1,8 +1,9 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 
 import { Prisma } from "@/../generated/prisma/client";
 import type { PaymentMethod } from "@/../generated/prisma/enums";
 
+import { hashPassword } from "@/server/auth/demo-credentials";
 import { enrollmentPaymentRepository } from "@/server/repositories/enrollment-payment.repository";
 import { enrollmentRepository } from "@/server/repositories/enrollment.repository";
 import { mediaAssetRepository } from "@/server/repositories/media-asset.repository";
@@ -26,6 +27,9 @@ export interface EnrollmentServiceInput {
     password: string;
   };
   paymentMethod: PaymentMethod;
+  /** Present only when the central session check has accepted the current
+   * principal. It is used exclusively to reuse that trainee's own account. */
+  actor?: { userId: string; role: "TRAINEE" | "TRAINER" | "ADMIN" } | null;
   /** Raw proof-of-payment bytes, received by the Server Action from the
    *  multipart FormData. Uploaded to Cloudinary here, server-side — never
    *  stored inline as a base64 data: URI (see the 2026-08-15 fix this type
@@ -42,10 +46,6 @@ export interface EnrollmentServiceResult {
   referenceCode: string;
   totalAmount: string;
   enrollmentIds: string[];
-}
-
-function passwordHash(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
 }
 
 function referenceCode(): string {
@@ -85,7 +85,64 @@ function toServiceResult(payment: {
   };
 }
 
-export async function submitEnrollment(input: EnrollmentServiceInput): Promise<EnrollmentServiceResult> {
+const inFlightSubmissions = new Map<string, Promise<EnrollmentServiceResult>>();
+
+/** Coalesces concurrent in-process retries for one client-minted key. The
+ * database unique constraint remains the cross-process backstop. */
+export function coalesceEnrollmentSubmission<T>(key: string, submit: () => Promise<T>): Promise<T> {
+  const existing = inFlightSubmissions.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+
+  const work = submit();
+  inFlightSubmissions.set(key, work as Promise<EnrollmentServiceResult>);
+  void work.then(
+    () => { if (inFlightSubmissions.get(key) === work) inFlightSubmissions.delete(key); },
+    () => { if (inFlightSubmissions.get(key) === work) inFlightSubmissions.delete(key); },
+  );
+  return work;
+}
+
+type ExistingApplicant = { id: string; role: "TRAINEE" | "TRAINER" | "ADMIN"; status: "ACTIVE" | "PENDING" | "SUSPENDED" };
+
+/** A pre-existing address belongs to its authenticated trainee only. This
+ * decision happens before any storage call or payment/enrollment write. */
+export function canReuseExistingApplicant(applicant: ExistingApplicant, actor: EnrollmentServiceInput["actor"]): boolean {
+  return actor?.userId === applicant.id && actor.role === "TRAINEE" && applicant.role === "TRAINEE" && applicant.status !== "SUSPENDED";
+}
+
+async function resolveApplicant(input: EnrollmentServiceInput, normalizedEmail: string): Promise<{ id: string }> {
+  const existing = await enrollmentRepository.findApplicantByEmail(normalizedEmail);
+  if (existing) {
+    if (!canReuseExistingApplicant(existing, input.actor)) throw new Error("Applicant is not authorized for enrollment.");
+    return existing;
+  }
+
+  try {
+    return await enrollmentRepository.createApplicant({
+      email: normalizedEmail,
+      firstName: input.trainee.firstName.trim(),
+      lastName: input.trainee.lastName.trim(),
+      phone: input.trainee.phone.trim(),
+      passwordHash: hashPassword(input.trainee.password),
+    });
+  } catch (error) {
+    // A competing request may have created this address after our first
+    // read. Resolve it as an existing account, never as permission to carry
+    // on anonymously.
+    if (!isUniqueViolation(error)) throw error;
+    const raced = await enrollmentRepository.findApplicantByEmail(normalizedEmail);
+    if (!raced || !canReuseExistingApplicant(raced, input.actor)) {
+      throw new Error("Applicant is not authorized for enrollment.");
+    }
+    return raced;
+  }
+}
+
+export function submitEnrollment(input: EnrollmentServiceInput): Promise<EnrollmentServiceResult> {
+  return coalesceEnrollmentSubmission(input.idempotencyKey, () => submitEnrollmentOnce(input));
+}
+
+async function submitEnrollmentOnce(input: EnrollmentServiceInput): Promise<EnrollmentServiceResult> {
   // Idempotency-first: check for a prior submission under this key BEFORE
   // touching Cloudinary. A retry (double-click, client timeout-and-resend)
   // must cost zero uploads, not one wasted overwrite of the same object —
@@ -105,13 +162,7 @@ export async function submitEnrollment(input: EnrollmentServiceInput): Promise<E
     (total, program) => total.add(program.priceAmount),
     new Prisma.Decimal(0),
   );
-  const user = await enrollmentRepository.findOrCreateApplicant({
-    email: normalizedEmail,
-    firstName: input.trainee.firstName.trim(),
-    lastName: input.trainee.lastName.trim(),
-    phone: input.trainee.phone.trim(),
-    passwordHash: passwordHash(input.trainee.password),
-  });
+  const user = await resolveApplicant(input, normalizedEmail);
 
   // Fail closed: an unconfigured storage layer must refuse to run rather than
   // silently accept an enrollment with no verifiable proof behind it

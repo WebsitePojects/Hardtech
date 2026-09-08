@@ -4,6 +4,26 @@ import { randomUUID } from "node:crypto";
 import { test } from "node:test";
 import pg from "pg";
 
+// These cases exercise the server-side reservation/confirmation lifecycle;
+// they never send a browser upload to Cloudinary. Give each signed kind an
+// explicit syntactically valid fake preset so they remain isolated from a
+// developer's deployment configuration. Production still rejects a missing
+// or malformed preset in uploadPresetForKind.
+process.env.CLOUDINARY_CLOUD_NAME = "mutation-test";
+process.env.CLOUDINARY_API_KEY = "mutation-test-key";
+process.env.CLOUDINARY_API_SECRET = "mutation-test-secret";
+for (const kind of [
+  "MODULE_FILE",
+  "GALLERY_PHOTO",
+  "ANNOUNCEMENT_MEDIA",
+  "ASSIGNMENT_SUBMISSION",
+  "POST_ATTACHMENT",
+  "REPLY_ATTACHMENT",
+  "MESSAGE_ATTACHMENT",
+]) {
+  process.env[`CLOUDINARY_DIRECT_UPLOAD_PRESET_${kind}`] = `mutation_test_${kind.toLowerCase()}`;
+}
+
 // Coverage for the 2026-08-14 raw-upload public_id defect (a live probe
 // found Cloudinary appends the file extension to public_id for
 // resource_type "raw", which broke the old exact-equality check on every
@@ -118,7 +138,20 @@ test("confirmUpload persists Cloudinary's authoritative raw public_id and reject
       });
       assert.equal(confirmResult.ok, true, "a raw upload's suffixed public_id must confirm successfully");
 
-      const row = await mediaAssetRow(client, ticketResult.mediaAssetId);
+      // Browser confirmation validates the returned id but cannot promote the
+      // asset. Only Cloudinary's signed webhook supplies authoritative facts.
+      let row = await mediaAssetRow(client, ticketResult.mediaAssetId);
+      assert.equal(row.publicId, mintedId);
+      assert.equal(row.purgeState, "RESERVED");
+      await applyUploadWebhook({
+        public_id: returnedId,
+        secure_url: "https://res.cloudinary.com/mutation-test/raw/upload/handout.pdf",
+        bytes: 2048,
+        resource_type: "raw",
+        format: "pdf",
+        notification_type: "upload",
+      });
+      row = await mediaAssetRow(client, ticketResult.mediaAssetId);
       assert.equal(row.publicId, returnedId, "the stored publicId must be the one Cloudinary actually returned, not the bare minted id");
       assert.equal(row.purgeState, "ACTIVE");
 
@@ -176,6 +209,7 @@ test("applyUploadWebhook persists the authoritative raw public_id via the folder
         secure_url: "https://res.cloudinary.com/demo/raw/upload/handout.pdf",
         bytes: 4096,
         resource_type: "raw",
+        format: "pdf",
         notification_type: "upload",
       };
 
@@ -225,6 +259,16 @@ test("confirmUpload is duplicate-safe under sequential and concurrent replay", a
       assert.equal(first.ok, true);
       assert.equal(second.ok, true);
       let row = await mediaAssetRow(client, ticketResult.mediaAssetId);
+      assert.equal(row.purgeState, "RESERVED", "a browser report alone cannot activate an upload");
+      await applyUploadWebhook({
+        public_id: returnedId,
+        secure_url: "https://res.cloudinary.com/mutation-test/video/upload/video.mp4",
+        bytes: 4096,
+        resource_type: "video",
+        format: "mp4",
+        notification_type: "upload",
+      });
+      row = await mediaAssetRow(client, ticketResult.mediaAssetId);
       assert.equal(row.purgeState, "ACTIVE");
       assert.equal(row.publicId, returnedId);
 
@@ -270,6 +314,14 @@ test("attachUpload is duplicate-safe under sequential and concurrent replay", as
         actorId: traineeId,
       });
       assert.equal(confirmed.ok, true);
+      await applyUploadWebhook({
+        public_id: returnedId,
+        secure_url: "https://res.cloudinary.com/mutation-test/image/upload/photo.jpg",
+        bytes: 512,
+        resource_type: "image",
+        format: "jpg",
+        notification_type: "upload",
+      });
 
       const attachInput = {
         mediaAssetId: ticketResult.mediaAssetId,

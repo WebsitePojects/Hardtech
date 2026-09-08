@@ -60,17 +60,13 @@ export function verifyPassword(password: string, encoded: string): boolean {
 
 /**
  * ============================================================================
- * THE ONE PERMISSIVE FUNCTION IN THIS CODEBASE. READ BEFORE TOUCHING.
+ * Development-only test credentials. READ BEFORE TOUCHING.
  * ============================================================================
  *
- * The reference Figma Make site is an unauthenticated demo: `/login` ships
- * a visible "TEST CREDENTIALS" box listing admin@gmail.com / trainer@gmail.com
- * / trainee@gmail.com with the caption "Password: any value"
- * (docs/screens/desktop-02.md #1, docs/screens/mobile-04.md #12). That is
- * the product spec, not an accident, and docs/contracts/wave-2-app.md
- * requires reproducing it exactly. So: **this function does not check the
- * password at all.** Any non-empty string (already enforced by
- * loginSchema) authenticates a *known* seeded email.
+ * Local development may expose the seeded test accounts and accept any
+ * non-empty password for them. Every other environment verifies the stored
+ * scrypt hash. In particular, an environment variable must never be able to
+ * re-enable the permissive path in production.
  *
  * Everything downstream of this function is real: the session is a signed,
  * httpOnly cookie (src/server/auth/session.ts), `/dashboard/*` is
@@ -80,43 +76,22 @@ export function verifyPassword(password: string, encoded: string): boolean {
  * disabled demo mode, or a suspended account all return the identical
  * message — no user-enumeration signal).
  *
- * FAIL-CLOSED GATE (non-negotiables rule 3 — "unrecognized state rejects"):
- * this whole function is a no-op in production unless an operator has
- * explicitly opted back in.
- *
- *   - `NODE_ENV !== "production"` (local dev, CI, preview builds): demo auth
- *     is ON by default, no env var needed — that's what makes the seeded
- *     demo accounts usable out of the box while building this app.
- *   - `NODE_ENV === "production"`: demo auth is OFF unless `DEMO_AUTH` is
- *     the exact string `"true"`. Anything else — unset, `"1"`, `"yes"`,
- *     `"TRUE"` — rejects every login. There is no code path in a real
- *     production deployment that authenticates a user without a real
- *     password check unless someone has deliberately set `DEMO_AUTH=true`,
- *     which only makes sense for a public marketing/staging demo of this
- *     exact product, never for handling real trainee data.
+ * Fail closed: preview, test, staging, and production are all real-password
+ * environments. `development` is the only deliberately permissive mode.
  */
 export function isDemoAuthEnabled(): boolean {
-  if (process.env.NODE_ENV !== "production") return true;
-  return process.env.DEMO_AUTH === "true";
+  return process.env.NODE_ENV === "development";
 }
 
 /**
- * Looks up `email` and, if demo auth is enabled and the email matches a real
- * seeded user, returns that user's id/role — regardless of `password`'s
- * value. Returns `null` for: demo auth disabled, no such user, or a
- * suspended account. The caller (the login action) must not distinguish
- * between these cases in the message it shows the user.
+ * Looks up `email` and returns its current id/role when it is not suspended
+ * and either development demo auth is enabled or its password verifies. The
+ * caller must not distinguish failure reasons in its response.
  */
 export async function verifyDemoCredentials(
   email: string,
   password: string,
 ): Promise<DemoAuthenticatedUser | null> {
-  // `password` is intentionally unread — see the comment block above. Kept
-  // as a real parameter (not dropped from the signature) so the moment this
-  // function is ever replaced with a real credential check, the call sites
-  // don't need to change, only this body does.
-  void password;
-
   const user = await db.user.findUnique({
     where: { email },
     select: { id: true, role: true, status: true, passwordHash: true },

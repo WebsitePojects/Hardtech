@@ -4,6 +4,45 @@ import { randomBytes } from "node:crypto";
 import { Prisma, type EnrollmentPaymentStatus, type PaymentMethod } from "@/../generated/prisma/client";
 import { mediaAssetRepository } from "@/server/repositories/media-asset.repository";
 
+export type AdminPaymentQueueFilter = {
+  statuses: EnrollmentPaymentStatus[];
+  search?: string;
+  programId?: string;
+  submittedFrom?: Date;
+  submittedBefore?: Date;
+};
+
+function adminPaymentQueueWhere(filter: AdminPaymentQueueFilter): Prisma.EnrollmentPaymentWhereInput {
+  const clauses: Prisma.EnrollmentPaymentWhereInput[] = [{ status: { in: filter.statuses } }];
+  if (filter.search) {
+    clauses.push({
+      OR: [
+        { referenceCode: { contains: filter.search, mode: "insensitive" } },
+        { trainee: { firstName: { contains: filter.search, mode: "insensitive" } } },
+        { trainee: { lastName: { contains: filter.search, mode: "insensitive" } } },
+      ],
+    });
+  }
+  if (filter.programId) clauses.push({ enrollments: { some: { programId: filter.programId } } });
+  if (filter.submittedFrom || filter.submittedBefore) {
+    clauses.push({ submittedAt: { ...(filter.submittedFrom ? { gte: filter.submittedFrom } : {}), ...(filter.submittedBefore ? { lt: filter.submittedBefore } : {}) } });
+  }
+  return { AND: clauses };
+}
+
+const adminPaymentQueueSelect = {
+  id: true,
+  totalAmount: true,
+  paymentMethod: true,
+  referenceCode: true,
+  status: true,
+  submittedAt: true,
+  verifiedAt: true,
+  rejectedAt: true,
+  trainee: { select: { id: true, firstName: true, lastName: true } },
+  enrollments: { select: { program: { select: { id: true, shortName: true } } } },
+} satisfies Prisma.EnrollmentPaymentSelect;
+
 /** Pure data access for EnrollmentPayment. */
 export const enrollmentPaymentRepository = {
   findById(id: string) { return db.enrollmentPayment.findUnique({ where: { id } }); },
@@ -113,6 +152,26 @@ export const enrollmentPaymentRepository = {
       },
       orderBy: { submittedAt: "asc" },
     });
+  },
+
+  /** Bounded operational-queue read. The service validates the raw URL
+   * values; this repository only turns an already-safe filter into Prisma. */
+  findManyForAdminQueue(params: AdminPaymentQueueFilter & { skip: number; take: number }) {
+    return db.enrollmentPayment.findMany({
+      where: adminPaymentQueueWhere(params),
+      select: adminPaymentQueueSelect,
+      orderBy: [{ submittedAt: params.statuses.length === 1 && params.statuses[0] === "SUBMITTED" ? "asc" : "desc" }, { id: "asc" }],
+      skip: params.skip,
+      take: params.take,
+    });
+  },
+
+  countForAdminQueue(filter: AdminPaymentQueueFilter) {
+    return db.enrollmentPayment.count({ where: adminPaymentQueueWhere(filter) });
+  },
+
+  countMissingProofForStatuses(statuses: EnrollmentPaymentStatus[]) {
+    return db.enrollmentPayment.count({ where: { status: { in: statuses }, proofImageUrl: "" } });
   },
 
   /**

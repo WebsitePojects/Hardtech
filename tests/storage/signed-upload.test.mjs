@@ -42,6 +42,9 @@ test("createSignedUploadTicket never includes the API secret anywhere in the ret
     folder: "hardtech/modules",
     publicId: "module-abc123",
     resourceType: "video",
+    allowedFormats: ["mp4"],
+    maxBytes: maxBytesFor("video"),
+    uploadPreset: "test_direct_video",
   });
 
   const serialized = JSON.stringify(ticket);
@@ -58,12 +61,21 @@ test("createSignedUploadTicket never includes the API secret anywhere in the ret
     "https://api.cloudinary.com/v1_1/test-cloud/video/upload",
   );
   assert.equal(ticket.maxBytes, maxBytesFor("video"));
+  assert.deepEqual(ticket.allowedFormats, ["mp4"]);
+  assert.equal(ticket.uploadPreset, "test_direct_video");
   assert.ok(typeof ticket.signature === "string" && ticket.signature.length > 0);
   assert.ok(Number.isInteger(ticket.timestamp) && ticket.timestamp > 0);
 });
 
-test("createSignedUploadTicket signs a notification_url when provided, and the signature changes with it", () => {
-  const base = { folder: "hardtech/forum", publicId: "post-1", resourceType: "image" };
+test("createSignedUploadTicket signs provider policy and notification_url", () => {
+  const base = {
+    folder: "hardtech/forum",
+    publicId: "post-1",
+    resourceType: "image",
+    allowedFormats: ["jpg", "jpeg"],
+    maxBytes: 10 * 1024 * 1024,
+    uploadPreset: "test_direct_image",
+  };
   const withoutHook = createSignedUploadTicket(base);
   const withHook = createSignedUploadTicket({
     ...base,
@@ -74,6 +86,11 @@ test("createSignedUploadTicket signs a notification_url when provided, and the s
   // otherwise notification_url would not actually be protected by the
   // signature at all.
   assert.notEqual(withoutHook.signature, withHook.signature);
+
+  const differentFormatPolicy = createSignedUploadTicket({ ...base, allowedFormats: ["png"] });
+  const differentPreset = createSignedUploadTicket({ ...base, uploadPreset: "test_direct_image_alt" });
+  assert.notEqual(withoutHook.signature, differentFormatPolicy.signature);
+  assert.notEqual(withoutHook.signature, differentPreset.signature);
 });
 
 test("verifyWebhookSignature accepts a correctly signed, fresh payload", () => {

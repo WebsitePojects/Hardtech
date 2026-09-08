@@ -44,3 +44,37 @@ export const auditLogLimitSchema = z.number().int().min(1).max(200).default(50);
 
 /** Bound on how far back a monthly analytics series can be requested. */
 export const analyticsMonthsBackSchema = z.number().int().min(1).max(24).default(6);
+
+/**
+ * Shared, deliberately small request shape for the two admin operational
+ * queues. URL values are always untrusted strings: callers use this schema
+ * before a value reaches a repository `where`, `skip`, or `take` clause.
+ *
+ * Date-only filters are parsed as UTC midnights. Invalid dates and inverted
+ * ranges fail closed in the service to an empty result, rather than silently
+ * widening an administrator's queue.
+ */
+export const adminQueuePageSchema = z.coerce.number().int().min(1).catch(1);
+export const adminQueueSearchSchema = z.string().trim().max(120).catch("");
+export const adminQueueProgramIdSchema = z.string().trim().min(1).max(200);
+export const paymentQueueStatusSchema = z.enum(["ALL", "SUBMITTED", "VERIFIED", "REJECTED"]);
+export const certificateQueueStatusSchema = z.enum(["ALL", "PENDING", "APPROVED", "REJECTED"]);
+export const adminQueueDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .transform((value, ctx) => {
+    const date = new Date(`${value}T00:00:00.000Z`);
+    if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+      ctx.addIssue({ code: "custom", message: "Invalid calendar date." });
+      return z.NEVER;
+    }
+    return date;
+  });
+
+/** Clamp only after the filtered total is known, preventing a forged/stale
+ * page number from becoming an out-of-range database offset. */
+export function adminQueuePagination(total: number, requestedPage: number, pageSize: number) {
+  const totalPages = Math.max(1, Math.ceil(Math.max(0, total) / pageSize));
+  const page = Math.min(Math.max(requestedPage, 1), totalPages);
+  return { page, totalPages, skip: (page - 1) * pageSize };
+}

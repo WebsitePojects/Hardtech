@@ -20,7 +20,11 @@ interface AdminDashboardPageProps {
   // (DEFECT-USER-LIST brief). Raw and untrusted here — UserManagementSection
   // passes them straight through to getAdminUserList, which is the only
   // place they get parsed (zod) and clamped.
-  searchParams: Promise<{ section?: string; category?: string; page?: string; search?: string; role?: string }>;
+  searchParams: Promise<{
+    section?: string; category?: string; page?: string; search?: string; role?: string;
+    pPage?: string; pSearch?: string; pStatus?: string; pProgram?: string; pFrom?: string; pTo?: string; pView?: string;
+    cPage?: string; cSearch?: string; cStatus?: string; cProgram?: string; cFrom?: string; cTo?: string; cView?: string;
+  }>;
 }
 
 /**
@@ -41,17 +45,17 @@ interface AdminDashboardPageProps {
 export default async function AdminDashboardPage(props: AdminDashboardPageProps) {
   await requireRole("ADMIN");
 
-  const { category, page, search, role } = await props.searchParams;
+  const { category, page, search, role, pPage, pSearch, pStatus, pProgram, pFrom, pTo, pView, cPage, cSearch, cStatus, cProgram, cFrom, cTo, cView } = await props.searchParams;
 
   return (
     <>
       <DashboardSection section="overview"><OverviewSection /></DashboardSection>
-      <DashboardSection section="enrollments"><EnrollmentsSection /></DashboardSection>
+      <DashboardSection section="enrollments"><EnrollmentsSection page={pPage} search={pSearch} status={pStatus} program={pProgram} from={pFrom} to={pTo} view={pView} /></DashboardSection>
       <DashboardSection section="user-management">
         <UserManagementSection page={page} search={search} role={role} />
       </DashboardSection>
       <DashboardSection section="trainer-management"><TrainerManagementSection /></DashboardSection>
-      <DashboardSection section="certificates"><CertificatesSection /></DashboardSection>
+      <DashboardSection section="certificates"><CertificatesSection page={cPage} search={cSearch} status={cStatus} program={cProgram} from={cFrom} to={cTo} view={cView} /></DashboardSection>
       <DashboardSection section="announcements"><AnnouncementsSection /></DashboardSection>
       <DashboardSection section="analytics"><AnalyticsSection /></DashboardSection>
       <DashboardSection section="payment-methods"><PaymentMethodsSection /></DashboardSection>

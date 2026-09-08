@@ -242,6 +242,7 @@ model User {
   paymentsVerified          EnrollmentPayment[]    @relation("PaymentVerifiedBy")
   evaluationsGiven          Evaluation[]           @relation("EvaluationTrainer")
   evaluationsRevoked        Evaluation[]           @relation("EvaluationRevokedBy")
+  evaluationIntents         EvaluationIntent[]     @relation("EvaluationIntentTrainer")
   certificatesApproved      CertificateRequest[]   @relation("CertificateApprovedBy")
   sessionsAsTrainer         TrainingSession[]      @relation("SessionTrainer")
   assignmentsAsTrainer      Assignment[]           @relation("AssignmentTrainer")
@@ -400,6 +401,7 @@ model Enrollment {
   updatedAt       DateTime          @updatedAt
 
   evaluations         Evaluation[]
+  evaluationIntents   EvaluationIntent[]
   certificateRequests CertificateRequest[]
 
   // Belt-and-suspenders: the same payment cannot fund the same program twice
@@ -474,8 +476,37 @@ model Evaluation {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
+  // Each accepted evaluate intent is recorded separately. An active
+  // evaluation may be revised by a later, distinct intent, while the intent
+  // ledger still makes an earlier retry a no-op instead of a second write.
+  intents EvaluationIntent[]
+
   @@index([enrollmentId])
   @@index([trainerId])
+}
+
+/// Durable idempotency ledger for trainer evaluations. This is deliberately
+/// separate from Evaluation: an active assessment can be updated by a new
+/// trainer intent without losing the old intent's replay protection. The
+/// table grows one row per evaluation submission and is retained with the
+/// evaluation/audit history; lookup is always by its unique intent key.
+model EvaluationIntent {
+  id             String     @id @default(cuid())
+  idempotencyKey String     @unique
+  enrollmentId   String
+  enrollment     Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  trainerId      String
+  trainer        User       @relation("EvaluationIntentTrainer", fields: [trainerId], references: [id], onDelete: Restrict)
+  /// SHA-256 over the validated target and evaluation body. It lets a retry
+  /// prove it is the same intent without duplicating trainer notes here.
+  fingerprint    String
+  evaluationId   String?
+  evaluation     Evaluation? @relation(fields: [evaluationId], references: [id], onDelete: SetNull)
+  createdAt      DateTime   @default(now())
+
+  // Supports a trainer/enrollment history lookup without a heap sort.
+  @@index([enrollmentId, createdAt])
+  @@index([trainerId, createdAt])
 }
 
 /// A request for the official e-certificate on a completed enrollment.

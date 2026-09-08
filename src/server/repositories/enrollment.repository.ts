@@ -103,18 +103,18 @@ export const enrollmentRepository = {
     });
   },
 
-  async findOrCreateApplicant(input: { email: string; firstName: string; lastName: string; phone: string; passwordHash: string }) {
-    try {
-      return await db.user.create({
-        data: { ...input, role: "TRAINEE", status: "PENDING" },
-        select: { id: true },
-      });
-    } catch (error) {
-      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
-      const existing = await db.user.findUnique({ where: { email: input.email }, select: { id: true } });
-      if (!existing) throw new Error("Applicant could not be resolved.");
-      return existing;
-    }
+  findApplicantByEmail(email: string) {
+    return db.user.findUnique({
+      where: { email },
+      select: { id: true, role: true, status: true },
+    });
+  },
+
+  createApplicant(input: { email: string; firstName: string; lastName: string; phone: string; passwordHash: string }) {
+    return db.user.create({
+      data: { ...input, role: "TRAINEE", status: "PENDING" },
+      select: { id: true, role: true, status: true },
+    });
   },
 
   findManyByTraineeId(traineeId: string) {

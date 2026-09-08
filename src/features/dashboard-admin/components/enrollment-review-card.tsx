@@ -21,6 +21,7 @@ export type EnrollmentReviewItem = {
   amountLabel: string;
   dateLabel: string;
   receiptUrl: string | null;
+  status: "SUBMITTED" | "VERIFIED" | "REJECTED";
 };
 
 /**
@@ -34,7 +35,9 @@ export type EnrollmentReviewItem = {
 export function EnrollmentReviewCard({ item }: { item: EnrollmentReviewItem }) {
   const approve = usePendingAction();
   const reject = usePendingAction();
-  const [resolved, setResolved] = useState<"approved" | "rejected" | null>(null);
+  const [resolved, setResolved] = useState<"approved" | "rejected" | null>(
+    item.status === "VERIFIED" ? "approved" : item.status === "REJECTED" ? "rejected" : null,
+  );
   const [receiptOpen, setReceiptOpen] = useState(false);
   const anyPending = approve.isPending || reject.isPending;
 

@@ -11,6 +11,20 @@ import { z } from "zod";
  */
 
 export type UploadResourceType = "image" | "video" | "raw";
+export const providerUploadFormatSchema = z.enum([
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "gif",
+  "mp4",
+  "webm",
+  "mov",
+  "pdf",
+  "doc",
+  "docx",
+]);
+export type ProviderUploadFormat = z.infer<typeof providerUploadFormatSchema>;
 
 /**
  * Purposes a signed upload can be requested for. Each maps to a fixed folder
@@ -88,15 +102,15 @@ export type ConfirmUploadRequest = z.infer<typeof confirmUploadRequestSchema>;
  * without erroring, which is exactly the permissiveness wanted here.
  */
 export const cloudinaryWebhookPayloadSchema = z.object({
-  public_id: z.string().min(1),
-  secure_url: z.string().optional(),
-  bytes: z.number().optional(),
-  format: z.string().optional(),
-  width: z.number().optional(),
-  height: z.number().optional(),
-  duration: z.number().optional(),
-  resource_type: z.string().optional(),
-  notification_type: z.string().optional(),
+  public_id: z.string().trim().min(1).max(255),
+  secure_url: z.url().max(2_048),
+  bytes: z.number().int().positive(),
+  format: providerUploadFormatSchema,
+  width: z.number().int().nonnegative().optional(),
+  height: z.number().int().nonnegative().optional(),
+  duration: z.number().nonnegative().optional(),
+  resource_type: z.enum(["image", "video", "raw"]),
+  notification_type: z.literal("upload"),
 });
 export type CloudinaryWebhookPayload = z.infer<typeof cloudinaryWebhookPayloadSchema>;
 
@@ -120,6 +134,30 @@ export const MIME_ALLOWLIST: Record<string, UploadResourceType> = {
   "application/msword": "raw",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "raw",
 };
+
+/**
+ * Cloudinary validates an uploaded file's detected format against
+ * `allowed_formats`, not the browser-provided MIME string. Keep this mapping
+ * beside the MIME allowlist so both the signed request and webhook validation
+ * use one closed vocabulary. JPEG has two canonical spellings in the wild;
+ * Cloudinary may report either for a browser `image/jpeg` upload.
+ */
+const FORMATS_BY_MIME: Record<string, readonly ProviderUploadFormat[]> = {
+  "image/jpeg": ["jpg", "jpeg"],
+  "image/png": ["png"],
+  "image/webp": ["webp"],
+  "image/gif": ["gif"],
+  "video/mp4": ["mp4"],
+  "video/webm": ["webm"],
+  "video/quicktime": ["mov"],
+  "application/pdf": ["pdf"],
+  "application/msword": ["doc"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ["docx"],
+};
+
+export function allowedFormatsForMime(mime: string): readonly ProviderUploadFormat[] | null {
+  return FORMATS_BY_MIME[mime] ?? null;
+}
 
 /**
  * Resolve the Cloudinary resource type for a mime type, or `null` when it is

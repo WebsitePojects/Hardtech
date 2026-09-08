@@ -7,6 +7,10 @@ type UploadTicket = {
   folder: string;
   publicId: string;
   uploadUrl: string;
+  /** Posted as signed `allowed_formats`; preserve the server-selected order. */
+  allowedFormats: readonly string[];
+  /** Posted as signed `upload_preset`; Cloudinary enforces ticket limits with it. */
+  uploadPreset: string;
   notificationUrl?: string;
 };
 
@@ -60,6 +64,8 @@ function uploadToCloudinary(ticket: UploadTicket, file: File, onProgress: (perce
     body.append("signature", ticket.signature);
     body.append("folder", ticket.folder);
     body.append("public_id", ticket.publicId);
+    body.append("allowed_formats", ticket.allowedFormats.join(","));
+    body.append("upload_preset", ticket.uploadPreset);
     if (ticket.notificationUrl) body.append("notification_url", ticket.notificationUrl);
     request.send(body);
   });

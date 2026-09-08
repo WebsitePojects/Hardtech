@@ -31,6 +31,7 @@ if (connectionString) {
   process.env.CLOUDINARY_CLOUD_NAME = "assignment-upload-test";
   process.env.CLOUDINARY_API_KEY = "assignment-upload-test-key";
   process.env.CLOUDINARY_API_SECRET = "assignment-upload-test-secret";
+  process.env.CLOUDINARY_DIRECT_UPLOAD_PRESET_ASSIGNMENT_SUBMISSION = "assignment_upload_test";
 }
 
 const service = connectionString
@@ -149,6 +150,14 @@ test("assignment uploads attach exactly one confirmed, owned, allowed asset and 
       actorId: fixture.traineeId,
     });
     assert.equal(confirmed.ok, true, "the signed ticket's matching return id confirms the asset");
+    await uploadService.applyUploadWebhook({
+      public_id: `${ticket.ticket.folder}/${ticket.ticket.publicId}.pdf`,
+      secure_url: "https://storage.example.test/submission.pdf",
+      bytes: 1024,
+      resource_type: "raw",
+      format: "pdf",
+      notification_type: "upload",
+    });
     const firstAssetId = ticket.mediaAssetId;
     const input = {
       traineeId: fixture.traineeId,
@@ -172,8 +181,8 @@ test("assignment uploads attach exactly one confirmed, owned, allowed asset and 
     assert.equal(assignmentRead.length, 1);
     assert.deepEqual(
       assignmentRead[0].submission?.delivery,
-      { state: "PROCESSING", type: "DOCUMENT" },
-      "a confirmed asset without an authoritative delivery URL must never expose the legacy link",
+      { state: "READY", type: "DOCUMENT", url: "https://storage.example.test/submission.pdf" },
+      "the signed provider webhook makes the asset's delivery URL available",
     );
     await client.query('UPDATE "MediaAsset" SET url = $1 WHERE id = $2', ["https://storage.example.test/submission.pdf", firstAssetId]);
     assignmentRead = await dashboardService.getTraineeAssignments(fixture.traineeId, "TRAINEE");

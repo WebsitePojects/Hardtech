@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
-import { computeWebhookSignature, maxBytesFor, publicConfig, signParams } from "./cloudinary";
+import type { z } from "zod";
+import { computeWebhookSignature, publicConfig, signParams } from "./cloudinary";
 import { cloudinaryWebhookPayloadSchema } from "@/server/schemas/media.schema";
 
 /**
@@ -40,6 +41,10 @@ export type SignedUploadTicket = {
   resourceType: UploadResourceType;
   uploadUrl: string;
   maxBytes: number;
+  /** Must be posted verbatim as `allowed_formats`; it is part of the signature. */
+  allowedFormats: readonly string[];
+  /** Signed preset that enforces this ticket's `maxBytes` at Cloudinary. */
+  uploadPreset: string;
   notificationUrl?: string;
 };
 
@@ -59,6 +64,9 @@ export function createSignedUploadTicket(input: {
   folder: string;
   publicId: string;
   resourceType: UploadResourceType;
+  allowedFormats: readonly string[];
+  maxBytes: number;
+  uploadPreset: string;
   notificationUrl?: string;
 }): SignedUploadTicket {
   const { cloudName, apiKey } = publicConfig();
@@ -71,7 +79,9 @@ export function createSignedUploadTicket(input: {
     timestamp,
     public_id: input.publicId,
     folder: input.folder,
+    allowed_formats: input.allowedFormats.join(","),
   };
+  paramsToSign.upload_preset = input.uploadPreset;
   if (input.notificationUrl) {
     paramsToSign.notification_url = input.notificationUrl;
   }
@@ -87,24 +97,17 @@ export function createSignedUploadTicket(input: {
     publicId: input.publicId,
     resourceType: input.resourceType,
     uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/${input.resourceType}/upload`,
-    // Lets the browser reject an oversized file locally before starting a
-    // long upload it would only have rejected by Cloudinary at the end.
-    maxBytes: maxBytesFor(input.resourceType),
+    // This is duplicated in the signed preset's `max_file_size`; exposing it
+    // lets the browser fail before a long request while the provider remains
+    // the enforcement point.
+    maxBytes: input.maxBytes,
+    allowedFormats: input.allowedFormats,
+    uploadPreset: input.uploadPreset,
     notificationUrl: input.notificationUrl,
   };
 }
 
-export type CloudinaryWebhookPayload = {
-  public_id: string;
-  secure_url?: string;
-  bytes?: number;
-  format?: string;
-  width?: number;
-  height?: number;
-  duration?: number;
-  resource_type?: string;
-  notification_type?: string;
-};
+export type CloudinaryWebhookPayload = z.infer<typeof cloudinaryWebhookPayloadSchema>;
 
 /**
  * Cloudinary rejects a webhook signature older than roughly this window on

@@ -1,19 +1,11 @@
 import { CheckCircle2, Image as ImageIcon, UserPlus, Wallet } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
-import {
-  DashboardStatCard,
-  DashboardStatGrid,
-} from "@/components/dashboard/dashboard-stat-card";
-import {
-  getAdminPendingEnrollmentQueue,
-  getPaymentProofUrl,
-} from "@/server/services/dashboard.service";
-import {
-  EnrollmentReviewCard,
-  type EnrollmentReviewItem,
-} from "../components/enrollment-review-card";
+import { DashboardStatCard, DashboardStatGrid } from "@/components/dashboard/dashboard-stat-card";
+import { getAdminPaymentQueue, getAdminQueuePrograms, getPaymentProofUrl, type AdminOperationalQueueParams } from "@/server/services/dashboard.service";
+import { EnrollmentReviewCard, type EnrollmentReviewItem } from "../components/enrollment-review-card";
 import { DataNotConnectedNote } from "../components/data-not-connected-note";
+import { OperationalQueueFilters, OperationalQueuePagination } from "../components/operational-queue-controls";
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
@@ -23,61 +15,42 @@ function formatPeso(amount: number): string {
   return `₱${amount.toLocaleString("en-PH")}`;
 }
 
-/**
- * "Enrollments & Payment Verification" (desktop-02.md #3, mobile-05.md
- * #1/#3).
- */
-export async function EnrollmentsSection() {
-  const queue = await getAdminPendingEnrollmentQueue();
-
-  // The queue itself deliberately no longer carries the proof image: it used
-  // to be a base64 data URI stored in a Postgres column, so every pending row
-  // dragged the whole picture onto the page on every load. The proof now
-  // lives in Cloudinary and is read one payment at a time.
-  //
-  // These reads are issued in parallel rather than in a loop with an await
-  // inside it, which would be a serial waterfall. The list is the ADMIN'S
-  // PENDING QUEUE — bounded by how many payments are awaiting review, and an
-  // admin's job is to empty it — so N stays small. If it ever does not, the
-  // fix is a batched lookup in the service, not a loop here.
-  const proofUrls = await Promise.all(queue.map((item) => getPaymentProofUrl(item.paymentId)));
-
-  const pendingEnrollments: EnrollmentReviewItem[] = queue.map((item, index) => ({
+/** Payment actions and terminal review history are separate, bounded reads. */
+export async function EnrollmentsSection(params: AdminOperationalQueueParams) {
+  const [result, programs] = await Promise.all([getAdminPaymentQueue(params), getAdminQueuePrograms()]);
+  // Receipt URLs remain a separate, one-row read. The queue holds at most 12
+  // cards, so this cannot turn an operational backlog into an unbounded page.
+  const proofUrls = params.view === "history"
+    ? result.items.map(() => null)
+    : await Promise.all(result.items.map((item) => getPaymentProofUrl(item.paymentId)));
+  const items: EnrollmentReviewItem[] = result.items.map((item, index) => ({
     id: item.paymentId,
-    traineeName: item.trainee.name,
+    traineeName: item.traineeName,
     enrollmentRef: item.referenceCode,
-    programName: item.programs.join(", "),
+    programName: item.programNames.join(", "),
     paymentMethod: item.paymentMethod,
     amountLabel: formatPeso(item.amount),
-    dateLabel: formatDate(item.submittedAt),
-    // null when the payment was actioned by another admin between the queue
-    // read and this one — the card renders "no receipt" rather than breaking.
+    dateLabel: formatDate(item.reviewedAt ?? item.submittedAt),
     receiptUrl: proofUrls[index],
+    status: item.status,
   }));
+  const values = { view: params.view === "history" ? "history" : "queue", search: params.search ?? "", status: params.status ?? "ALL", program: params.program ?? "", from: params.from ?? "", to: params.to ?? "" };
+  const statusOptions = values.view === "queue"
+    ? [{ value: "ALL", label: "Pending only" }, { value: "SUBMITTED", label: "Submitted" }]
+    : [{ value: "ALL", label: "All reviewed" }, { value: "VERIFIED", label: "Verified" }, { value: "REJECTED", label: "Rejected" }];
 
   return (
     <div className="space-y-6">
-      <DashboardPageHeader
-        title="Enrollments & Payment Verification"
-        description="Review each uploaded receipt and approve to officially enroll the trainee. Approval also verifies their payment."
-      />
-
+      <DashboardPageHeader title="Enrollments & Payment Verification" description="Review each uploaded receipt and approve to officially enroll the trainee." />
       <DashboardStatGrid>
-        <DashboardStatCard icon={Wallet} value="-" label="Total Verified" tone="green" />
-        <DashboardStatCard icon={UserPlus} value={pendingEnrollments.length} label="Pending Review" tone="amber" />
-        <DashboardStatCard icon={ImageIcon} value="-" label="Missing Proof" tone="red" />
-        <DashboardStatCard icon={CheckCircle2} value="-" label="Approved" tone="green" />
+        <DashboardStatCard icon={Wallet} value={result.summary.verified} label="Total Verified" tone="green" />
+        <DashboardStatCard icon={UserPlus} value={result.summary.pending} label="Pending Review" tone="amber" />
+        <DashboardStatCard icon={ImageIcon} value={result.summary.missingProof} label="Missing Proof" tone="red" />
+        <DashboardStatCard icon={CheckCircle2} value={result.summary.rejected} label="Rejected" tone="red" />
       </DashboardStatGrid>
-
-      {pendingEnrollments.length === 0 ? (
-        <DataNotConnectedNote detail="No pending enrollments found." />
-      ) : (
-        <div className="space-y-3">
-          {pendingEnrollments.map((item) => (
-            <EnrollmentReviewCard key={item.id} item={item} />
-          ))}
-        </div>
-      )}
+      <OperationalQueueFilters section="enrollments" prefix="p" values={values} statusOptions={statusOptions} programs={programs} />
+      {items.length === 0 ? <DataNotConnectedNote detail={values.view === "queue" ? "No pending payments match these filters." : "No reviewed payments match these filters."} /> : <div className="space-y-3">{items.map((item) => <EnrollmentReviewCard key={item.id} item={item} />)}</div>}
+      {result.total > 0 ? <OperationalQueuePagination section="enrollments" prefix="p" page={result.page} totalPages={result.totalPages} total={result.total} pageSize={result.pageSize} /> : null}
     </div>
   );
 }

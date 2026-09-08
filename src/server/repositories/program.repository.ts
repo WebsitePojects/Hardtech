@@ -12,6 +12,14 @@ const withCurriculumTopics = {
 } satisfies Prisma.ProgramInclude;
 
 export const programRepository = {
+  /** Minimal option list for server-rendered admin queue filters. */
+  findAllQueueOptions() {
+    return db.program.findMany({
+      select: { id: true, shortName: true },
+      orderBy: { createdAt: "asc" },
+    });
+  },
+
   /** All programs, catalog order (insertion order — Program has no sortOrder column). */
   findAll() {
     return db.program.findMany({

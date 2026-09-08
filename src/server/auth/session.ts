@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import type { UserRole } from "@/../generated/prisma/enums";
+import { db } from "@/server/db";
 
 import {
   SESSION_COOKIE_NAME,
@@ -13,6 +14,24 @@ import {
 export interface Session {
   userId: string;
   role: UserRole;
+}
+
+type CurrentSessionPrincipal = {
+  role: UserRole;
+  status: "ACTIVE" | "PENDING" | "SUSPENDED";
+};
+
+/**
+ * A signed cookie proves what was true when it was minted. This check keeps a
+ * role change or suspension effective on the next protected read/action,
+ * rather than waiting for the cookie to expire. It is intentionally pure so
+ * the fail-closed decision can be covered without a database fixture.
+ */
+export function isCurrentSessionPrincipal(
+  tokenRole: UserRole,
+  principal: CurrentSessionPrincipal | null,
+): boolean {
+  return principal !== null && principal.status !== "SUSPENDED" && principal.role === tokenRole;
 }
 
 /**
@@ -63,6 +82,18 @@ export async function getSession(): Promise<Session | null> {
 
   const payload = verifySessionToken(token);
   if (!payload) return null;
+
+  try {
+    const principal = await db.user.findUnique({
+      where: { id: payload.userId },
+      select: { role: true, status: true },
+    });
+    if (!isCurrentSessionPrincipal(payload.role, principal)) return null;
+  } catch {
+    // An unavailable identity store must not turn a stale cookie into an
+    // authorization grant.
+    return null;
+  }
 
   return { userId: payload.userId, role: payload.role };
 }

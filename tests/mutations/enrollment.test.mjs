@@ -5,8 +5,10 @@ import pg from "pg";
 
 const { submitEnrollment } = await import("../../src/server/services/enrollment.service.ts");
 const { db } = await import("../../src/server/db.ts");
-const { destroyAsset } = await import("../../src/server/storage/cloudinary.ts");
+const { destroyAsset, isStorageConfigured } = await import("../../src/server/storage/cloudinary.ts");
 const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
+const usesIsolatedQaDatabase = /\/hardtech_qa_[^/?]+/i.test(connectionString ?? "");
+const runsWithRealStorage = isStorageConfigured() && !usesIsolatedQaDatabase;
 
 // A real, minimal, valid 1x1 transparent PNG — small enough to keep the real
 // Cloudinary calls this suite makes (see the file-level note in
@@ -79,7 +81,9 @@ async function deleteTraineeByEmail(client, email) {
   await client.query('DELETE FROM "User" WHERE id = $1 AND email = $2', [traineeId, email]);
 }
 
-test("enrollment is idempotent, concurrent-safe, and server-prices programs", async () => {
+test("enrollment is idempotent, concurrent-safe, and server-prices programs", {
+  skip: runsWithRealStorage ? false : "requires configured non-QA Cloudinary storage",
+}, async () => {
   assert.ok(connectionString, "database connection is configured");
   const client = new pg.Client({ connectionString });
   await client.connect();
@@ -109,9 +113,15 @@ test("enrollment is idempotent, concurrent-safe, and server-prices programs", as
     );
     assert.equal(sequentialCount.rows[0]?.count, 1, "sequential retry creates exactly one payment");
 
+    // The first public enrollment created this applicant. Every distinct
+    // later intent for the now-existing address must carry that trainee's
+    // authenticated session; anonymous reuse would permit account takeover.
+    const applicant = await client.query('SELECT id FROM "User" WHERE email = $1', [email]);
+    const existingApplicantActor = { userId: applicant.rows[0].id, role: "TRAINEE" };
+
     const concurrent = await Promise.all([
-      submitEnrollment({ ...input, idempotencyKey: concurrentKey }),
-      submitEnrollment({ ...input, idempotencyKey: concurrentKey }),
+      submitEnrollment({ ...input, idempotencyKey: concurrentKey, actor: existingApplicantActor }),
+      submitEnrollment({ ...input, idempotencyKey: concurrentKey, actor: existingApplicantActor }),
     ]);
     assert.deepEqual(concurrent[0], concurrent[1], "concurrent retry converges on one result");
     const concurrentCount = await client.query(
@@ -120,7 +130,11 @@ test("enrollment is idempotent, concurrent-safe, and server-prices programs", as
     );
     assert.equal(concurrentCount.rows[0]?.count, 1, "concurrent retry creates exactly one payment");
 
-    const secondKeyResult = await submitEnrollment({ ...input, idempotencyKey: secondKey });
+    const secondKeyResult = await submitEnrollment({
+      ...input,
+      idempotencyKey: secondKey,
+      actor: existingApplicantActor,
+    });
     assert.notEqual(secondKeyResult.paymentId, first.paymentId, "a different key creates a different payment");
 
     const stored = await client.query(
@@ -146,7 +160,9 @@ test("enrollment is idempotent, concurrent-safe, and server-prices programs", as
   }
 });
 
-test("submitEnrollment uploads the real proof bytes to Cloudinary and registers an ACTIVE, attached MediaAsset", async () => {
+test("submitEnrollment uploads the real proof bytes to Cloudinary and registers an ACTIVE, attached MediaAsset", {
+  skip: runsWithRealStorage ? false : "requires configured non-QA Cloudinary storage",
+}, async () => {
   assert.ok(connectionString, "database connection is configured");
   const client = new pg.Client({ connectionString });
   await client.connect();
@@ -207,7 +223,9 @@ test("submitEnrollment uploads the real proof bytes to Cloudinary and registers 
   }
 });
 
-test("submitEnrollment double-fire (sequential and concurrent) creates exactly one MediaAsset, never two, for the same idempotencyKey", async () => {
+test("submitEnrollment double-fire (sequential and concurrent) creates exactly one MediaAsset, never two, for the same idempotencyKey", {
+  skip: runsWithRealStorage ? false : "requires configured non-QA Cloudinary storage",
+}, async () => {
   assert.ok(connectionString, "database connection is configured");
   const client = new pg.Client({ connectionString });
   await client.connect();

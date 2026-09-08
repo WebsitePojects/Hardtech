@@ -1,4 +1,5 @@
 import type { EvaluationRating, MediaResourceType, SubmissionType, UserRole } from "@/../generated/prisma/client";
+import { createHash } from "node:crypto";
 import { db } from "@/server/db";
 import { assignmentRepository } from "@/server/repositories/assignment.repository";
 import { assignmentSubmissionRepository } from "@/server/repositories/assignment-submission.repository";
@@ -37,15 +38,93 @@ export async function evaluateTrainee(input: {
 }): Promise<Result> {
   if (!(await verifiedTrainer(input.trainerId, input.trainerRole))) return { ok: false, error: "Not authorized." };
   if (input.trainerId === input.traineeId) return { ok: false, error: "You cannot rate yourself." };
-  const enrollment = await enrollmentRepository.findByTraineeAndTrainer(input.traineeId, input.trainerId);
-  if (!enrollment) return { ok: false, error: "Trainee is not assigned to you." };
+  const fingerprint = evaluationIntentFingerprint(input);
 
-  await auditLogRepository.transaction(async (tx) => {
-    await authorRatingRepository.upsert(tx, input.traineeId, input.trainerId, input.rating === "CERTIFIED" ? 5 : input.rating === "COMPETENT" ? 4 : 3);
-    const updated = await evaluationRepository.updateActive(tx, enrollment.id, input.trainerId, input.rating, input.skill, input.notes);
-    if (updated === 0) await evaluationRepository.create(tx, enrollment.id, input.trainerId, input.rating, input.skill, input.notes);
-  });
-  return { ok: true };
+  try {
+    const result = await auditLogRepository.transaction(async (tx) => {
+      // Locking the enrollment, rather than only an existing Evaluation,
+      // serializes the zero-row case too. It also re-proves assignment inside
+      // the mutation transaction instead of relying on an earlier read.
+      const enrollments = await evaluationRepository.findAndLockAssignedEnrollment(
+        tx,
+        input.traineeId,
+        input.trainerId,
+      );
+      if (enrollments.length !== 1) return "NOT_ASSIGNED" as const;
+      const enrollmentId = enrollments[0].id;
+
+      const priorIntent = await evaluationRepository.findIntentByKey(tx, input.idempotencyKey);
+      if (priorIntent) {
+        return priorIntent.enrollmentId === enrollmentId && priorIntent.trainerId === input.trainerId && priorIntent.fingerprint === fingerprint
+          ? "REPLAY" as const
+          : "CONFLICT" as const;
+      }
+
+      // The unique key on EvaluationIntent is the durable duplicate guard.
+      // If a same-key request reached this point on a different enrollment at
+      // the same instant, its unique violation rolls this whole transaction
+      // back; the catch below reads the winning intent and safely replays it.
+      const intent = await evaluationRepository.createIntent(tx, {
+        idempotencyKey: input.idempotencyKey,
+        enrollmentId,
+        trainerId: input.trainerId,
+        fingerprint,
+      });
+
+      const active = await evaluationRepository.findActiveAndLock(tx, enrollmentId, input.trainerId);
+      const evaluation = active.length === 1
+        ? await evaluationRepository.updateActive(tx, active[0].id, input.rating, input.skill, input.notes)
+        : await evaluationRepository.create(tx, enrollmentId, input.trainerId, input.rating, input.skill, input.notes);
+
+      await evaluationRepository.attachIntentToEvaluation(tx, intent.id, evaluation.id);
+      await authorRatingRepository.upsert(
+        tx,
+        input.traineeId,
+        input.trainerId,
+        input.rating === "CERTIFIED" ? 5 : input.rating === "COMPETENT" ? 4 : 3,
+      );
+      await auditLogRepository.create(tx, {
+        category: "USER",
+        action: "evaluate",
+        description: null,
+        referenceId: intent.id,
+        actorUserId: input.trainerId,
+      });
+      return "APPLIED" as const;
+    });
+
+    if (result === "NOT_ASSIGNED") return { ok: false, error: "Trainee is not assigned to you." };
+    if (result === "CONFLICT") return { ok: false, error: "Unable to evaluate trainee." };
+    return { ok: true };
+  } catch (error) {
+    if (!isUniqueViolation(error)) return { ok: false, error: "Unable to evaluate trainee." };
+
+    // A concurrent same-key attempt lost only at the database constraint.
+    // Re-read the winner after its transaction commits; a different request
+    // may never turn into a success merely because it reused somebody else's
+    // intent key.
+    const winner = await evaluationRepository.findIntentByKey(db, input.idempotencyKey);
+    if (
+      winner
+      && winner.trainerId === input.trainerId
+      && winner.fingerprint === fingerprint
+    ) {
+      return { ok: true };
+    }
+    return { ok: false, error: "Unable to evaluate trainee." };
+  }
+}
+
+function evaluationIntentFingerprint(input: {
+  trainerId: string; traineeId: string; skill: string; rating: EvaluationRating; notes: string;
+}): string {
+  return createHash("sha256")
+    .update(JSON.stringify([input.trainerId, input.traineeId, input.skill, input.rating, input.notes]))
+    .digest("hex");
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }
 
 export async function createAssignment(input: {
