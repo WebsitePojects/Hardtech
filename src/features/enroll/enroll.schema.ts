@@ -6,10 +6,32 @@ import { z } from "zod";
 
 // -- Step 1: Select Plan -----------------------------------------------------
 
+export const MAX_ENROLLMENT_PROGRAMS = 3;
+
+/**
+ * This is a public URL boundary, not an internal identifier. Keeping it
+ * small and slug-shaped means `/enroll?program=` cannot become an accidental
+ * alternate channel for raw database IDs or legacy display names.
+ */
+export const enrollProgramQuerySchema = z
+  .object({
+    program: z
+      .string()
+      .trim()
+      .min(3)
+      .max(120)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Choose a valid program link.")
+      .optional(),
+  })
+  .strict();
+
 export const planSelectionSchema = z.object({
   programIds: z
     .array(z.string().min(1))
-    .min(1, { message: "Select at least one program to continue." }),
+    .min(1, { message: "Select at least one program to continue." })
+    .max(MAX_ENROLLMENT_PROGRAMS, {
+      message: `Choose up to ${MAX_ENROLLMENT_PROGRAMS} programs per enrollment.`,
+    }),
 });
 export type PlanSelectionValues = z.infer<typeof planSelectionSchema>;
 

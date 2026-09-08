@@ -13,13 +13,15 @@ import {
 import { ProgramPhoto } from "@/features/programs/program-photo";
 import { decimalToCentavos, formatCentavos } from "@/features/programs/format-currency";
 
-function ProgramFeature({ program, index }: { program: ProgramWithCurriculum; index: number }) {
+function ProgramFeature({ program }: { program: ProgramWithCurriculum }) {
   const imagery = resolveProgramImagery(program);
   const accent = resolveAccent(program.accentColor);
   const priceLabel = formatCentavos(decimalToCentavos(program.priceAmount));
 
   return (
     <article
+      id={`program-${program.slug}`}
+      aria-labelledby={`program-${program.slug}-heading`}
       className={cn(
         "group relative isolate min-h-[28rem] overflow-hidden rounded-2xl border border-glass-border bg-surface-secondary",
         "transition-[border-color,box-shadow,transform] duration-300 motion-reduce:transition-none",
@@ -50,8 +52,11 @@ function ProgramFeature({ program, index }: { program: ProgramWithCurriculum; in
 
         <div className="max-w-xl space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="border-foreground/25 bg-background/85 text-foreground">
-              Program {String(index + 1).padStart(2, "0")}
+            <Badge
+              variant="outline"
+              className={program.enrollmentOpen ? "border-primary/40 bg-background/85 text-primary" : "border-foreground/25 bg-background/85 text-foreground"}
+            >
+              {program.enrollmentOpen ? "Enrollment open" : "Enrollment closed"}
             </Badge>
             {program.marketingEnrolledLabel ? (
               <Badge className={cn("border", accent.bg, accent.border, accent.text)}>
@@ -60,7 +65,7 @@ function ProgramFeature({ program, index }: { program: ProgramWithCurriculum; in
             ) : null}
           </div>
           <div>
-            <h3 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+            <h3 id={`program-${program.slug}-heading`} className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
               {program.name}
             </h3>
             {program.subtitle ? (
@@ -91,14 +96,16 @@ function ProgramFeature({ program, index }: { program: ProgramWithCurriculum; in
               <CircleDollarSign className={cn("size-4", accent.text)} aria-hidden />
               {priceLabel}
             </span>
-            <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/80">
-              <Link href="/enroll" aria-label={`Start enrollment for ${program.name}`}>
-                Start enrollment
-                <ArrowRight aria-hidden />
-              </Link>
-            </Button>
+            {program.enrollmentOpen ? (
+              <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/80">
+                <Link href={`/enroll?program=${encodeURIComponent(program.slug)}`} aria-label={`Enroll in ${program.name}`}>
+                  Enroll now
+                  <ArrowRight aria-hidden />
+                </Link>
+              </Button>
+            ) : null}
             <Button asChild variant="outline" className="border-foreground/30 bg-background/90 text-foreground hover:border-primary hover:bg-background">
-              <Link href="/programs" aria-label={`View ${program.name} details`}>
+              <Link href={`/programs/${encodeURIComponent(program.slug)}`} aria-label={`View details for ${program.name}`}>
                 Details
                 <ArrowUpRight aria-hidden />
               </Link>
@@ -142,7 +149,7 @@ export function ProgramsSection({ programs }: { programs: ProgramWithCurriculum[
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
-        {programs.map((program, index) => <ProgramFeature key={program.id} program={program} index={index} />)}
+        {programs.map((program) => <ProgramFeature key={program.id} program={program} />)}
       </div>
 
       <div className="mt-6 flex justify-start">

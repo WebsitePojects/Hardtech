@@ -55,6 +55,14 @@ enum EnrollmentStatus {
   REJECTED
 }
 
+/// Public catalog lifecycle. DRAFT and ARCHIVED programs are never eligible
+/// for public discovery or checkout, even if a caller knows their database ID.
+enum ProgramCatalogStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 /// State of one checkout/payment submission. desktop-01 #26-32, mobile-04
 /// (full 5-step enrollment flow).
 enum EnrollmentPaymentStatus {
@@ -305,6 +313,19 @@ model TrainerProfile {
 model Program {
   id                       String   @id @default(cuid())
   name                     String   @unique
+  /// Public-facing, immutable program identifier. It is deliberately
+  /// separate from `shortName`, which remains a legacy internal label.
+  // This mirrors the database default used by privileged raw-SQL fixtures.
+  // Prisma does not generate a CUID for this field; callers that create a
+  // public program must explicitly supply its reviewed immutable slug.
+  slug                     String   @unique @default(dbgenerated("('program-' || md5(random()::text || clock_timestamp()::text || txid_current()::text))"))
+  /// A program must be explicitly published before it can be shown publicly.
+  catalogStatus            ProgramCatalogStatus @default(DRAFT)
+  /// Published catalog visibility and checkout availability are separate:
+  /// an administrator may retain a public program page while closing intake.
+  enrollmentOpen           Boolean  @default(false)
+  /// Stable public catalog order; never infer this from insertion time.
+  sortOrder                Int      @default(0)
   shortName                String
   subtitle                 String?
   description              String
@@ -333,6 +354,8 @@ model Program {
   testimonials     Testimonial[]
 
   @@index([primaryTrainerId])
+  @@index([catalogStatus, sortOrder, id])
+  @@index([catalogStatus, enrollmentOpen, id])
 }
 
 /// One "COURSE MODULES" checklist line on /programs and /enroll Step 1

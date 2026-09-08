@@ -52,10 +52,8 @@ export default async function ProgramsPage() {
         </div>
         <div className="hero-glow hero-glow-programs hero-photo-navscrim pointer-events-none absolute inset-x-0 top-0 -z-10 h-[26rem]" />
         <ScrollReveal className="mx-auto max-w-3xl space-y-5 text-center">
-          <Badge variant="outline" className="border-primary/40 text-primary">
-            &#9670; Training Programs
-          </Badge>
-          <h1 className="font-heading text-4xl font-bold text-foreground sm:text-5xl">
+          <Badge variant="outline" className="border-primary/40 text-primary">Training Programs</Badge>
+          <h1 id="programs-page-heading" className="font-heading text-4xl font-bold text-foreground sm:text-5xl">
             Our Core <span className="text-primary">Programs</span>
           </h1>
           {/* foreground/85 over photography — see the note in
@@ -63,7 +61,7 @@ export default async function ProgramsPage() {
               an image ground. */}
           <p className="text-lg text-foreground/85">
             Practical, industry-aligned training programs designed to build real skills and
-            launch your technology career — no prior credentials required.
+            launch your technology career. No prior credentials are required.
           </p>
           {/* foreground/80 rather than muted: this row sits low in the photo
               band where the scrim has thinned, over the brightest part of
@@ -79,7 +77,13 @@ export default async function ProgramsPage() {
         </ScrollReveal>
       </section>
 
-      <section className="mx-auto max-w-5xl space-y-8 px-4 pb-24">
+      <section className="mx-auto max-w-5xl space-y-8 px-4 pb-24" aria-labelledby="programs-page-heading">
+        {programs.length === 0 ? (
+          <div className="rounded-2xl border border-glass-border bg-surface-secondary/60 p-6 text-center sm:p-10" role="status">
+            <h2 className="font-heading text-2xl font-semibold text-foreground">Programs are being prepared.</h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">There are no published programs to compare at the moment. Please check back for the next intake.</p>
+          </div>
+        ) : null}
         {programs.map((program, index) => {
           const trainer = trainers.find((candidate) => candidate.userId === program.primaryTrainerId);
           const trainerName = trainer ? `${trainer.user.firstName} ${trainer.user.lastName}` : null;

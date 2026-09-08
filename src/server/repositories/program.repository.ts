@@ -20,11 +20,37 @@ export const programRepository = {
     });
   },
 
-  /** All programs, catalog order (insertion order — Program has no sortOrder column). */
+  /**
+   * Internal/admin read. Callers must make an explicit authorization decision
+   * before exposing these records because this includes drafts and archives.
+   */
   findAll() {
     return db.program.findMany({
       include: withCurriculumTopics,
-      orderBy: { createdAt: "asc" },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+    });
+  },
+
+  /** The only catalog query allowed for public marketing routes. */
+  findPublishedCatalog() {
+    return db.program.findMany({
+      where: { catalogStatus: "PUBLISHED" },
+      include: withCurriculumTopics,
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+  },
+
+  /**
+   * Minimal, bounded projection for crawler-facing metadata. Keeping this
+   * separate from the full catalog prevents a sitemap request from loading
+   * curriculum or other display data it never renders.
+   */
+  findPublishedSitemapRows(take: number) {
+    return db.program.findMany({
+      where: { catalogStatus: "PUBLISHED" },
+      select: { slug: true, updatedAt: true },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      take,
     });
   },
 
@@ -35,6 +61,24 @@ export const programRepository = {
   findByShortName(shortName: string) {
     return db.program.findFirst({
       where: { shortName },
+      include: withCurriculumTopics,
+      orderBy: { createdAt: "asc" },
+    });
+  },
+
+  /** Public lookup by the legacy route identifier, constrained to published rows. */
+  findPublishedByShortName(shortName: string) {
+    return db.program.findFirst({
+      where: { shortName, catalogStatus: "PUBLISHED" },
+      include: withCurriculumTopics,
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
+  },
+
+  /** Public route lookup by the immutable catalog identifier. */
+  findPublishedBySlug(slug: string) {
+    return db.program.findFirst({
+      where: { slug, catalogStatus: "PUBLISHED" },
       include: withCurriculumTopics,
     });
   },

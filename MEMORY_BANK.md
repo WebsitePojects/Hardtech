@@ -6,3 +6,5 @@
 - When a public catalog has only two active choices, render both as direct, independently actionable features; carousel state obscures comparison and adds no value.
 
 - Keep nonessential announcement content secondary to the hero task: a stable in-flow teaser on small screens prevents motion from interrupting reading or displacing the primary CTA.
+
+- A public catalog needs separate publish and intake-open states; enforce both at checkout before creating users, uploads, or payments, while keeping legacy rows closed by default.
