@@ -151,11 +151,25 @@ export const certificateRequestRepository = {
     return db.certificateRequest.count({ where: adminCertificateQueueWhere(filter) });
   },
 
-  /** The most recent certificate request tied to one enrollment, for a trainee's own Credentials page. */
-  findLatestByEnrollmentId(enrollmentId: string) {
+  /**
+   * The newest certificate lifecycle row a trainee may see in Credentials.
+   *
+   * Certificate requests are created only when an enrollment completes, but
+   * keep the terminal-enrollment condition in this read as a second boundary
+   * guard. Scoping through `enrollment.traineeId` means a caller can never
+   * select another trainee's request by supplying or retaining an enrollment
+   * id from elsewhere.
+   */
+  findLatestForTrainee(traineeId: string) {
     return db.certificateRequest.findFirst({
-      where: { enrollmentId },
-      orderBy: { requestedAt: "desc" },
+      where: { enrollment: { traineeId, status: "COMPLETED" } },
+      orderBy: [{ completedAt: "desc" }, { requestedAt: "desc" }, { id: "desc" }],
+      select: {
+        status: true,
+        certificateCode: true,
+        requestedAt: true,
+        approvedAt: true,
+      },
     });
   },
 };

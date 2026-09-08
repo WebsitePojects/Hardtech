@@ -1304,8 +1304,8 @@ export type TraineeCertificateStatus = {
 };
 
 /**
- * Viewer-scoped: only the calling TRAINEE's own certificate request, for
- * their own active enrollment. Any other role fails closed to `null`.
+ * Viewer-scoped: only the calling TRAINEE's newest certificate request from a
+ * completed enrollment. Any other role fails closed to `null`.
  * Returns `null` both when the viewer/role check fails and when no
  * `CertificateRequest` exists yet (the "Locked" state) — the caller cannot
  * distinguish "not allowed" from "not requested yet" from this return value
@@ -1318,10 +1318,7 @@ export async function getTraineeCertificateStatus(
   const parsedId = userIdSchema.safeParse(viewerId);
   if (!parsedId.success || viewerRole !== "TRAINEE") return null; // fail closed
 
-  const activeEnrollment = await findActiveEnrollmentForTrainee(parsedId.data);
-  if (!activeEnrollment) return null;
-
-  const request = await certificateRequestRepository.findLatestByEnrollmentId(activeEnrollment.id);
+  const request = await certificateRequestRepository.findLatestForTrainee(parsedId.data);
   if (!request) return null;
 
   return {

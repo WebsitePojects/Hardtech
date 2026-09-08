@@ -2,6 +2,7 @@ import { Award, Clock, Download, GraduationCap, Lock, ShieldCheck } from "lucide
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { TraineeCertificateStatus, TraineeOverview } from "@/server/services/dashboard.service";
@@ -108,9 +109,13 @@ export function CredentialsSection({ displayName, overview, certificateStatus }:
               Pending Approval
             </Badge>
           ) : certificateState === "APPROVED" ? (
-            <Badge variant="outline" className="border-primary/40 bg-primary/10 text-primary">
-              <Download className="size-3" aria-hidden /> Download
-            </Badge>
+            certificateStatus?.certificateCode ? (
+              <Button asChild variant="outline" size="sm" className="border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary">
+                <a href={`/api/certificates/${encodeURIComponent(certificateStatus.certificateCode)}`}>
+                  <Download className="size-3" aria-hidden /> Download certificate
+                </a>
+              </Button>
+            ) : null
           ) : certificateState === "REJECTED" ? (
             <Badge variant="destructive">Rejected</Badge>
           ) : !isGraduate ? (
