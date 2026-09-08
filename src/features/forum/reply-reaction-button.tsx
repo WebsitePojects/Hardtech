@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef } from "react";
 import { CheckCircle2, Lightbulb, ThumbsUp } from "lucide-react";
 
 import type { ReactionType } from "@/../generated/prisma/enums";
@@ -31,18 +31,30 @@ export function ReplyReactionButton({ replyId, type, count, label }: {
   count: number;
   label: string;
 }) {
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const inFlightIdempotencyKey = useRef<string | null>(null);
   const { isPending, run } = useGuardedMutation(toggleReplyReactionAction, "We could not update your reaction.");
+
+  const handleClick = async () => {
+    if (isPending || inFlightIdempotencyKey.current) return;
+
+    const idempotencyKey = crypto.randomUUID();
+    inFlightIdempotencyKey.current = idempotencyKey;
+    try {
+      await run({ idempotencyKey, replyId, reactionType: type });
+    } finally {
+      if (inFlightIdempotencyKey.current === idempotencyKey) {
+        inFlightIdempotencyKey.current = null;
+      }
+    }
+  };
+
   return (
     <button
       type="button"
       disabled={isPending}
       aria-label={label}
       aria-busy={isPending}
-      onClick={() => {
-        if (isPending) return;
-        void run({ idempotencyKey, replyId, reactionType: type });
-      }}
+      onClick={() => void handleClick()}
       className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-colors hover:bg-glass-hover hover:text-foreground disabled:opacity-60"
     >
       {iconFor(type, isPending)} {count}

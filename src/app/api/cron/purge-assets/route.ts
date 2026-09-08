@@ -11,7 +11,7 @@ import { verifyCronSecret } from "../verify-cron-secret";
  * and every deleted gallery photo, announcement attachment, or forum upload
  * leaks in Cloudinary forever (rule 7: no fire-and-forget side effects).
  *
- * Triggered by Vercel Cron every 5 minutes (see vercel.json). Vercel Cron
+ * Triggered by Vercel Cron daily at 03:00 UTC (see vercel.json). Vercel Cron
  * issues a GET request carrying `Authorization: Bearer $CRON_SECRET` when
  * CRON_SECRET is set as a project environment variable, so only GET is
  * implemented here — Next's route handler returns 405 automatically for any
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     //     destroy call and its DB write before the lease could expire and
     //     let a second worker reclaim it mid-flight.
     //   - maxAttempts: 5, combined with backoffSeconds' cap of one hour and
-    //     this route's 5-minute schedule, bounds a sustained provider outage
+    //     this route's daily schedule, bounds a sustained provider outage
     //     to a handful of retries before a row is abandoned to terminal
     //     FAILED rather than retried forever.
     const result = await purgeDueAssets({ limit: 50, leaseSeconds: 120, maxAttempts: 5 });

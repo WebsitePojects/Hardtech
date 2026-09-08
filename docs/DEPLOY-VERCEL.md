@@ -152,7 +152,7 @@ correct, and the only sign anything is wrong is a QR code that goes nowhere
 once the certificate has already been printed and handed to a graduate. There
 is no fixing it after that point — the document is out the door.
 
-Set it to the real production domain (`https://hardtech.pro`) as part of the
+Set it to the canonical production domain (`https://www.hardtech.pro`) as part of the
 same pass where you set the other eight variables, before anyone can reach a
 "generate certificate" button, not as an afterthought once uploads or auth
 are confirmed working.
@@ -208,8 +208,8 @@ build.
       `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`)
       and the 2 deliberately left unset (`DEMO_AUTH`, `AUTH_URL`).
 - [ ] `DEMO_AUTH` is unset in Production — not `"true"`, not present at all.
-- [ ] `NEXT_PUBLIC_SITE_URL` is the real production domain
-      (`https://hardtech.pro`), not `localhost:3000`.
+- [ ] `NEXT_PUBLIC_SITE_URL` is the canonical production domain
+      (`https://www.hardtech.pro`), not `localhost:3000`.
 - [ ] `CLOUDINARY_API_SECRET` has been **rotated** in the Cloudinary console
       if the value currently set was ever pasted anywhere other than
       `.env.vercel` and the Vercel dashboard — a chat message, a ticket, a
@@ -218,7 +218,7 @@ build.
 ### Deploy
 
 Click **Deploy**. Then open the deployed URL — `hardtech-seven.vercel.app` on
-the Vercel preview, or `https://hardtech.pro` once the domain is attached
+the Vercel preview, or `https://www.hardtech.pro` once the domain is attached
 (§6) — and check:
 
 - home page renders
@@ -242,8 +242,9 @@ failures covered there, in the order they're listed.
 
 Vercel → Project → **Settings → Domains → Add**.
 
-Enter your domain — `hardtech.pro` for this deployment. Vercel then shows the
-**exact DNS records to create**. Use the values on that screen — do not copy
+Add both `www.hardtech.pro` and `hardtech.pro` for this deployment, make `www`
+the canonical production domain, and configure the apex to redirect to it.
+Vercel then shows the **exact DNS records to create**. Use the values on that screen — do not copy
 them from a blog post, Vercel has changed its apex IP and stale values
 silently fail.
 

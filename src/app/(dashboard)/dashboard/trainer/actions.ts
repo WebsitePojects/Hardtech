@@ -2,7 +2,7 @@
 
 import { updateTag } from "next/cache";
 import { getSession } from "@/server/auth/session";
-import { completeEnrollmentSchema, createAssignmentSchema, evaluateTraineeSchema, setEnrollmentProgressSchema } from "@/server/schemas/dashboard-write.schema";
+import { completeEnrollmentSchema, createAssignmentSchema, createTrainingSessionSchema, evaluateTraineeSchema, publishModuleSchema, setEnrollmentProgressSchema } from "@/server/schemas/dashboard-write.schema";
 import * as writes from "@/server/services/dashboard-write.service";
 import { completeEnrollment, setEnrollmentProgress } from "@/server/services/enrollment-progress.service";
 
@@ -22,6 +22,26 @@ export async function createAssignmentAction(input: unknown) {
   const session = await getSession();
   if (!session || session.role !== "TRAINER") return { ok: false as const, error: "Not authorized." };
   const result = await writes.createAssignment({ ...parsed.data, trainerId: session.userId, trainerRole: session.role });
+  if (result.ok) updateTag("dashboard");
+  return result;
+}
+
+export async function createTrainingSessionAction(input: unknown) {
+  const parsed = createTrainingSessionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Invalid session." };
+  const session = await getSession();
+  if (!session || session.role !== "TRAINER") return { ok: false as const, error: "Not authorized." };
+  const result = await writes.createTrainingSession({ ...parsed.data, trainerId: session.userId, trainerRole: session.role });
+  if (result.ok) updateTag("dashboard");
+  return result;
+}
+
+export async function publishModuleAction(input: unknown) {
+  const parsed = publishModuleSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: "Invalid module." };
+  const session = await getSession();
+  if (!session || session.role !== "TRAINER") return { ok: false as const, error: "Not authorized." };
+  const result = await writes.publishModule({ ...parsed.data, trainerId: session.userId, trainerRole: session.role });
   if (result.ok) updateTag("dashboard");
   return result;
 }

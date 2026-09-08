@@ -65,7 +65,7 @@ export function AssignmentsSection({ assignments }: AssignmentsSectionProps) {
                       <p className="text-muted-foreground">
                         Your {assignment.submission.delivery.type.toLowerCase()} is being verified and will be available here shortly.
                       </p>
-                    ) : (
+                    ) : assignment.submission.delivery.url ? (
                       <a
                         href={assignment.submission.delivery.url}
                         className="break-all text-primary hover:underline"
@@ -74,6 +74,10 @@ export function AssignmentsSection({ assignments }: AssignmentsSectionProps) {
                       >
                         Open legacy submission
                       </a>
+                    ) : (
+                      <p className="text-muted-foreground">
+                        This legacy submission is unavailable because its saved link is invalid.
+                      </p>
                     )}
                   </div>
                 ) : (

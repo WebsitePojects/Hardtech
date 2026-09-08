@@ -30,16 +30,18 @@ export const createForumReplySchema = z.object({
 });
 
 export const togglePostReactionSchema = z.object({
+  idempotencyKey,
   postId: id,
   reactionType,
 });
 
 export const toggleReplyReactionSchema = z.object({
+  idempotencyKey,
   replyId: id,
   reactionType,
 });
 
-export const togglePostBookmarkSchema = z.object({ postId: id });
+export const togglePostBookmarkSchema = z.object({ idempotencyKey, postId: id });
 
 export const reportForumPostSchema = z.object({
   postId: id,

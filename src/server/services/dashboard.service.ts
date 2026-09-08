@@ -1148,7 +1148,7 @@ export type TraineeAssignmentSubmissionState = {
   delivery:
     | { state: "READY"; url: string; type: SubmissionType }
     | { state: "PROCESSING"; type: SubmissionType }
-    | { state: "LEGACY"; url: string };
+    | { state: "LEGACY"; url: string | null };
 };
 
 export type TraineeAssignmentReadItem = {
@@ -1210,7 +1210,10 @@ function toTraineeAssignmentSubmissionState(submission: {
   mediaAsset: { url: string | null; resourceType: MediaResourceType; purgeState: string } | null;
 }): TraineeAssignmentSubmissionState {
   if (!submission.mediaAsset) {
-    return { submittedAt: submission.submittedAt, delivery: { state: "LEGACY", url: submission.submissionLink } };
+    return {
+      submittedAt: submission.submittedAt,
+      delivery: { state: "LEGACY", url: isSafeHttpUrl(submission.submissionLink) ? submission.submissionLink : null },
+    };
   }
 
   const type = submissionTypeForMediaResource(submission.mediaAsset.resourceType);
@@ -1218,6 +1221,17 @@ function toTraineeAssignmentSubmissionState(submission: {
     return { submittedAt: submission.submittedAt, delivery: { state: "READY", url: submission.mediaAsset.url, type } };
   }
   return { submittedAt: submission.submittedAt, delivery: { state: "PROCESSING", type } };
+}
+
+/** Legacy rows may predate MediaAsset ownership. Preserve only absolute
+ * http(s) links; malformed, relative, and script URLs are unavailable. */
+export function isSafeHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
 }
 
 function submissionTypeForMediaResource(resourceType: MediaResourceType): SubmissionType {
@@ -1245,9 +1259,14 @@ export type TraineeMaterialItem = {
   fileType: ModuleFileType;
   unitNumber: number;
   fileSizeBytes: number;
+  delivery:
+    | { state: "READY"; url: string }
+    | { state: "PROCESSING" }
+    | { state: "UNAVAILABLE" };
 };
 
-/** Viewer-scoped: only the modules for the calling TRAINEE's own active program. Any other role fails closed to an empty array. */
+/** Viewer-scoped: only active modules for the calling TRAINEE's own active
+ * enrollment. Assets are authoritative only when ACTIVE and attached. */
 export async function getTraineeMaterials(
   viewerId: string,
   viewerRole: UserRole,
@@ -1265,6 +1284,11 @@ export async function getTraineeMaterials(
     fileType: module.fileType,
     unitNumber: module.unitNumber,
     fileSizeBytes: module.fileSizeBytes,
+    delivery: module.mediaAsset?.purgeState === "ACTIVE" && module.mediaAsset.url
+      ? { state: "READY" as const, url: module.mediaAsset.url }
+      : module.mediaAsset?.purgeState === "RESERVED"
+        ? { state: "PROCESSING" as const }
+        : { state: "UNAVAILABLE" as const },
   }));
 }
 

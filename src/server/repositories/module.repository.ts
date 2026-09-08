@@ -1,7 +1,24 @@
 import { db } from "@/server/db";
+import type { ModuleFileType, Prisma } from "@/../generated/prisma/client";
 
 /** Pure data access for Module. */
 export const moduleRepository = {
+  /** Locks a trainer-owned batch and returns its program context. */
+  findAndLockBatchByIdAndTrainerId(tx: Prisma.TransactionClient, batchId: string, trainerId: string) {
+    return tx.$queryRaw<{ id: string; programId: string }[]>`
+      SELECT id, "programId" FROM "Batch"
+      WHERE id = ${batchId} AND "trainerId" = ${trainerId}
+      FOR UPDATE
+    `;
+  },
+
+  create(tx: Prisma.TransactionClient, data: {
+    programId: string; trainerId: string; title: string; fileType: ModuleFileType;
+    unitNumber: number; fileUrl: string; fileSizeBytes: number;
+  }) {
+    return tx.module.create({ data });
+  },
+
   countByTrainerId(trainerId: string) {
     return db.module.count({ where: { trainerId } });
   },
@@ -13,6 +30,9 @@ export const moduleRepository = {
   findManyByProgramId(programId: string) {
     return db.module.findMany({
       where: { programId },
+      include: {
+        mediaAsset: { select: { url: true, purgeState: true } },
+      },
       orderBy: [{ unitNumber: "asc" }, { createdAt: "asc" }],
     });
   },

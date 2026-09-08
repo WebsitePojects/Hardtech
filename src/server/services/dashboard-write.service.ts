@@ -1,4 +1,4 @@
-import type { EvaluationRating, MediaResourceType, SubmissionType, UserRole } from "@/../generated/prisma/client";
+import type { EvaluationRating, MediaResourceType, ModuleFileType, Prisma, SessionType, SubmissionType, UserRole } from "@/../generated/prisma/client";
 import { createHash } from "node:crypto";
 import { db } from "@/server/db";
 import { assignmentRepository } from "@/server/repositories/assignment.repository";
@@ -10,10 +10,40 @@ import { enrollmentPaymentRepository } from "@/server/repositories/enrollment-pa
 import { enrollmentRepository } from "@/server/repositories/enrollment.repository";
 import { evaluationRepository } from "@/server/repositories/evaluation.repository";
 import { mediaAssetRepository } from "@/server/repositories/media-asset.repository";
+import { moduleRepository } from "@/server/repositories/module.repository";
+import { trainingSessionRepository } from "@/server/repositories/training-session.repository";
 import { verifiedActor } from "@/server/services/actor-verification.service";
 import { issueCertificate } from "@/server/services/certificate-issue.service";
 
 type Result = { ok: true } | { ok: false; error: string };
+
+const SESSION_INTENT_ACTION = "training_session_publish";
+const MODULE_INTENT_ACTION = "module_publish";
+
+/**
+ * TrainingSession and Module predate durable idempotency columns. Until a
+ * schema migration can add them, serialize a given actor/key with a
+ * transaction-scoped PostgreSQL advisory lock and persist the completed
+ * intent in the audit log. This covers both the zero-row and replay paths;
+ * neither mutation relies on a process-local lock.
+ */
+async function lockIntent(tx: Prisma.TransactionClient, actorId: string, action: string, idempotencyKey: string) {
+  await tx.$executeRaw`
+    SELECT pg_advisory_xact_lock(hashtextextended(${`${action}:${actorId}:${idempotencyKey}`}, 0))
+  `;
+}
+
+function intentFingerprint(values: unknown[]): string {
+  return createHash("sha256").update(JSON.stringify(values)).digest("hex");
+}
+
+function phCalendarDate(date: string): Date | null {
+  const [year, month, day] = date.split("-").map(Number);
+  const value = new Date(Date.UTC(year, month - 1, day));
+  return value.getUTCFullYear() === year && value.getUTCMonth() === month - 1 && value.getUTCDate() === day
+    ? value
+    : null;
+}
 
 /**
  * Re-verifies the caller against the database instead of trusting the
@@ -126,6 +156,149 @@ function evaluationIntentFingerprint(input: {
 function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }
+
+export async function createTrainingSession(input: {
+  trainerId: string; trainerRole: UserRole; batchId: string; title: string;
+  sessionType: SessionType; sessionDate: string; startTime: string; location: string;
+  idempotencyKey: string;
+}): Promise<Result> {
+  if (!(await verifiedTrainer(input.trainerId, input.trainerRole))) return { ok: false, error: "Not authorized." };
+  const sessionDate = phCalendarDate(input.sessionDate);
+  if (!sessionDate) return { ok: false, error: "Invalid session date." };
+  const fingerprint = intentFingerprint([
+    input.batchId, input.title, input.sessionType, input.sessionDate, input.startTime, input.location,
+  ]);
+
+  try {
+    const result = await db.$transaction(async (tx) => {
+      // The batch lock re-proves current ownership in the same transaction
+      // that writes the session, including after a trainer handoff.
+      const batches = await trainingSessionRepository.findAndLockBatchByIdAndTrainerId(tx, input.batchId, input.trainerId);
+      if (batches.length !== 1) return "NOT_OWNED" as const;
+
+      await lockIntent(tx, input.trainerId, SESSION_INTENT_ACTION, input.idempotencyKey);
+      const prior = await tx.auditLog.findFirst({
+        where: { actorUserId: input.trainerId, category: "CALENDAR", action: `${SESSION_INTENT_ACTION}:${input.idempotencyKey}` },
+        select: { description: true },
+      });
+      if (prior) return prior.description === fingerprint ? "REPLAY" as const : "CONFLICT" as const;
+
+      const session = await trainingSessionRepository.create(tx, {
+        batchId: batches[0].id,
+        trainerId: input.trainerId,
+        title: input.title,
+        sessionType: input.sessionType,
+        sessionDate,
+        startTime: input.startTime,
+        location: input.location || null,
+      });
+      await auditLogRepository.create(tx, {
+        category: "CALENDAR",
+        action: `${SESSION_INTENT_ACTION}:${input.idempotencyKey}`,
+        description: fingerprint,
+        referenceId: session.id,
+        actorUserId: input.trainerId,
+      });
+      return "APPLIED" as const;
+    });
+    if (result === "NOT_OWNED") return { ok: false, error: "Selected batch is not assigned to you." };
+    if (result === "CONFLICT") return { ok: false, error: "Unable to publish session." };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Unable to publish session." };
+  }
+}
+
+function moduleAssetMatches(fileType: ModuleFileType, asset: { resourceType: MediaResourceType; format: string | null }): boolean {
+  const format = asset.format?.toLowerCase();
+  switch (fileType) {
+    case "PDF": return asset.resourceType === "RAW" && format === "pdf";
+    case "DOCX": return asset.resourceType === "RAW" && format === "docx";
+    case "MP4": return asset.resourceType === "VIDEO" && format === "mp4";
+    default: {
+      const _exhaustive: never = fileType;
+      return _exhaustive;
+    }
+  }
+}
+
+export async function publishModule(input: {
+  trainerId: string; trainerRole: UserRole; batchId: string; mediaAssetId: string;
+  title: string; fileType: ModuleFileType; unitNumber: number; idempotencyKey: string;
+}): Promise<Result> {
+  if (!(await verifiedTrainer(input.trainerId, input.trainerRole))) return { ok: false, error: "Not authorized." };
+  const fingerprint = intentFingerprint([
+    input.batchId, input.mediaAssetId, input.title, input.fileType, input.unitNumber,
+  ]);
+
+  try {
+    const result = await db.$transaction(async (tx) => {
+      // As with sessions, lock the current batch row before any replay check:
+      // a former trainer cannot publish or replay after ownership changes.
+      const batches = await moduleRepository.findAndLockBatchByIdAndTrainerId(tx, input.batchId, input.trainerId);
+      if (batches.length !== 1) return "NOT_OWNED" as const;
+
+      await lockIntent(tx, input.trainerId, MODULE_INTENT_ACTION, input.idempotencyKey);
+      const prior = await tx.auditLog.findFirst({
+        where: { actorUserId: input.trainerId, category: "MODULE", action: `${MODULE_INTENT_ACTION}:${input.idempotencyKey}` },
+        select: { description: true },
+      });
+      if (prior) return prior.description === fingerprint ? "REPLAY" as const : "CONFLICT" as const;
+
+      // Only a provider-authenticated ACTIVE module upload can be attached.
+      // This deliberately does not call the browser confirmation endpoint:
+      // that endpoint is optimistic and never authoritative.
+      const asset = await tx.mediaAsset.findFirst({
+        where: {
+          id: input.mediaAssetId,
+          uploadedByUserId: input.trainerId,
+          folder: "hardtech/modules",
+          purgeState: "ACTIVE",
+          moduleId: null,
+        },
+        select: { id: true, resourceType: true, format: true, url: true, bytes: true },
+      });
+      if (!asset || !asset.url) return "NOT_READY" as const;
+      if (!moduleAssetMatches(input.fileType, asset)) return "WRONG_TYPE" as const;
+
+      // The module and its MediaAsset ownership link commit atomically. A
+      // failed conditional attach rolls the newly created row back, so no
+      // dangling material can ever become visible.
+      const publishedModule = await moduleRepository.create(tx, {
+        programId: batches[0].programId,
+        trainerId: input.trainerId,
+        title: input.title,
+        fileType: input.fileType,
+        unitNumber: input.unitNumber,
+        fileUrl: asset.url,
+        fileSizeBytes: asset.bytes,
+      });
+      const attached = await tx.mediaAsset.updateMany({
+        where: { id: asset.id, purgeState: "ACTIVE", moduleId: null },
+        data: { moduleId: publishedModule.id },
+      });
+      if (attached.count !== 1) throw new ModulePublishConflictError();
+
+      await auditLogRepository.create(tx, {
+        category: "MODULE",
+        action: `${MODULE_INTENT_ACTION}:${input.idempotencyKey}`,
+        description: fingerprint,
+        referenceId: publishedModule.id,
+        actorUserId: input.trainerId,
+      });
+      return "APPLIED" as const;
+    });
+    if (result === "NOT_OWNED") return { ok: false, error: "Selected batch is not assigned to you." };
+    if (result === "NOT_READY") return { ok: false, error: "The uploaded file is still being verified. Try publishing again shortly." };
+    if (result === "WRONG_TYPE") return { ok: false, error: "The uploaded file does not match the selected module type." };
+    if (result === "CONFLICT") return { ok: false, error: "Unable to publish module." };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Unable to publish module." };
+  }
+}
+
+class ModulePublishConflictError extends Error {}
 
 export async function createAssignment(input: {
   trainerId: string; trainerRole: UserRole; batchId: string; title: string; instructions: string;

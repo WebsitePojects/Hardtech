@@ -15,11 +15,24 @@ export const messagingRepository = {
   },
   findByIdForUser(conversationId: string, userId: string) { return db.conversation.findFirst({ where: { id: conversationId, participants: { some: { userId } } }, include }); },
   findDirect(directKey: string) { return db.conversation.findUnique({ where: { directKey }, include }); },
-  createDirect(directKey: string, userId: string, otherUserId: string) { return db.conversation.create({ data: { directKey, participants: { create: [{ userId }, { userId: otherUserId }] } }, include }); },
+  createDirect(directKey: string, userId: string, otherUserId: string) {
+    return db.$transaction(async (tx) => {
+      const activeUsers = await tx.user.count({
+        where: { id: { in: [userId, otherUserId] }, status: "ACTIVE" },
+      });
+      if (activeUsers !== 2) throw new Error("NOT_AUTHORIZED");
+      return tx.conversation.create({
+        data: { directKey, participants: { create: [{ userId }, { userId: otherUserId }] } },
+        include,
+      });
+    });
+  },
   listMessages(conversationId: string, userId: string) { return db.message.findMany({ where: { conversationId, conversation: { participants: { some: { userId } } } }, include: { attachments: true }, orderBy: { createdAt: "asc" } }); },
   findMessageByIdempotencyKey(idempotencyKey: string, senderId: string) { return db.message.findFirst({ where: { idempotencyKey, senderId }, include: { attachments: true } }); },
   createMessage(input: { conversationId: string; senderId: string; body: string; idempotencyKey: string; attachmentIds: string[] }) {
     return db.$transaction(async (tx) => {
+      const sender = await tx.user.findFirst({ where: { id: input.senderId, status: "ACTIVE" }, select: { id: true } });
+      if (!sender) throw new Error("NOT_AUTHORIZED");
       const membership = await tx.conversationParticipant.findFirst({ where: { conversationId: input.conversationId, userId: input.senderId } });
       if (!membership) throw new Error("NOT_AUTHORIZED");
       const attachmentIds = [...new Set(input.attachmentIds)];

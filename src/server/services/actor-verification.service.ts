@@ -27,5 +27,17 @@ export async function verifiedActor(
 ): Promise<boolean> {
   if (!allowedRoles.includes(claimedRole)) return false;
   const actor = await userRepository.findById(actorId);
-  return actor?.role === claimedRole && actor.status !== "SUSPENDED";
+  return actor?.role === claimedRole && actor.status === "ACTIVE";
+}
+
+/**
+ * Resolves an actor immediately before a write when the operation has no
+ * role claim (for example, sending a message). Pending, suspended, and
+ * deleted accounts all fail closed. Callers that do accept a role claim must
+ * use `verifiedActor` above so a stale or spoofed claim cannot authorize a
+ * write.
+ */
+export async function activeActor(actorId: string) {
+  const actor = await userRepository.findById(actorId);
+  return actor?.status === "ACTIVE" ? actor : null;
 }

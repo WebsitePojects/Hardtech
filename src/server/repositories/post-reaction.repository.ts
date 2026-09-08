@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { createHash } from "node:crypto";
 import type { Prisma, ReactionType } from "@/../generated/prisma/client";
 
 /**
@@ -10,10 +11,31 @@ import type { Prisma, ReactionType } from "@/../generated/prisma/client";
  * viewer's own reaction state without an N+1.
  */
 export const postReactionRepository = {
-  toggle(
-    data: { postId: string; userId: string; type: ReactionType },
+  async toggle(
+    data: { postId: string; userId: string; type: ReactionType; idempotencyKey?: string },
     client: Prisma.TransactionClient = db,
   ) {
+    if (data.idempotencyKey) {
+      const intentId = `idem_${createHash("sha256").update(`post-reaction:${data.userId}:${data.idempotencyKey}`).digest("hex")}`;
+      return client.$queryRaw<{ inserted: number; deleted: number }[]>`
+        WITH existing AS MATERIALIZED (
+          SELECT "id" FROM "PostReaction"
+          WHERE "postId" = ${data.postId} AND "userId" = ${data.userId} AND "type" = ${data.type}::"ReactionType"
+        ), inserted AS (
+          INSERT INTO "PostReaction" ("id", "postId", "userId", "type", "createdAt")
+          SELECT ${intentId}, ${data.postId}, ${data.userId}, ${data.type}::"ReactionType", NOW()
+          WHERE NOT EXISTS (SELECT 1 FROM existing)
+          ON CONFLICT ("postId", "userId", "type") DO NOTHING
+          RETURNING "id"
+        ), deleted AS (
+          DELETE FROM "PostReaction"
+          WHERE "id" IN (SELECT "id" FROM existing) AND "id" <> ${intentId}
+          RETURNING "id"
+        )
+        SELECT (SELECT count(*)::int FROM inserted) AS inserted,
+               (SELECT count(*)::int FROM deleted) AS deleted
+      `;
+    }
     return client.$queryRaw<{ inserted: number; deleted: number }[]>`
       WITH existing AS MATERIALIZED (
         SELECT "id" FROM "PostReaction"

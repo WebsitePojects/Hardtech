@@ -64,9 +64,17 @@ export function MaterialsSection({ materials }: MaterialsSectionProps) {
                       Unit {material.unitNumber} · {formatFileSize(material.fileSizeBytes)}
                     </p>
                   </div>
-                  <Button type="button" variant="outline" className="w-full" disabled>
-                    <Download className="size-4" aria-hidden /> Download
-                  </Button>
+                  {material.delivery.state === "READY" ? (
+                    <Button asChild type="button" variant="outline" className="w-full">
+                      <a href={material.delivery.url} target="_blank" rel="noreferrer">
+                        <Download className="size-4" aria-hidden /> Download
+                      </a>
+                    </Button>
+                  ) : material.delivery.state === "PROCESSING" ? (
+                    <p className="text-sm text-muted-foreground">This material is being verified and will be available shortly.</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">This material is currently unavailable.</p>
+                  )}
                 </CardContent>
               </Card>
             );

@@ -1,5 +1,6 @@
 import { Footer } from "@/components/layout/footer";
 import { Navbar } from "@/components/layout/navbar";
+import { OrganizationJsonLd } from "./organization-json-ld";
 
 /**
  * Shared chrome for every route in the (marketing) group. Route builders
@@ -13,6 +14,7 @@ export default function MarketingLayout({
 }) {
   return (
     <>
+      <OrganizationJsonLd />
       <Navbar />
       <main className="flex-1">{children}</main>
       <Footer />

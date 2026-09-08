@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef } from "react";
 import { CheckCircle2, Lightbulb, ThumbsUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -47,9 +47,23 @@ export function ReactionButton({
   postId: string;
   reactionType: ReactionType;
 }) {
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const inFlightIdempotencyKey = useRef<string | null>(null);
   const { isPending, run } = useGuardedMutation(voteOnPost, "We could not update your reaction.");
   const icon = renderReactionIcon(reactionType, isPending);
+
+  const handleClick = async () => {
+    if (isPending || inFlightIdempotencyKey.current) return;
+
+    const idempotencyKey = crypto.randomUUID();
+    inFlightIdempotencyKey.current = idempotencyKey;
+    try {
+      await run({ idempotencyKey, postId, reactionType });
+    } finally {
+      if (inFlightIdempotencyKey.current === idempotencyKey) {
+        inFlightIdempotencyKey.current = null;
+      }
+    }
+  };
 
   if (!icon) {
     return null;
@@ -61,13 +75,7 @@ export function ReactionButton({
       disabled={isPending}
       aria-label={label}
       aria-busy={isPending}
-      onClick={() =>
-        void run({
-          idempotencyKey,
-          postId,
-          reactionType,
-        })
-      }
+      onClick={() => void handleClick()}
       className={cn(
         "inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-glass-hover hover:text-foreground disabled:opacity-60",
       )}

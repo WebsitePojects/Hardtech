@@ -4,8 +4,8 @@ import { postBookmarkRepository } from "@/server/repositories/post-bookmark.repo
 import { postReactionRepository } from "@/server/repositories/post-reaction.repository";
 import { postReportRepository } from "@/server/repositories/post-report.repository";
 import { replyRepository } from "@/server/repositories/reply.repository";
-import { userRepository } from "@/server/repositories/user.repository";
-import { verifiedActor } from "@/server/services/actor-verification.service";
+import { activeActor, verifiedActor } from "@/server/services/actor-verification.service";
+import { checkRateLimit } from "@/server/auth/rate-limit";
 import { Prisma, type ReactionType, type ReportReason, type UserRole } from "@/../generated/prisma/client";
 import type {
   CreateForumPostInput,
@@ -53,9 +53,22 @@ function isUniqueViolation(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
+async function consumeWriteBudget(actorId: string, operation: string): Promise<boolean> {
+  try {
+    // The limiter hashes this server-composed value before persistence. The
+    // user id never reaches the database or logs in clear text.
+    return (await checkRateLimit(`enroll:forum-${operation}:${actorId}`)).allowed;
+  } catch {
+    return false;
+  }
+}
+
 export async function createForumPost(input: CreateForumPostInput, authorId: string): Promise<WriteResult> {
-  const author = await userRepository.findById(authorId);
+  const author = await activeActor(authorId);
   if (!author) return { ok: false, error: "You must be signed in to post." };
+  if (!(await consumeWriteBudget(authorId, "post"))) {
+    return { ok: false, error: "Please wait before posting again." };
+  }
 
   let status: "PENDING_APPROVAL" | "PUBLISHED";
   switch (author.role) {
@@ -95,8 +108,18 @@ export async function createForumPost(input: CreateForumPostInput, authorId: str
 }
 
 export async function createForumReply(input: CreateForumReplyInput, authorId: string): Promise<WriteResult> {
+  if (!(await activeActor(authorId))) return { ok: false, error: "You must be signed in to reply." };
+  const replay = await replyRepository.findByIdempotencyKey(input.idempotencyKey);
+  if (replay?.postId === input.postId && replay.authorId === authorId) return { ok: true };
+  if (!(await consumeWriteBudget(authorId, "reply"))) {
+    return { ok: false, error: "Please wait before replying again." };
+  }
   const post = await forumPostRepository.findById(input.postId);
   if (!post || post.status !== "PUBLISHED") return { ok: false, error: "That post is not available." };
+  if (input.parentReplyId) {
+    const parent = await replyRepository.findById(input.parentReplyId);
+    if (!parent || parent.postId !== post.id) return { ok: false, error: "That reply is not available." };
+  }
 
   try {
     await forumPostRepository.transaction(async (client) => {
@@ -137,13 +160,18 @@ export async function togglePostReaction(
   postId: string,
   userId: string,
   type: ReactionType,
+  idempotencyKey?: string,
 ): Promise<ToggleResult> {
+  if (!(await activeActor(userId))) return { ok: false, error: "You must be signed in to react." };
+  if (!(await consumeWriteBudget(userId, "post-reaction"))) {
+    return { ok: false, error: "Please wait before reacting again." };
+  }
   const post = await forumPostRepository.findById(postId);
   if (!post || post.status !== "PUBLISHED") return { ok: false, error: "That post is not available." };
   const counter = counterForReaction(type);
   try {
     await forumPostRepository.transaction(async (client) => {
-      const [result] = await postReactionRepository.toggle({ postId, userId, type }, client);
+      const [result] = await postReactionRepository.toggle({ postId, userId, type, idempotencyKey }, client);
       if (result?.inserted === 1) {
         await forumPostRepository.incrementCounter(postId, counter, 1, client);
       } else if (result?.deleted === 1) {
@@ -160,13 +188,18 @@ export async function toggleReplyReaction(
   replyId: string,
   userId: string,
   type: ReactionType,
+  idempotencyKey?: string,
 ): Promise<ToggleResult> {
+  if (!(await activeActor(userId))) return { ok: false, error: "You must be signed in to react." };
+  if (!(await consumeWriteBudget(userId, "reply-reaction"))) {
+    return { ok: false, error: "Please wait before reacting again." };
+  }
   const reply = await replyRepository.findById(replyId);
   if (!reply) return { ok: false, error: "That reply is not available." };
   const counter = counterForReaction(type);
   try {
     await forumPostRepository.transaction(async (client) => {
-      const [result] = await replyRepository.toggleReaction({ replyId, userId, type }, client);
+      const [result] = await replyRepository.toggleReaction({ replyId, userId, type, idempotencyKey }, client);
       if (result?.inserted === 1) {
         await replyRepository.incrementCounter(replyId, counter, 1, client);
       } else if (result?.deleted === 1) {
@@ -179,12 +212,16 @@ export async function toggleReplyReaction(
   }
 }
 
-export async function togglePostBookmark(postId: string, userId: string): Promise<ToggleResult> {
+export async function togglePostBookmark(postId: string, userId: string, idempotencyKey?: string): Promise<ToggleResult> {
+  if (!(await activeActor(userId))) return { ok: false, error: "You must be signed in to bookmark posts." };
+  if (!(await consumeWriteBudget(userId, "bookmark"))) {
+    return { ok: false, error: "Please wait before bookmarking again." };
+  }
   const post = await forumPostRepository.findById(postId);
   if (!post || post.status !== "PUBLISHED") return { ok: false, error: "That post is not available." };
   try {
     await forumPostRepository.transaction(async (client) => {
-      const [result] = await postBookmarkRepository.toggle({ postId, userId }, client);
+      const [result] = await postBookmarkRepository.toggle({ postId, userId, idempotencyKey }, client);
       if (result?.inserted === 1) {
         await forumPostRepository.incrementCounter(postId, "bookmarkCount", 1, client);
       } else if (result?.deleted === 1) {
@@ -203,6 +240,10 @@ export async function reportForumPost(
   reason: ReportReason,
   note?: string,
 ): Promise<WriteResult> {
+  if (!(await activeActor(reporterId))) return { ok: false, error: "You must be signed in to report posts." };
+  if (!(await consumeWriteBudget(reporterId, "report"))) {
+    return { ok: false, error: "Please wait before reporting again." };
+  }
   const post = await forumPostRepository.findById(postId);
   if (!post || post.status !== "PUBLISHED") return { ok: false, error: "That post is not available." };
   try {
@@ -225,6 +266,9 @@ export async function approveForumPost(input: {
 }): Promise<WriteResult> {
   if (!(await verifiedModerator(input.moderatorId, input.moderatorRole))) {
     return { ok: false, error: "You are not allowed to moderate forum posts." };
+  }
+  if (!(await consumeWriteBudget(input.moderatorId, "moderate"))) {
+    return { ok: false, error: "Please wait before moderating another post." };
   }
   const post = await forumPostRepository.findById(input.postId);
   if (!post || post.status !== "PENDING_APPROVAL") return { ok: false, error: "That post is no longer pending." };
@@ -259,6 +303,9 @@ export async function rejectForumPost(input: {
 }): Promise<WriteResult> {
   if (!(await verifiedModerator(input.moderatorId, input.moderatorRole))) {
     return { ok: false, error: "You are not allowed to moderate forum posts." };
+  }
+  if (!(await consumeWriteBudget(input.moderatorId, "moderate"))) {
+    return { ok: false, error: "Please wait before moderating another post." };
   }
   try {
     const changed = await forumPostRepository.transaction(async (client) => {

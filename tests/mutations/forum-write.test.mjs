@@ -1,5 +1,6 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test } from "node:test";
 import pg from "pg";
 
@@ -14,6 +15,10 @@ const {
 const { listPosts } = await import("../../src/server/services/forum.service.ts");
 
 const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
+
+function rateBucket(operation, userId) {
+  return createHash("sha256").update(`enroll:forum-${operation}:${userId}`).digest("hex");
+}
 
 async function fixture() {
   const client = new pg.Client({ connectionString });
@@ -140,27 +145,27 @@ test("forum writes are duplicate-safe and trainee posts stay private until appro
     assert.equal((await client.query('SELECT "replyCount" FROM "ForumPost" WHERE id = $1', [publishedPostId])).rows[0].replyCount, publishedPostReplyCount + 2);
     assert.equal((await client.query('SELECT count(*)::int AS count FROM "Notification" WHERE "userId" = $1 AND title = $2 AND "linkUrl" = $3', replyNotificationWhere)).rows[0].count, startingReplyNotificationCount + 2);
 
-    const reactionOne = await togglePostReaction(publishedPostId, traineeId, "UPVOTE");
-    const reactionTwo = await togglePostReaction(publishedPostId, traineeId, "UPVOTE");
+    const reactionOne = await togglePostReaction(publishedPostId, traineeId, "UPVOTE", `reaction-one-${suffix}`);
+    const reactionTwo = await togglePostReaction(publishedPostId, traineeId, "UPVOTE", `reaction-two-${suffix}`);
     assert.equal(reactionOne.ok, true);
     assert.equal(reactionTwo.ok, true);
     const reactionCount = await client.query('SELECT count(*)::int AS count FROM "PostReaction" WHERE "postId" = $1 AND "userId" = $2 AND type = $3', [publishedPostId, traineeId, "UPVOTE"]);
     assert.equal(reactionCount.rows[0].count, 0);
 
     await Promise.all([
-      togglePostReaction(publishedPostId, traineeId, "HELPFUL"),
-      togglePostReaction(publishedPostId, traineeId, "HELPFUL"),
+      togglePostReaction(publishedPostId, traineeId, "HELPFUL", `reaction-concurrent-${suffix}`),
+      togglePostReaction(publishedPostId, traineeId, "HELPFUL", `reaction-concurrent-${suffix}`),
     ]);
     const concurrentReactionCount = await client.query('SELECT count(*)::int AS count FROM "PostReaction" WHERE "postId" = $1 AND "userId" = $2 AND type = $3', [publishedPostId, traineeId, "HELPFUL"]);
     assert.equal(concurrentReactionCount.rows[0].count, 1);
 
-    await togglePostBookmark(publishedPostId, traineeId);
-    await togglePostBookmark(publishedPostId, traineeId);
+    await togglePostBookmark(publishedPostId, traineeId, `bookmark-one-${suffix}`);
+    await togglePostBookmark(publishedPostId, traineeId, `bookmark-two-${suffix}`);
     const bookmarkCount = await client.query('SELECT count(*)::int AS count FROM "PostBookmark" WHERE "postId" = $1 AND "userId" = $2', [publishedPostId, traineeId]);
     assert.equal(bookmarkCount.rows[0].count, 0);
     await Promise.all([
-      togglePostBookmark(publishedPostId, traineeId),
-      togglePostBookmark(publishedPostId, traineeId),
+      togglePostBookmark(publishedPostId, traineeId, `bookmark-concurrent-${suffix}`),
+      togglePostBookmark(publishedPostId, traineeId, `bookmark-concurrent-${suffix}`),
     ]);
     const concurrentBookmarkCount = await client.query('SELECT count(*)::int AS count FROM "PostBookmark" WHERE "postId" = $1 AND "userId" = $2', [publishedPostId, traineeId]);
     assert.equal(concurrentBookmarkCount.rows[0].count, 1);
@@ -209,6 +214,18 @@ test("forum writes are duplicate-safe and trainee posts stay private until appro
         publishedPostId,
       ],
     );
+    const rateBuckets = [
+      "post",
+      "reply",
+      "post-reaction",
+      "bookmark",
+      "report",
+    ].flatMap((operation) => [
+      rateBucket(operation, traineeId),
+      rateBucket(operation, replyAuthorId),
+    ]);
+    rateBuckets.push(rateBucket("moderate", adminId));
+    await client.query('DELETE FROM "RateLimitWindow" WHERE "bucketKey" = ANY($1::text[])', [rateBuckets]);
     await client.end();
   }
 });

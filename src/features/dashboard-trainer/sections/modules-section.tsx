@@ -1,11 +1,12 @@
-import { FileText, Upload } from "lucide-react";
+import { FileText } from "lucide-react";
 
 import type { TrainerModuleItem } from "@/server/services/dashboard.service";
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDisplayDate, formatFileSize } from "../format";
+import type { TrainerBatchOption } from "@/server/services/dashboard.service";
+import { ModulePublishForm } from "../module-publish-form";
 
 const MODULE_FILE_TYPE_LABEL: Record<TrainerModuleItem["fileType"], string> = {
   PDF: "PDF",
@@ -13,7 +14,7 @@ const MODULE_FILE_TYPE_LABEL: Record<TrainerModuleItem["fileType"], string> = {
   DOCX: "DOCX",
 };
 
-export function ModulesSection({ modules }: { modules: TrainerModuleItem[] }) {
+export function ModulesSection({ modules, batches }: { modules: TrainerModuleItem[]; batches: TrainerBatchOption[] }) {
   return (
     <div className="space-y-6">
       <DashboardPageHeader title="Modules" />
@@ -22,27 +23,7 @@ export function ModulesSection({ modules }: { modules: TrainerModuleItem[] }) {
         <CardHeader>
           <CardTitle>Upload New Module</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <input
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground placeholder:text-muted-foreground"
-            placeholder="Title..."
-          />
-          <div className="grid grid-cols-2 gap-3">
-            <select className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground">
-              <option>PDF</option>
-              <option>MP4</option>
-              <option>DOCX</option>
-            </select>
-            <input
-              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground"
-              defaultValue="1"
-            />
-          </div>
-          <Button type="button" variant="outline" disabled>
-            <Upload className="size-4" aria-hidden /> Upload
-          </Button>
-          <p className="text-xs text-muted-foreground">TODO(orchestrator): no module upload mutation was requested for this wave.</p>
-        </CardContent>
+        <CardContent><ModulePublishForm batches={batches} /></CardContent>
       </Card>
 
       {modules.length === 0 ? (

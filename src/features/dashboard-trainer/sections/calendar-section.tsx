@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 
 import { DashboardPageHeader } from "@/components/dashboard/dashboard-page-header";
@@ -9,6 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { SessionTypeBadge } from "../session-type-badge";
 import type { SessionType } from "@/../generated/prisma/enums";
+import type { TrainerBatchOption } from "@/server/services/dashboard.service";
+import { createTrainingSessionAction } from "@/app/(dashboard)/dashboard/trainer/actions";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -42,14 +46,24 @@ function buildCalendarDays(monthDate: Date): Date[] {
 }
 
 function dateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-export function CalendarSection({ sessions }: { sessions: TrainerCalendarSessionView[] }) {
+export function CalendarSection({ sessions, batches }: { sessions: TrainerCalendarSessionView[]; batches: TrainerBatchOption[] }) {
+  const router = useRouter();
   const today = useMemo(() => phToday(), []);
   const [visibleMonth, setVisibleMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDay, setSelectedDay] = useState(today);
   const [draftDate, setDraftDate] = useState<string | null>(null);
+  const intentKeyRef = useRef<string | null>(null);
+  const pendingRef = useRef(false);
+  const [title, setTitle] = useState("");
+  const [startTime, setStartTime] = useState("08:00");
+  const [sessionType, setSessionType] = useState<SessionType>("LECTURE");
+  const [location, setLocation] = useState("");
+  const [batchId, setBatchId] = useState("");
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   const days = useMemo(() => buildCalendarDays(visibleMonth), [visibleMonth]);
   const selectedKey = dateKey(selectedDay);
@@ -62,6 +76,51 @@ export function CalendarSection({ sessions }: { sessions: TrainerCalendarSession
   function goToToday() {
     setVisibleMonth(new Date(today.getFullYear(), today.getMonth(), 1));
     setSelectedDay(today);
+  }
+
+  function openDraft(date: string) {
+    if (pendingRef.current) return;
+    setDraftDate(date);
+    setTitle("");
+    setStartTime("08:00");
+    setSessionType("LECTURE");
+    setLocation("");
+    setBatchId((current) => current || batches[0]?.id || "");
+    setPublishError(null);
+    intentKeyRef.current = crypto.randomUUID();
+  }
+
+  async function publishSession() {
+    if (pendingRef.current || !draftDate || !intentKeyRef.current) return;
+    if (!batchId) {
+      setPublishError("Choose one of your batches before publishing.");
+      return;
+    }
+    pendingRef.current = true;
+    setIsPublishing(true);
+    setPublishError(null);
+    try {
+      const result = await createTrainingSessionAction({
+        idempotencyKey: intentKeyRef.current,
+        batchId,
+        title,
+        sessionType,
+        sessionDate: draftDate,
+        startTime,
+        location,
+      });
+      if (!result.ok) throw new Error(result.error);
+      toast.success("Session published.");
+      setDraftDate(null);
+      router.refresh();
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Unable to publish session.";
+      setPublishError(message);
+      toast.error(message);
+    } finally {
+      pendingRef.current = false;
+      setIsPublishing(false);
+    }
   }
 
   return (
@@ -121,7 +180,7 @@ export function CalendarSection({ sessions }: { sessions: TrainerCalendarSession
                   type="button"
                   onClick={() => {
                     setSelectedDay(day);
-                    setDraftDate(key);
+                    openDraft(key);
                   }}
                   aria-pressed={isSelected}
                   className={cn(
@@ -161,28 +220,41 @@ export function CalendarSection({ sessions }: { sessions: TrainerCalendarSession
             <input
               className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground placeholder:text-muted-foreground"
               placeholder="Session title..."
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              disabled={isPublishing}
             />
             <div className="grid grid-cols-2 gap-3">
               <input
+                type="time"
                 className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground"
-                defaultValue="08:00 AM"
+                value={startTime}
+                onChange={(event) => setStartTime(event.target.value)}
+                disabled={isPublishing}
               />
-              <select className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground">
-                <option>Lecture</option>
-                <option>Hands-on</option>
-                <option>Workshop</option>
-                <option>Assessment</option>
+              <select className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground" value={sessionType} onChange={(event) => setSessionType(event.target.value as SessionType)} disabled={isPublishing}>
+                <option value="LECTURE">Lecture</option>
+                <option value="HANDS_ON">Hands-on</option>
+                <option value="WORKSHOP">Workshop</option>
+                <option value="ASSESSMENT">Assessment</option>
               </select>
             </div>
+            <select className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground" value={batchId} onChange={(event) => setBatchId(event.target.value)} disabled={isPublishing}>
+              <option value="">Choose batch</option>
+              {batches.map((batch) => <option key={batch.id} value={batch.id}>{batch.programName} · Batch {batch.label}</option>)}
+            </select>
             <input
               className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground"
-              defaultValue="Lab A"
+              placeholder="Location (optional)"
+              value={location}
+              onChange={(event) => setLocation(event.target.value)}
+              disabled={isPublishing}
             />
-            <p className="text-sm text-muted-foreground">Visible to enrolled trainees once published.</p>
-            <Button type="button" className="w-full" disabled>
-              Publish Session
+            <p className="text-sm text-muted-foreground">Times and dates are Philippine Standard Time. Published sessions are visible to active trainees in the selected batch.</p>
+            {publishError ? <p className="text-sm text-destructive">{publishError}</p> : null}
+            <Button type="button" className="w-full" disabled={isPublishing || !title.trim() || !batchId} onClick={() => void publishSession()}>
+              {isPublishing ? "Publishing..." : "Publish Session"}
             </Button>
-            <p className="text-xs text-muted-foreground">TODO(orchestrator): no calendar mutation stub was requested for this wave.</p>
           </CardContent>
         </Card>
       ) : null}

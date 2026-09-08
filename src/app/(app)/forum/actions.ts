@@ -50,7 +50,7 @@ export async function togglePostReactionAction(rawInput: unknown): Promise<Actio
   if (!parsed.success) return { ok: false, error: "That reaction is not valid." };
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in to react." };
-  const result = await togglePostReaction(parsed.data.postId, session.userId, parsed.data.reactionType);
+  const result = await togglePostReaction(parsed.data.postId, session.userId, parsed.data.reactionType, parsed.data.idempotencyKey);
   if (result.ok) updateTag("forum");
   return result;
 }
@@ -60,7 +60,7 @@ export async function toggleReplyReactionAction(rawInput: unknown): Promise<Acti
   if (!parsed.success) return { ok: false, error: "That reaction is not valid." };
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in to react." };
-  const result = await toggleReplyReaction(parsed.data.replyId, session.userId, parsed.data.reactionType);
+  const result = await toggleReplyReaction(parsed.data.replyId, session.userId, parsed.data.reactionType, parsed.data.idempotencyKey);
   if (result.ok) updateTag("forum");
   return result;
 }
@@ -70,7 +70,7 @@ export async function toggleBookmarkAction(rawInput: unknown): Promise<ActionRes
   if (!parsed.success) return { ok: false, error: "That post is not valid." };
   const session = await getSession();
   if (!session) return { ok: false, error: "Please sign in to bookmark posts." };
-  const result = await togglePostBookmark(parsed.data.postId, session.userId);
+  const result = await togglePostBookmark(parsed.data.postId, session.userId, parsed.data.idempotencyKey);
   if (result.ok) updateTag("forum");
   return result;
 }

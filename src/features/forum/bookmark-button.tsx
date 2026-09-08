@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef } from "react";
 import { Bookmark } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -23,8 +23,22 @@ export function BookmarkButton({
   postId: string;
   isBookmarked: boolean;
 }) {
-  const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const inFlightIdempotencyKey = useRef<string | null>(null);
   const { isPending, run } = useGuardedMutation(toggleBookmark, "We could not update your bookmark.");
+
+  const handleClick = async () => {
+    if (isPending || inFlightIdempotencyKey.current) return;
+
+    const idempotencyKey = crypto.randomUUID();
+    inFlightIdempotencyKey.current = idempotencyKey;
+    try {
+      await run({ idempotencyKey, postId });
+    } finally {
+      if (inFlightIdempotencyKey.current === idempotencyKey) {
+        inFlightIdempotencyKey.current = null;
+      }
+    }
+  };
 
   return (
     <button
@@ -33,7 +47,7 @@ export function BookmarkButton({
       aria-pressed={isBookmarked}
       aria-busy={isPending}
       aria-label={isBookmarked ? "Remove bookmark" : "Bookmark this post"}
-      onClick={() => void run({ idempotencyKey, postId })}
+      onClick={() => void handleClick()}
       className="inline-flex items-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-glass-hover hover:text-foreground disabled:opacity-60"
     >
       <Bookmark

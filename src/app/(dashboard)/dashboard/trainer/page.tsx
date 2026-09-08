@@ -48,10 +48,10 @@ export default async function TrainerDashboardPage() {
   return (
     <>
       <DashboardSection section="overview"><OverviewSection displayName={displayName} overview={overview} /></DashboardSection>
-      <DashboardSection section="calendar"><CalendarSection sessions={toCalendarView(sessions)} /></DashboardSection>
+      <DashboardSection section="calendar"><CalendarSection sessions={toCalendarView(sessions)} batches={batches} /></DashboardSection>
       <DashboardSection section="my-trainees"><MyTraineesSection trainees={trainees} /></DashboardSection>
       <DashboardSection section="assignments"><AssignmentsSection assignments={assignments} batches={batches} /></DashboardSection>
-      <DashboardSection section="modules"><ModulesSection modules={modules} /></DashboardSection>
+      <DashboardSection section="modules"><ModulesSection modules={modules} batches={batches} /></DashboardSection>
     </>
   );
 }

@@ -12,7 +12,7 @@ export type TraineeAssignmentListItem = {
     delivery:
       | { state: "READY"; url: string; type: SubmissionType }
       | { state: "PROCESSING"; type: SubmissionType }
-      | { state: "LEGACY"; url: string };
+      | { state: "LEGACY"; url: string | null };
   } | null;
 };
 
