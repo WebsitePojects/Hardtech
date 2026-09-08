@@ -521,7 +521,13 @@ export default function FloatingLines({
     parallax,
     parallaxStrength,
     backgroundColor,
-    lightMode
+    lightMode,
+    topLineCount,
+    middleLineCount,
+    bottomLineCount,
+    topLineDistance,
+    middleLineDistance,
+    bottomLineDistance
   ]);
 
   return (
