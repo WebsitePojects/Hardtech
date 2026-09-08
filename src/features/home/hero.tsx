@@ -148,7 +148,7 @@ export async function HomeHero() {
             className="hero-fade-slide max-w-2xl text-lg leading-relaxed text-muted-foreground lg:text-xl"
             style={{ "--reveal-delay": "0.6s" } as React.CSSProperties}
           >
-            Get professionally trained in Computer Hardware Servicing and Cellphone Repair through immersive hands-on learning.
+            Choose your program, then train hands-on in Computer Hardware Servicing or Cellphone Repair with instructor-led support.
           </p>
         </div>
         <div
