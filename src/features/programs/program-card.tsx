@@ -55,17 +55,6 @@ export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProp
   const accent = resolveAccent(program.accentColor);
   const priceCentavos = decimalToCentavos(program.priceAmount);
 
-  // mobile-01 screenshot 33 shows the Computer Hardware Servicing price
-  // struck through with no accompanying "sale" price anywhere in the corpus;
-  // desktop-01 screenshots 14-15 show the same program's price plain. The
-  // Program model has one price field, not an original/sale pair, so there
-  // is no data-driven way to know which programs are "on promo." Reproduced
-  // as a responsive-only detail (struck on mobile widths, plain from `md`
-  // up) so both source screenshots stay true rather than guessing a rule.
-  // Flagged per the ROUTES-B brief; see docs/screens/mobile-01.md open
-  // question 5.
-  const showMobileStrikethrough = program.name === "Computer Hardware Servicing";
-
   const photo = (
     <div className="relative aspect-4/3 w-full overflow-hidden rounded-2xl lg:aspect-auto lg:h-full">
       {imagery.kind === "photo" ? (
@@ -105,7 +94,7 @@ export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProp
       </div>
 
       <div className="space-y-1.5">
-        <h3 className="font-heading text-xl font-semibold leading-tight text-balance text-foreground min-[390px]:text-2xl">
+        <h3 id={`program-${program.slug}`} className="font-heading text-2xl font-semibold text-foreground" tabIndex={-1}>
           {program.name}
         </h3>
         {program.subtitle ? (
@@ -125,12 +114,19 @@ export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProp
           icon={DollarSign}
           label="Investment"
           value={formatCentavos(priceCentavos)}
-          valueClassName={cn(
-            accent.text,
-            showMobileStrikethrough && "line-through decoration-2 md:no-underline",
-          )}
+          valueClassName={accent.text}
         />
       </div>
+
+      <Badge
+        variant="outline"
+        className={cn(
+          "w-fit",
+          program.enrollmentOpen ? "border-primary/40 text-primary" : "border-glass-border text-muted-foreground",
+        )}
+      >
+        {program.enrollmentOpen ? "Enrollment open" : "Enrollment currently closed"}
+      </Badge>
 
       {program.curriculumTopics.length > 0 ? (
         <div className="space-y-2">
@@ -163,21 +159,28 @@ export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProp
       ) : null}
 
       <div className="flex flex-col gap-2 pt-1 sm:flex-row">
-        <Button asChild className="min-h-11 sm:flex-1">
-          <Link href="/enroll">
-            Enroll Now
-            <span aria-hidden>&rarr;</span>
+        {program.enrollmentOpen ? (
+          <Button asChild className="sm:flex-1">
+            <Link href={`/enroll?program=${encodeURIComponent(program.slug)}`} aria-label={`Enroll in ${program.name}`}>
+              Enroll now
+              <span aria-hidden>&rarr;</span>
+            </Link>
+          </Button>
+        ) : null}
+        <Button asChild variant="outline" className="sm:flex-1">
+          <Link href={`/programs/${encodeURIComponent(program.slug)}`} aria-label={`View details for ${program.name}`}>
+            View details
           </Link>
-        </Button>
-        <Button asChild variant="outline" className="min-h-11 sm:flex-1">
-          <Link href="/contact">Inquire</Link>
         </Button>
       </div>
     </div>
   );
 
   return (
-    <Card className="glass grid gap-5 overflow-hidden rounded-xl bg-surface-secondary p-5 transition-[border-color,box-shadow] motion-reduce:transition-none lg:grid-cols-2 lg:p-7 lg:hover:border-[var(--glass-border-strong)] lg:hover:shadow-glow-md">
+    <Card
+      className="glass grid gap-5 overflow-hidden rounded-xl bg-surface-secondary p-5 transition-[border-color,box-shadow] motion-reduce:transition-none lg:grid-cols-2 lg:p-7 lg:hover:border-[var(--glass-border-strong)] lg:hover:shadow-glow-md"
+      aria-labelledby={`program-${program.slug}`}
+    >
       <div className={cn(imageSide === "right" && "lg:order-2")}>{photo}</div>
       <div className={cn(imageSide === "right" && "lg:order-1")}>{content}</div>
     </Card>

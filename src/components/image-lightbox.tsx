@@ -14,6 +14,25 @@ export interface LightboxImage {
 }
 
 /**
+ * This viewer is used for user-uploaded payment receipts as well as managed
+ * gallery assets. Only permit local paths, raster data URLs kept for legacy
+ * receipts, same-origin blob URLs, and absolute web URLs. In particular,
+ * reject script URLs and SVG data payloads before they enter the DOM.
+ */
+function safeImageSource(src: string): string | null {
+  if (src.startsWith("/") && !src.startsWith("//")) return src;
+  if (/^data:image\/(?:avif|gif|jpe?g|png|webp);base64,/i.test(src)) return src;
+  if (src.startsWith("blob:")) return src;
+
+  try {
+    const url = new URL(src);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Reusable, sitewide image viewer. This is the ONE lightbox for the app —
  * the owner's explicit complaint was that viewing an enrollment payment
  * proof opened a raw `data:`/storage URL in a new browser tab
@@ -49,6 +68,7 @@ export function ImageLightbox({
   const count = images.length;
   const current = images[index] ?? images[0];
   const canNavigate = count > 1 && !!onIndexChange;
+  const imageSource = current ? safeImageSource(current.src) : null;
 
   const goPrev = useCallback(() => {
     if (!onIndexChange) return;
@@ -102,11 +122,22 @@ export function ImageLightbox({
             </button>
           ) : null}
 
-          <img
-            src={current.src}
-            alt={current.alt}
-            className="max-h-[80vh] max-w-[92vw] rounded-lg object-contain shadow-glow-lg"
-          />
+          {imageSource ? (
+            // The sources can be signed user uploads or legacy data URLs and cannot
+            // be constrained to next.config.ts remotePatterns without breaking access.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageSource}
+              alt={current.alt}
+              decoding="async"
+              referrerPolicy="no-referrer"
+              className="max-h-[80vh] max-w-[92vw] rounded-lg object-contain shadow-glow-lg"
+            />
+          ) : (
+            <p role="status" className="rounded-lg border border-glass-border bg-surface-secondary px-4 py-3 text-sm text-muted-foreground">
+              This image is unavailable.
+            </p>
+          )}
 
           {canNavigate ? (
             <button

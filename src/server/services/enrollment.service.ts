@@ -152,11 +152,14 @@ async function submitEnrollmentOnce(input: EnrollmentServiceInput): Promise<Enro
   if (alreadySubmitted) return toServiceResult(alreadySubmitted);
 
   const normalizedEmail = input.trainee.email.trim().toLowerCase();
-  const programs = await enrollmentRepository.findProgramsByIds(input.programIds);
-  if (programs.length !== input.programIds.length) throw new Error("One or more programs are unavailable.");
-
   const uniqueProgramIds = new Set(input.programIds);
   if (uniqueProgramIds.size !== input.programIds.length) throw new Error("Duplicate programs are not allowed.");
+
+  // Resolve availability before creating an applicant, storing a proof, or
+  // writing a payment. An existing/guessed database ID must never bypass the
+  // published-and-open catalog contract.
+  const programs = await enrollmentRepository.findPurchasableProgramsByIds(input.programIds);
+  if (programs.length !== input.programIds.length) throw new Error("One or more programs are unavailable.");
 
   const totalAmount = programs.reduce(
     (total, program) => total.add(program.priceAmount),

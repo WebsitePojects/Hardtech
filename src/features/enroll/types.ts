@@ -7,6 +7,8 @@ import type { PaymentMethod } from "@/../generated/prisma/enums";
 
 export interface EnrollProgram {
   id: string;
+  /** Stable public identifier used in catalogue and enrollment links. */
+  slug: string;
   name: string;
   durationLabel: string;
   scheduleLabel: string;

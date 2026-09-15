@@ -36,6 +36,11 @@ export type PublicAnnouncement = {
   postedByName: string; createdAt: Date;
 };
 
+const programSlugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const PUBLIC_PROGRAM_SITEMAP_LIMIT = 1_000;
+
+export type PublicProgramSitemapRow = Pick<Program, "slug" | "updatedAt">;
+
 export async function getPublicAnnouncement(id: string): Promise<PublicAnnouncement | null> {
   if (!/^[a-zA-Z0-9_-]{1,80}$/.test(id)) return null;
   const row = await announcementRepository.findById(id);
@@ -44,7 +49,16 @@ export async function getPublicAnnouncement(id: string): Promise<PublicAnnouncem
 }
 
 export function getPrograms(): Promise<ProgramWithCurriculum[]> {
-  return programRepository.findAll();
+  return programRepository.findPublishedCatalog();
+}
+
+/**
+ * Crawler-facing catalog projection. The service owns both the public
+ * lifecycle rule and the hard response limit so callers cannot accidentally
+ * turn sitemap generation into an unbounded full-catalog read.
+ */
+export function getPublicProgramSitemapRows(): Promise<PublicProgramSitemapRow[]> {
+  return programRepository.findPublishedSitemapRows(PUBLIC_PROGRAM_SITEMAP_LIMIT);
 }
 
 export async function getProgramByShortName(
@@ -56,7 +70,19 @@ export async function getProgramByShortName(
     // never as "fetch everything" or a thrown 500.
     return null;
   }
-  return programRepository.findByShortName(parsed.data);
+  return programRepository.findPublishedByShortName(parsed.data);
+}
+
+/**
+ * Public dynamic-route/preselection lookup. Slugs are immutable program
+ * identifiers and this helper intentionally returns only published records.
+ */
+export async function getPublishedProgramBySlug(slug: string): Promise<ProgramWithCurriculum | null> {
+  const normalized = slug.trim().toLowerCase();
+  if (normalized.length === 0 || normalized.length > 200 || !programSlugPattern.test(normalized)) {
+    return null;
+  }
+  return programRepository.findPublishedBySlug(normalized);
 }
 
 export function getTrainers(): Promise<TrainerWithUser[]> {

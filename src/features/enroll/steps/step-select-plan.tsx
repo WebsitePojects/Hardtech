@@ -10,6 +10,7 @@ import { renderProgramIcon, resolveAccent } from "@/features/programs/program-vi
 import { formatCentavos } from "@/features/programs/format-currency";
 
 import { SelectableCard } from "../selectable-card";
+import { MAX_ENROLLMENT_PROGRAMS, planSelectionSchema } from "../enroll.schema";
 import type { EnrollProgram } from "../types";
 
 interface StepSelectPlanProps {
@@ -28,9 +29,18 @@ export function StepSelectPlan({
   const [error, setError] = useState<string | null>(null);
 
   function toggle(programId: string) {
+    if (!programs.some((program) => program.id === programId)) return;
+
     const next = selectedProgramIds.includes(programId)
       ? selectedProgramIds.filter((id) => id !== programId)
       : [...selectedProgramIds, programId];
+
+    const parsed = planSelectionSchema.safeParse({ programIds: next });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Check your program selection.");
+      return;
+    }
+
     onChangeSelection(next);
     if (next.length > 0) setError(null);
   }
@@ -43,11 +53,6 @@ export function StepSelectPlan({
     onContinue();
   }
 
-  const visiblePrograms = programs.filter(
-    (program) =>
-      program.name === "Computer Hardware Servicing" ||
-      program.name === "Cellphone Hardware Servicing",
-  );
   const count = selectedProgramIds.length;
   const continueLabel =
     count === 0 ? "Continue" : count === 1 ? "Continue with 1 program" : `Continue with ${count} programs`;
@@ -62,12 +67,12 @@ export function StepSelectPlan({
           Choose Your Programs
         </h2>
         <p className="text-sm text-muted-foreground">
-          Pick one or both programs if you want to learn multiple tracks.
+          Pick the tracks you want to learn. You can include up to {MAX_ENROLLMENT_PROGRAMS} programs in one enrollment.
         </p>
       </div>
 
       <div className="space-y-3">
-        {visiblePrograms.map((program) => {
+        {programs.map((program) => {
           const accent = resolveAccent(program.accentColor);
           const selected = selectedProgramIds.includes(program.id);
 
@@ -131,7 +136,13 @@ export function StepSelectPlan({
         })}
       </div>
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {programs.length === 0 ? (
+        <p className="rounded-xl border border-glass-border bg-surface-secondary/60 p-4 text-sm text-muted-foreground" role="status">
+          No programs are accepting enrollment right now. Please check back or contact HardTech for the next intake.
+        </p>
+      ) : null}
+
+      {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
 
       <Button className="w-full" size="lg" disabled={count === 0} onClick={handleContinue}>
         {continueLabel}

@@ -153,6 +153,10 @@ const PROGRAMS = [
   {
     key: "hardware",
     name: "Computer Hardware Servicing",
+    slug: "computer-hardware-servicing",
+    catalogStatus: "PUBLISHED",
+    enrollmentOpen: true,
+    sortOrder: 10,
     shortName: "Computer Hardware",
     subtitle: "Become a Certified Hardware Technician",
     description:
@@ -180,6 +184,10 @@ const PROGRAMS = [
   {
     key: "cellphone",
     name: "Cellphone Hardware Servicing",
+    slug: "cellphone-hardware-servicing",
+    catalogStatus: "PUBLISHED",
+    enrollmentOpen: true,
+    sortOrder: 20,
     shortName: "Cellphone Repair",
     subtitle: "Master Mobile Device Repair",
     description:
@@ -989,6 +997,9 @@ async function main() {
     const record = await prisma.program.upsert({
       where: { name: program.name },
       update: {
+        catalogStatus: program.catalogStatus,
+        enrollmentOpen: program.enrollmentOpen,
+        sortOrder: program.sortOrder,
         shortName: program.shortName,
         subtitle: program.subtitle,
         description: program.description,
@@ -1006,6 +1017,10 @@ async function main() {
       },
       create: {
         name: program.name,
+        slug: program.slug,
+        catalogStatus: program.catalogStatus,
+        enrollmentOpen: program.enrollmentOpen,
+        sortOrder: program.sortOrder,
         shortName: program.shortName,
         subtitle: program.subtitle,
         description: program.description,

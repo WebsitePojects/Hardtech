@@ -95,9 +95,18 @@ export const enrollmentRepository = {
       select: { id: true, status: true, batchId: true, programId: true },
     });
   },
-  findProgramsByIds(programIds: string[]) {
+  /**
+   * Checkout authority. A known database ID is insufficient: a program must
+   * be explicitly published and have enrollment intake open to be priced or
+   * attached to a new payment.
+   */
+  findPurchasableProgramsByIds(programIds: string[]) {
     return db.program.findMany({
-      where: { id: { in: programIds } },
+      where: {
+        id: { in: programIds },
+        catalogStatus: "PUBLISHED",
+        enrollmentOpen: true,
+      },
       select: { id: true, priceAmount: true },
       take: Math.min(programIds.length, DASHBOARD_LIST_LIMIT),
     });

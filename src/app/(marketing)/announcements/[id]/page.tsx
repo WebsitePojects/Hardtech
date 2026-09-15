@@ -8,6 +8,23 @@ import { Button } from "@/components/ui/button";
 import { createSiteMetadata } from "@/lib/site-origin";
 import { getPublicAnnouncement } from "@/server/services/marketing.service";
 
+/**
+ * Announcement attachments are user-managed Cloudinary URLs. Keep the
+ * browser as the fetcher rather than making the Image Optimization service
+ * proxy an arbitrary database URL. This also means an accidentally stored
+ * script/data URL never reaches the page.
+ */
+function safeRemoteMediaUrl(value: string | null): string | null {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateMetadata(
   props: PageProps<"/announcements/[id]">,
 ): Promise<Metadata> {
@@ -30,6 +47,7 @@ export default async function AnnouncementDetailPage({ params }: { params: Promi
   const { id } = await params;
   const announcement = await getPublicAnnouncement(id);
   if (!announcement) notFound();
+  const mediaUrl = safeRemoteMediaUrl(announcement.mediaUrl);
 
   return (
     <article className="mx-auto w-full max-w-3xl px-4 py-24 sm:px-6 lg:py-32">
@@ -41,7 +59,27 @@ export default async function AnnouncementDetailPage({ params }: { params: Promi
       </div>
       <h1 className="mt-5 text-balance text-4xl font-bold leading-tight sm:text-5xl">{announcement.title}</h1>
       <p className="mt-4 text-sm text-muted-foreground">Posted by {announcement.postedByName}</p>
-      {announcement.mediaUrl ? <img src={announcement.mediaUrl} alt="" className="mt-10 max-h-[30rem] w-full rounded-2xl border border-glass-border object-cover" /> : null}
+      {mediaUrl && announcement.mediaType === "VIDEO" ? (
+        <video
+          controls
+          preload="metadata"
+          className="mt-10 max-h-[30rem] w-full rounded-2xl border border-glass-border"
+        >
+          <source src={mediaUrl} />
+          Your browser does not support embedded video.
+        </video>
+      ) : mediaUrl ? (
+        // next/image cannot safely optimize an arbitrary administrator-uploaded host.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={mediaUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          className="mt-10 max-h-[30rem] w-full rounded-2xl border border-glass-border object-cover"
+        />
+      ) : null}
       <div className="mt-10 whitespace-pre-line text-base leading-8 text-foreground/85">{announcement.body}</div>
     </article>
   );

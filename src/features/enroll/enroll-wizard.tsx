@@ -22,9 +22,11 @@ type WizardStep = 1 | 2 | 3 | 4 | 5;
 interface EnrollWizardProps {
   programs: EnrollProgram[];
   paymentMethods: EnrollPaymentMethod[];
+  /** A server-resolved, currently open program. Never a raw query value. */
+  initialProgramId?: string | null;
 }
 
-export function EnrollWizard({ programs, paymentMethods }: EnrollWizardProps) {
+export function EnrollWizard({ programs, paymentMethods, initialProgramId = null }: EnrollWizardProps) {
   // Minted once per user intent, stable across re-renders and step changes,
   // so a retried submission replays instead of creating a second enrollment.
   // Non-negotiables rule 1. Must stay a useState lazy initializer, not a
@@ -33,7 +35,11 @@ export function EnrollWizard({ programs, paymentMethods }: EnrollWizardProps) {
   const [referenceCode] = useState(() => generateReferenceCode(idempotencyKey));
 
   const [step, setStep] = useState<WizardStep>(1);
-  const [selectedProgramIds, setSelectedProgramIds] = useState<string[]>([]);
+  const [selectedProgramIds, setSelectedProgramIds] = useState<string[]>(() =>
+    initialProgramId && programs.some((program) => program.id === initialProgramId)
+      ? [initialProgramId]
+      : [],
+  );
   const [signUpValues, setSignUpValues] = useState<SignUpValues | null>(null);
   const selectedPrograms = programs.filter((program) => selectedProgramIds.includes(program.id));
   const totalCentavos = sumCentavos(selectedPrograms.map((program) => program.priceCentavos));

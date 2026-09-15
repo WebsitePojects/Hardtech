@@ -1,96 +1,160 @@
 import Link from "next/link";
+import { ArrowRight, ArrowUpRight, CalendarDays, CircleDollarSign, Clock3, Gauge } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { ProgramPhoto } from "@/features/programs/program-photo";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { ProgramWithCurriculum } from "@/server/services/marketing.service";
 import {
   renderProgramIcon,
   resolveAccent,
   resolveProgramImagery,
 } from "@/features/programs/program-visuals";
-import { cn } from "@/lib/utils";
-import type { ProgramWithCurriculum } from "@/server/services/marketing.service";
+import { ProgramPhoto } from "@/features/programs/program-photo";
+import { decimalToCentavos, formatCentavos } from "@/features/programs/format-currency";
 
-export function ProgramsSection({
-  programs,
-}: {
-  programs: ProgramWithCurriculum[];
-}) {
+function ProgramFeature({ program }: { program: ProgramWithCurriculum }) {
+  const imagery = resolveProgramImagery(program);
+  const accent = resolveAccent(program.accentColor);
+  const priceLabel = formatCentavos(decimalToCentavos(program.priceAmount));
+
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:py-20">
-      <div className="mx-auto max-w-2xl text-center">
-        <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-          WHAT WE OFFER
-        </p>
-        <h2 className="mt-3 text-3xl font-bold text-primary sm:text-4xl">
-          Core Programs
+    <article
+      id={`program-${program.slug}`}
+      aria-labelledby={`program-${program.slug}-heading`}
+      className={cn(
+        "group relative isolate min-h-[28rem] overflow-hidden rounded-2xl border border-glass-border bg-surface-secondary",
+        "transition-[border-color,box-shadow,transform] duration-300 motion-reduce:transition-none",
+        "lg:hover:-translate-y-1 lg:hover:border-[var(--glass-border-strong)] lg:hover:shadow-glow-md",
+      )}
+    >
+      {imagery.kind === "photo" ? (
+        <>
+          <div className="absolute inset-0 -z-20">
+            <ProgramPhoto src={imagery.src!} alt={`Students training in ${program.name}`} />
+          </div>
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/85 to-background/10"
+          />
+        </>
+      ) : (
+        <div
+          aria-hidden="true"
+          className={cn("absolute inset-0 -z-10 bg-gradient-to-br from-background via-background to-surface-secondary", accent.bg)}
+        />
+      )}
+
+      <div className="flex min-h-[28rem] flex-col items-start justify-end p-5 sm:p-7">
+        <div className={cn("mb-auto flex size-11 items-center justify-center rounded-xl border", accent.bg, accent.border)}>
+          {renderProgramIcon(program.iconName, cn("size-5", accent.text))}
+        </div>
+
+        <div className="max-w-xl space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge
+              variant="outline"
+              className={program.enrollmentOpen ? "border-primary/40 bg-background/85 text-primary" : "border-foreground/25 bg-background/85 text-foreground"}
+            >
+              {program.enrollmentOpen ? "Enrollment open" : "Enrollment closed"}
+            </Badge>
+            {program.marketingEnrolledLabel ? (
+              <Badge className={cn("border", accent.bg, accent.border, accent.text)}>
+                {program.marketingEnrolledLabel}
+              </Badge>
+            ) : null}
+          </div>
+          <div>
+            <h3 id={`program-${program.slug}-heading`} className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              {program.name}
+            </h3>
+            {program.subtitle ? (
+              <p className={cn("mt-1 text-sm font-medium", accent.text)}>{program.subtitle}</p>
+            ) : null}
+          </div>
+          {program.description ? (
+            <p className="max-w-lg text-sm leading-relaxed text-foreground/80 sm:text-base">
+              {program.description}
+            </p>
+          ) : null}
+          <dl className="grid grid-cols-1 gap-2 border-y border-foreground/15 py-3 text-sm sm:grid-cols-3 sm:gap-3">
+            <div>
+              <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 className={cn("size-3.5", accent.text)} aria-hidden /> Duration</dt>
+              <dd className="mt-1 font-medium text-foreground">{program.durationLabel}</dd>
+            </div>
+            <div>
+              <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarDays className={cn("size-3.5", accent.text)} aria-hidden /> Schedule</dt>
+              <dd className="mt-1 font-medium text-foreground">{program.scheduleLabel}</dd>
+            </div>
+            <div>
+              <dt className="flex items-center gap-1.5 text-xs text-muted-foreground"><Gauge className={cn("size-3.5", accent.text)} aria-hidden /> Level</dt>
+              <dd className="mt-1 font-medium text-foreground">{program.levelLabel}</dd>
+            </div>
+          </dl>
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
+              <CircleDollarSign className={cn("size-4", accent.text)} aria-hidden />
+              {priceLabel}
+            </span>
+            {program.enrollmentOpen ? (
+              <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/80">
+                <Link href={`/enroll?program=${encodeURIComponent(program.slug)}`} aria-label={`Enroll in ${program.name}`}>
+                  Enroll now
+                  <ArrowRight aria-hidden />
+                </Link>
+              </Button>
+            ) : null}
+            <Button asChild variant="outline" className="border-foreground/30 bg-background/90 text-foreground hover:border-primary hover:bg-background">
+              <Link href={`/programs/${encodeURIComponent(program.slug)}`} aria-label={`View details for ${program.name}`}>
+                Details
+                <ArrowUpRight aria-hidden />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/**
+ * A direct catalogue preview, rendered entirely on the server. The active
+ * two-program state gets two equally legible choices instead of a carousel;
+ * future catalogue changes still render every record in a responsive grid.
+ */
+export function ProgramsSection({ programs }: { programs: ProgramWithCurriculum[] }) {
+  if (programs.length === 0) {
+    return (
+      <section className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 lg:py-20" aria-labelledby="programs-heading">
+        <div className="max-w-xl space-y-4">
+          <h2 id="programs-heading" className="font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            Training programs are being prepared.
+          </h2>
+          <p className="text-muted-foreground">Contact HardTech to learn which hands-on training opens next.</p>
+          <Button asChild variant="outline"><Link href="/programs">Explore program information<ArrowUpRight aria-hidden /></Link></Button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 lg:py-20" aria-labelledby="programs-heading">
+      <div className="max-w-2xl">
+        <h2 id="programs-heading" className="font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          Choose the technology trade you want to master.
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Choose a hands-on training path, then review its curriculum before you enroll.
+        <p className="mt-3 text-base leading-relaxed text-muted-foreground sm:text-lg">
+          Start with hands-on, job-focused training. Compare each program, then see its full curriculum before you enroll.
         </p>
       </div>
 
-      {programs.length === 0 ? (
-        <p className="mx-auto mt-8 max-w-xl rounded-2xl border border-glass-border bg-surface-secondary px-5 py-6 text-center text-sm text-muted-foreground">
-          Programs are being prepared. Please check back soon or contact us for enrollment guidance.
-        </p>
-      ) : (
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2 sm:gap-5 lg:mt-10 lg:gap-6">
-          {programs.map((program) => {
-            const accent = resolveAccent(program.accentColor);
-            const imagery = resolveProgramImagery(program);
-            const detailHref = `/programs/${encodeURIComponent(program.shortName)}`;
+      <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
+        {programs.map((program) => <ProgramFeature key={program.id} program={program} />)}
+      </div>
 
-            return (
-              <li key={program.id}>
-                <Link
-                  href={detailHref}
-                  aria-label={`View details for ${program.name}`}
-                  className="group block h-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background"
-                >
-                  <article className="relative flex h-full min-h-64 overflow-hidden rounded-2xl border border-glass-border bg-surface-secondary p-5 transition-[border-color,box-shadow,transform] duration-200 motion-reduce:transform-none motion-reduce:transition-none sm:p-6 lg:group-hover:-translate-y-0.5 lg:group-hover:border-[var(--glass-border-strong)] lg:group-hover:shadow-glow-md">
-                    {imagery.kind === "photo" ? (
-                      <div className="absolute inset-0 opacity-25">
-                        <ProgramPhoto src={imagery.src!} alt="" />
-                      </div>
-                    ) : (
-                      <div
-                        aria-hidden="true"
-                        className={cn("pointer-events-none absolute inset-0", accent.bg)}
-                      >
-                        {renderProgramIcon(
-                          program.iconName,
-                          cn("absolute -right-5 -bottom-5 size-40 opacity-10", accent.text),
-                        )}
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-background/70" aria-hidden="true" />
-
-                    <div className="relative flex w-full flex-col items-start">
-                      <span className={cn("flex size-11 items-center justify-center rounded-xl", accent.bg)}>
-                        {renderProgramIcon(program.iconName, cn("size-5", accent.text))}
-                      </span>
-                      <h3 className="mt-8 text-xl font-semibold text-foreground sm:text-2xl">
-                        {program.name}
-                      </h3>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <Badge variant="secondary">{program.durationLabel}</Badge>
-                        {program.marketingEnrolledLabel ? (
-                          <Badge variant="outline" className={cn(accent.border, accent.text)}>
-                            {program.marketingEnrolledLabel}
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <span className={cn("mt-auto pt-8 text-sm font-semibold", accent.text)}>
-                        View program details <span aria-hidden="true">&rarr;</span>
-                      </span>
-                    </div>
-                  </article>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <div className="mt-6 flex justify-start">
+        <Button asChild variant="outline"><Link href="/programs">Compare all program details<ArrowUpRight aria-hidden /></Link></Button>
+      </div>
     </section>
   );
 }
