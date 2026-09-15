@@ -62,12 +62,12 @@ export function CommunitiesToolbar({
           onKeyDown={handleSearchKeyDown}
           onBlur={() => navigate({ search: searchValue.trim() || undefined })}
           placeholder="Search communities by name, city, or tag..."
-          className="h-10 border-glass-border bg-glass pl-8 text-xs"
+          className="h-11 border-glass-border bg-glass pl-8 text-sm sm:text-xs"
         />
       </div>
 
       <Select value={region ?? "all"} onValueChange={(value) => navigate({ region: value === "all" ? undefined : value })}>
-        <SelectTrigger className="h-10 w-full border-glass-border bg-glass text-xs sm:w-44">
+        <SelectTrigger className="h-11 w-full border-glass-border bg-glass text-sm sm:w-44 sm:text-xs">
           <SelectValue placeholder="All regions" />
         </SelectTrigger>
         <SelectContent>
@@ -81,7 +81,7 @@ export function CommunitiesToolbar({
       </Select>
 
       <Select value={topic ?? "all"} onValueChange={(value) => navigate({ topic: value === "all" ? undefined : value })}>
-        <SelectTrigger className="h-10 w-full border-glass-border bg-glass text-xs sm:w-44">
+        <SelectTrigger className="h-11 w-full border-glass-border bg-glass text-sm sm:w-44 sm:text-xs">
           <SelectValue placeholder="All topics" />
         </SelectTrigger>
         <SelectContent>

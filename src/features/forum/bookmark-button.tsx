@@ -48,7 +48,7 @@ export function BookmarkButton({
       aria-busy={isPending}
       aria-label={isBookmarked ? "Remove bookmark" : "Bookmark this post"}
       onClick={() => void handleClick()}
-      className="inline-flex items-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-glass-hover hover:text-foreground disabled:opacity-60"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 text-muted-foreground transition-colors hover:bg-glass-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:opacity-60"
     >
       <Bookmark
         className={cn("size-3.5", isBookmarked && "fill-primary text-primary", isPending && "animate-pulse motion-reduce:animate-none")}

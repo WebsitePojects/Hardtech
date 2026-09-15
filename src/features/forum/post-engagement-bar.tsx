@@ -18,8 +18,8 @@ import type { ForumPostSummary } from "./types";
  */
 export function PostEngagementBar({ post }: { post: ForumPostSummary }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-glass-border pt-2.5 text-[11px] text-muted-foreground">
-      <div className="flex items-center gap-1">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-glass-border pt-2.5 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-1.5">
         <ReactionButton
           label="Upvote"
           count={post.counts.upvote}
@@ -40,14 +40,14 @@ export function PostEngagementBar({ post }: { post: ForumPostSummary }) {
         />
       </div>
 
-      <div className="flex items-center gap-3">
-        <span className="inline-flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-3">
+        <span className="inline-flex min-h-11 items-center gap-1 px-2">
           <Eye className="size-3.5" aria-hidden />
           {post.counts.view}
         </span>
         <Link
           href={`/forum/${post.id}`}
-          className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+          className="inline-flex min-h-11 items-center gap-1 rounded-md px-2 transition-colors hover:bg-glass-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
         >
           <MessageCircle className="size-3.5" aria-hidden />
           {post.counts.reply} {post.counts.reply === 1 ? "reply" : "replies"}

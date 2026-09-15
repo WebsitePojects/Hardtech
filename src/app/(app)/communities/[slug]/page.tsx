@@ -46,10 +46,12 @@ export default async function CommunityDetailPage(props: PageProps<"/communities
 
         <Card>
           <CardContent className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h1 className="font-heading text-2xl font-bold text-foreground">{community.name}</h1>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="min-w-0 font-heading text-2xl leading-tight font-bold break-words text-foreground">
+                    {community.name}
+                  </h1>
                   <Badge variant="outline">
                     {community.visibility === "PUBLIC" ? "🌐 PUBLIC" : "🔒 PRIVATE"}
                   </Badge>
@@ -59,12 +61,16 @@ export default async function CommunityDetailPage(props: PageProps<"/communities
                   {community.region}
                 </p>
               </div>
-              <JoinButton communityId={community.id} isJoined={community.viewerMembershipStatus === "APPROVED"} />
+              <JoinButton
+                communityId={community.id}
+                isJoined={community.viewerMembershipStatus === "APPROVED"}
+                className="w-full sm:w-auto"
+              />
             </div>
 
             <p className="text-sm text-muted-foreground">{community.description}</p>
 
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground sm:gap-4">
               <span className="inline-flex items-center gap-1">
                 <Users className="size-4" aria-hidden /> {community.memberCount} members
               </span>

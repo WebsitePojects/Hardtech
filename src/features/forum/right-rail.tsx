@@ -12,10 +12,9 @@ export type PopularHashtagItem = { tag: string; postCount: number };
  * Right rail for the social-feed rebuild (client reference image, not
  * docs/screens — see the note at the top of page.tsx). Three modules: Top
  * Contributors, Top Questions, Popular Hashtags This Month. Sticky on
- * desktop; on mobile it renders in normal document flow below the feed
- * (see the layout decision in page.tsx) rather than a drawer, because this
- * is browse-more content a trainee would scroll past on the way out of the
- * feed, not something that needs to interrupt the primary reading path.
+ * desktop; on mobile it is removed entirely, matching mobile-01.md's
+ * finding that the forum side rails are not relocated into a drawer or
+ * accordion.
  *
  * Every list here degrades to however many real rows the service returned
  * — never padded to a fixed count — and every empty case gets an honest,
@@ -34,7 +33,7 @@ export function RightRail({
   popularHashtags: PopularHashtagItem[];
 }) {
   return (
-    <aside className="flex w-full shrink-0 flex-col gap-5 lg:sticky lg:top-24 lg:w-[280px] lg:gap-4 lg:self-start">
+    <aside className="hidden w-full shrink-0 flex-col gap-5 lg:sticky lg:top-24 lg:flex lg:w-[280px] lg:gap-4 lg:self-start">
       <RailModule icon={Trophy} title="Top Contributors">
         {leaderboard.length === 0 ? (
           <p className="text-sm text-muted-foreground">

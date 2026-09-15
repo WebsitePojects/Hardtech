@@ -40,7 +40,7 @@ export function PostComposer({ firstName, initials }: { firstName: string; initi
     </button>
   );
   const publishTrigger = (
-    <Button type="button" size="sm" className="shrink-0">
+    <Button type="button" size="sm" className="min-h-11 shrink-0">
       Publish
     </Button>
   );
