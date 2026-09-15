@@ -45,7 +45,7 @@ export function DashboardStatCard({
   className,
 }: DashboardStatCardProps) {
   return (
-    <Card className={cn("gap-3 p-4", className)}>
+    <Card className={cn("h-full min-w-0 gap-3 p-3 sm:p-4", className)}>
       <span
         className={cn(
           "flex size-9 items-center justify-center rounded-full",
@@ -55,8 +55,8 @@ export function DashboardStatCard({
       >
         <Icon className="size-4.5" />
       </span>
-      <p className="font-heading text-2xl font-semibold text-foreground">{value}</p>
-      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="font-heading text-xl font-semibold text-foreground sm:text-2xl">{value}</p>
+      <p className="text-xs text-muted-foreground sm:text-sm">{label}</p>
     </Card>
   );
 }
@@ -83,7 +83,7 @@ export function DashboardStatGrid({
         : "lg:grid-cols-4";
 
   return (
-    <div className={cn("grid grid-cols-2 gap-4", desktopColsClassName, className)}>
+    <div className={cn("grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4", desktopColsClassName, className)}>
       {children}
     </div>
   );

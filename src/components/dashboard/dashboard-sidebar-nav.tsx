@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Home } from "lucide-react";
+import { Home, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/../generated/prisma/enums";
@@ -34,6 +34,8 @@ export type DashboardSidebarNavProps = {
   logoutAction: () => Promise<void>;
   /** Called after a nav Link is clicked, e.g. to close the mobile Sheet. */
   onNavigate?: () => void;
+  /** Rendered only inside the mobile Sheet, which supplies the close action. */
+  onClose?: () => void;
   className?: string;
 };
 
@@ -56,6 +58,7 @@ export function DashboardSidebarNav({
   badges,
   logoutAction,
   onNavigate,
+  onClose,
   className,
 }: DashboardSidebarNavProps) {
   const { activeSection, setActiveSection } = useDashboardNavigation();
@@ -101,9 +104,16 @@ export function DashboardSidebarNav({
             {subtitle ?? meta.defaultSubtitle}
           </p>
         </div>
-        <button type="button" aria-label="Collapse sidebar" className="ml-auto flex size-7 shrink-0 items-center justify-center rounded-lg border border-glass-border text-muted-foreground hover:bg-glass-hover hover:text-foreground">
-          K
-        </button>
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close dashboard menu"
+            className="ml-auto flex size-11 shrink-0 items-center justify-center rounded-lg border border-glass-border text-muted-foreground transition-colors hover:bg-glass-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+        ) : null}
       </div>
 
       <p className="px-4 pt-4 pb-2 font-sub text-xs font-semibold tracking-widest text-muted-foreground uppercase">
@@ -134,7 +144,7 @@ export function DashboardSidebarNav({
                 // it every row's label centres in its leftover space and the list
                 // reads ragged, while "Back to Landing" below — an anchor, so
                 // left-aligned by default — stays correct and hides the cause.
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-foreground/80 transition-colors",
+                "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-foreground/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 isActive
                   ? "bg-primary/10 text-primary"
                   : "hover:bg-glass-hover hover:text-foreground"
@@ -162,7 +172,7 @@ export function DashboardSidebarNav({
           onClick={onNavigate}
           // The reference gives both footer rows their own outlined container,
           // which separates them from the borderless section list above.
-          className="flex items-center gap-3 rounded-lg border border-glass-border px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-glass-hover hover:text-foreground"
+          className="flex min-h-11 items-center gap-3 rounded-lg border border-glass-border px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-glass-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <Home className="size-4" aria-hidden />
           Back to Landing

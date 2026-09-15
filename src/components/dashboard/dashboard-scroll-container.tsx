@@ -26,7 +26,7 @@ export function DashboardScrollContainer({
   return (
     <div
       className={cn(
-        "w-full overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]",
+        "max-w-full min-w-0 overflow-x-auto overscroll-x-contain touch-pan-x [-webkit-overflow-scrolling:touch]",
         className
       )}
     >

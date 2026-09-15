@@ -71,7 +71,7 @@ export const roleMeta: Record<
     fallbackDisplayName: "Admin Console",
     alwaysUseFallbackName: true,
     avatarInitials: "AD",
-    dotClassName: "bg-primary",
+    dotClassName: "bg-brand-purple",
     avatarClassName: "bg-brand-purple/20 text-brand-purple",
   },
   TRAINER: {

@@ -47,7 +47,7 @@ export function DashboardMobileNav({
   return (
     <div
       className={cn(
-        "glass sticky top-0 z-40 flex min-h-14 shrink-0 items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3",
+        "glass sticky top-0 z-40 flex min-h-16 shrink-0 items-center gap-3 px-3 py-2 sm:px-4",
         className
       )}
     >
@@ -58,6 +58,7 @@ export function DashboardMobileNav({
             variant="ghost"
             size="icon"
             aria-label="Open dashboard menu"
+            className="size-11"
           >
             <Menu className="size-5" aria-hidden />
           </Button>
@@ -76,6 +77,7 @@ export function DashboardMobileNav({
             badges={badges}
             logoutAction={logoutAction}
             onNavigate={() => setOpen(false)}
+            onClose={() => setOpen(false)}
           />
         </SheetContent>
       </Sheet>

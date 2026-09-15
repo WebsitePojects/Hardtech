@@ -21,12 +21,12 @@ export function DashboardPageHeader({
   className,
 }: DashboardPageHeaderProps) {
   return (
-    <div className={cn("space-y-1", className)}>
-      <h1 className="font-heading text-xl font-semibold text-foreground">
+    <div className={cn("min-w-0 space-y-1", className)}>
+      <h1 className="font-heading text-xl font-semibold text-foreground sm:text-2xl lg:text-3xl">
         {title}
       </h1>
       {description ? (
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className="text-sm text-muted-foreground sm:text-base">{description}</p>
       ) : null}
     </div>
   );
