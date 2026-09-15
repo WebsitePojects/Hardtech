@@ -48,6 +48,10 @@ export function proxy(request: NextRequest) {
 
   // /dashboard/<segment>/... -> ["", "dashboard", "<segment>", ...]
   const segment = request.nextUrl.pathname.split("/")[2];
+  if (segment && !Object.hasOwn(ROLE_BY_DASHBOARD_SEGMENT, segment)) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   const requiredRole = segment ? ROLE_BY_DASHBOARD_SEGMENT[segment] : undefined;
 
   if (requiredRole && session.role !== requiredRole) {

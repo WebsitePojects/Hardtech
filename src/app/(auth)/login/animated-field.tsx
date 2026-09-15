@@ -119,7 +119,7 @@ export function AnimatedField({
             setFocused(false);
             onBlur?.(event);
           }}
-          className={cn(rightAdornment ? "pr-9" : undefined, className)}
+          className={cn("min-h-11", rightAdornment ? "pr-12" : undefined, className)}
           style={{ transition: inputTransition }}
           {...inputProps}
         />

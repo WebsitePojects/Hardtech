@@ -5,12 +5,14 @@ import { checkRateLimit } from "@/server/auth/rate-limit";
 import { getClientIp } from "@/server/auth/client-ip";
 import { requestPasswordReset as createPasswordReset } from "@/server/services/password-reset.service";
 
-export interface ForgotPasswordActionResult { ok: true; error?: string; }
+export type ForgotPasswordActionResult =
+  | { ok: true }
+  | { ok: false; error: string };
 
 const GENERIC_ERROR = "Something went wrong. Please try again.";
 const RATE_LIMITED_ERROR = "Too many requests. Please wait a moment and try again.";
 
-export async function requestPasswordReset(rawInput: unknown): Promise<ForgotPasswordActionResult | { ok: false; error: string }> {
+export async function requestPasswordReset(rawInput: unknown): Promise<ForgotPasswordActionResult> {
   const parsed = forgotPasswordSchema.safeParse(rawInput);
   if (!parsed.success) return { ok: false, error: GENERIC_ERROR };
   const ip = await getClientIp();

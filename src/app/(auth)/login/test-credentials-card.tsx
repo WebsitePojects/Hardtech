@@ -8,15 +8,12 @@ import { isDemoAuthEnabled } from "@/server/auth/demo-credentials";
  *
  * The helper line is the one piece that cannot be transcribed blindly. The
  * reference site runs with demo auth on, so "Password: any value" is true
- * there. Here it is rendered only when `isDemoAuthEnabled()` confirms a local
- * development environment. Rendering it unconditionally would invite real
- * visitors to try a permissive development-only sign-in path.
+ * there. Here it is rendered only when `isDemoAuthEnabled()` confirms the
+ * configured environment deliberately permits demo authentication.
  *
  * The real password is deliberately NOT rendered. These accounts exist on a
- * live site holding trainee records and payment references; a password shown
- * on the sign-in page is the same hole as leaving demo auth on, just spelled
- * differently. Whoever is demonstrating the system reads it from the
- * gitignored `.env.demo-accounts` file instead.
+ * live site holding trainee records and payment references; a real password
+ * must never be rendered.
  *
  * Static server component: nothing here is interactive.
  */

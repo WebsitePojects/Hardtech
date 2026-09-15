@@ -87,7 +87,7 @@ export function LoginForm() {
             type="button"
             onClick={() => setShowPassword((current) => !current)}
             disabled={isPending}
-            className="absolute inset-y-0 right-2.5 flex items-center text-muted-foreground hover:text-foreground disabled:opacity-50"
+            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-50"
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -95,12 +95,13 @@ export function LoginForm() {
         }
       />
 
-      <div className="flex items-center gap-2">
+      <div className="flex min-h-11 items-center gap-2">
         <Checkbox
           id="login-remember"
           checked={rememberMe}
           onCheckedChange={(checked) => setRememberMe(checked === true)}
           disabled={isPending}
+          className="size-5 after:-inset-3"
         />
         <Label htmlFor="login-remember" className="text-sm font-normal text-muted-foreground">
           Remember me for 30 days

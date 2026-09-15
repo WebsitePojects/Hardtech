@@ -161,7 +161,7 @@ export default async function LoginPage() {
 
           <LoginForm />
 
-          <div className="mt-6 hidden lg:block">
+          <div className="mt-6">
             <TestCredentialsCard />
           </div>
         </Card>

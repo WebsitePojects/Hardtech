@@ -60,13 +60,15 @@ export function verifyPassword(password: string, encoded: string): boolean {
 
 /**
  * ============================================================================
- * Development-only test credentials. READ BEFORE TOUCHING.
+ * Demo authentication credentials. READ BEFORE TOUCHING.
  * ============================================================================
  *
- * Local development may expose the seeded test accounts and accept any
- * non-empty password for them. Every other environment verifies the stored
- * scrypt hash. In particular, an environment variable must never be able to
- * re-enable the permissive path in production.
+ * The reference sign-in flow deliberately accepts any non-empty password for
+ * its seeded demo accounts. `DEMO_AUTH` controls that behavior: development
+ * defaults to enabled, an explicit `"false"` disables it, and every other
+ * environment fails closed unless it is explicitly `"true"`. Production
+ * without that explicit opt-in rejects every login rather than silently
+ * falling back to a permissive or partially configured authentication mode.
  *
  * Everything downstream of this function is real: the session is a signed,
  * httpOnly cookie (src/server/auth/session.ts), `/dashboard/*` is
@@ -76,22 +78,34 @@ export function verifyPassword(password: string, encoded: string): boolean {
  * disabled demo mode, or a suspended account all return the identical
  * message — no user-enumeration signal).
  *
- * Fail closed: preview, test, staging, and production are all real-password
- * environments. `development` is the only deliberately permissive mode.
+ * The password bypass exists in exactly this function's call path. Everything
+ * after the check remains real: user lookup/status, rate limiting, a signed
+ * httpOnly session, and server-side role authorization.
  */
 export function isDemoAuthEnabled(): boolean {
-  return process.env.NODE_ENV === "development";
+  const configured = process.env.DEMO_AUTH;
+
+  if (process.env.NODE_ENV === "development") {
+    return configured === undefined || configured === "true";
+  }
+
+  return configured === "true";
 }
 
 /**
  * Looks up `email` and returns its current id/role when it is not suspended
- * and either development demo auth is enabled or its password verifies. The
- * caller must not distinguish failure reasons in its response.
+ * and demo auth is enabled, or when a non-production environment verifies its
+ * stored password. The caller must not distinguish failure reasons in its
+ * response.
  */
 export async function verifyDemoCredentials(
   email: string,
   password: string,
 ): Promise<DemoAuthenticatedUser | null> {
+  // Do this before the user lookup: an unconfigured production environment
+  // rejects every attempt consistently and does not touch the identity store.
+  if (process.env.NODE_ENV === "production" && !isDemoAuthEnabled()) return null;
+
   const user = await db.user.findUnique({
     where: { email },
     select: { id: true, role: true, status: true, passwordHash: true },
@@ -103,7 +117,9 @@ export async function verifyDemoCredentials(
   // the password check is skipped in demo mode.
   if (user.status === "SUSPENDED") return null;
 
-  if (!isDemoAuthEnabled() && !verifyPassword(password, user.passwordHash)) return null;
+  if (isDemoAuthEnabled()) return { id: user.id, role: user.role };
+
+  if (!verifyPassword(password, user.passwordHash)) return null;
 
   return { id: user.id, role: user.role };
 }
