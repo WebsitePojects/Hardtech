@@ -9,7 +9,7 @@ export type Announcement = { id: string; title: string; body: string; type: stri
 
 type AnnouncementsCardProps = {
   announcements: Announcement[];
-  /** The in-flow teaser is intentionally stable. The wide floating rail retains manual browsing. */
+  /** Mobile floats inside the hero; the wide desktop rail stays fixed and manually browsable. */
   variant: "mobile" | "floating";
 };
 
@@ -36,10 +36,13 @@ export function AnnouncementsCard({ announcements, variant }: AnnouncementsCardP
 
   if (variant === "mobile") {
     return (
-      <aside aria-label="Latest update">
+      <aside
+        className="absolute top-[5.25rem] right-3 left-3 z-20 min-[390px]:right-4 min-[390px]:left-4 md:right-6 md:left-auto md:w-[22rem] lg:top-[5.75rem] 2xl:hidden"
+        aria-label="Latest update"
+      >
         <Link
           href={`/announcements/${announcement.id}`}
-          className="hero-fade-slide flex w-full items-center gap-3 rounded-2xl border border-primary/30 bg-background/95 p-3 text-left shadow-glow-sm backdrop-blur-md transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+          className="hero-fade-slide flex min-h-20 w-full items-center gap-3 rounded-2xl border border-primary/30 bg-background/95 p-3 text-left shadow-glow-sm backdrop-blur-md transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none min-[390px]:p-4"
           style={{ "--reveal-delay": "0.95s" } as React.CSSProperties}
           aria-label={`Read announcement: ${announcement.title}`}
         >

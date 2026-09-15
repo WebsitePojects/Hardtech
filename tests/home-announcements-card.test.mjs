@@ -25,6 +25,7 @@ test("mobile announcement card is a floating overlay, not an in-flow row", () =>
   assert.match(markup, /top-\[5\.25rem\]/);
   assert.match(markup, /2xl:hidden/);
   assert.match(markup, /min-h-20/);
+  assert.doesNotMatch(markup, /justify-self|grid-cols/);
 });
 
 test("floating announcement card remains desktop-only right rail", () => {
