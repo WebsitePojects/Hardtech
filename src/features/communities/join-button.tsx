@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { joinCommunity } from "./mutations/join-community";
 import { useGuardedMutation } from "@/features/forum/use-guarded-mutation";
 
@@ -20,15 +21,17 @@ import { useGuardedMutation } from "@/features/forum/use-guarded-mutation";
 export function JoinButton({
   communityId,
   isJoined,
+  className,
 }: {
   communityId: string;
   isJoined: boolean;
+  className?: string;
 }) {
   const { isPending, run } = useGuardedMutation(joinCommunity, "Joining isn't wired up yet.");
 
   if (isJoined) {
     return (
-      <Button type="button" variant="outline" size="sm" disabled>
+      <Button type="button" variant="outline" size="sm" disabled className={cn("min-h-11", className)}>
         <Check className="size-3.5" aria-hidden /> Joined
       </Button>
     );
@@ -40,6 +43,7 @@ export function JoinButton({
       size="sm"
       disabled={isPending}
       onClick={() => void run({ idempotencyKey: crypto.randomUUID(), communityId })}
+      className={cn("min-h-11", className)}
     >
       {isPending ? "Joining…" : "Join"}
     </Button>

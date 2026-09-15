@@ -52,7 +52,7 @@ export function CommunityCard({ community }: { community: CommunitySummary }) {
           </Badge>
         ) : null}
 
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Users className="size-3.5" aria-hidden />
@@ -63,7 +63,11 @@ export function CommunityCard({ community }: { community: CommunitySummary }) {
               {community.replyCount}
             </span>
           </div>
-          <JoinButton communityId={community.id} isJoined={community.viewerMembershipStatus === "APPROVED"} />
+          <JoinButton
+            communityId={community.id}
+            isJoined={community.viewerMembershipStatus === "APPROVED"}
+            className="w-full sm:w-auto"
+          />
         </div>
       </CardContent>
     </Card>

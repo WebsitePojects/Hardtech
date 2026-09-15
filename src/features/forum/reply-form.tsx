@@ -49,7 +49,12 @@ export function ReplyForm({ postId }: { postId: string }) {
       />
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="flex justify-end">
-        <Button type="button" disabled={isPending || body.trim().length === 0} onClick={() => void handleSubmit()}>
+        <Button
+          type="button"
+          disabled={isPending || body.trim().length === 0}
+          onClick={() => void handleSubmit()}
+          className="min-h-11"
+        >
           {isPending ? "Posting…" : "Post Reply"}
         </Button>
       </div>

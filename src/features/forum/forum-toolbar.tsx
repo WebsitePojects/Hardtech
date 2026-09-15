@@ -93,7 +93,7 @@ export function ForumToolbar({
             onKeyDown={handleSearchKeyDown}
             onBlur={() => navigate({ search: searchValue.trim() || undefined })}
             placeholder="Search posts, authors, or tags..."
-            className="h-10 border-glass-border bg-glass pl-8 text-xs"
+            className="h-11 border-glass-border bg-glass pl-8 text-sm sm:text-xs"
           />
         </div>
 
@@ -107,7 +107,7 @@ export function ForumToolbar({
             disabled={isSortPending}
             aria-label="Sort posts"
             className={cn(
-              "flex h-10 w-full items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-medium whitespace-nowrap transition-colors outline-none sm:w-auto sm:justify-start",
+              "flex h-11 w-full items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-medium whitespace-nowrap transition-colors outline-none sm:w-auto sm:justify-start",
               "focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               "disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
               sortOpen
@@ -174,7 +174,7 @@ export function ForumToolbar({
           type="button"
           variant={!activeCategory ? "default" : "outline"}
           size="sm"
-          className="shrink-0"
+          className="min-h-11 shrink-0 px-4"
           onClick={() => navigate({ category: undefined })}
         >
           All
@@ -187,7 +187,7 @@ export function ForumToolbar({
               type="button"
               variant={activeCategory === category ? "default" : "outline"}
               size="sm"
-              className="shrink-0"
+              className="min-h-11 shrink-0 px-4"
               onClick={() => navigate({ category })}
             >
               <Icon className="size-3.5" aria-hidden />

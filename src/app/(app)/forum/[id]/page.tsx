@@ -113,7 +113,7 @@ export default async function ForumPostPage(props: PageProps<"/forum/[id]">) {
       <div className="flex justify-center pt-4">
         <Link
           href="/forum"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-glass-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-glass-hover"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-glass-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-glass-hover focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
         >
           <ArrowLeft className="size-4" aria-hidden /> Back to Forum
         </Link>

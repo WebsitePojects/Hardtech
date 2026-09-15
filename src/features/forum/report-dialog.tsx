@@ -60,7 +60,7 @@ export function ReportDialog({ postId }: { postId: string }) {
         <button
           type="button"
           aria-label="Report this post"
-          className="inline-flex items-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-glass-hover hover:text-destructive"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md p-2 text-muted-foreground transition-colors hover:bg-glass-hover hover:text-destructive focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
         >
           <Flag className="size-3.5" aria-hidden />
         </button>

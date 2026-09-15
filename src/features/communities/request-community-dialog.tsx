@@ -57,7 +57,7 @@ export function RequestCommunityDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline">
+        <Button type="button" variant="outline" className="min-h-11">
           <Plus className="size-4" aria-hidden /> Request community
         </Button>
       </DialogTrigger>

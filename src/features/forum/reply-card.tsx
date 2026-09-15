@@ -14,7 +14,7 @@ export function ReplyCard({ reply }: { reply: ForumReplySummary }) {
     <div className="space-y-2 rounded-lg border-l-2 border-primary bg-surface-secondary/40 p-4">
       <AuthorRow author={reply.author} createdAt={reply.createdAt} compact />
       <p className="text-sm whitespace-pre-line text-foreground/90">{reply.body}</p>
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
         <ReplyReactionButton replyId={reply.id} type="UPVOTE" count={reply.counts.upvote} label="Upvote reply" />
         <ReplyReactionButton replyId={reply.id} type="HELPFUL" count={reply.counts.helpful} label="Mark reply helpful" />
         <ReplyReactionButton replyId={reply.id} type="INSIGHTFUL" count={reply.counts.insightful} label="Mark reply insightful" />

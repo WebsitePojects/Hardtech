@@ -55,7 +55,7 @@ export function ReplyReactionButton({ replyId, type, count, label }: {
       aria-label={label}
       aria-busy={isPending}
       onClick={() => void handleClick()}
-      className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 transition-colors hover:bg-glass-hover hover:text-foreground disabled:opacity-60"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 py-2 transition-colors hover:bg-glass-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none disabled:opacity-60"
     >
       {iconFor(type, isPending)} {count}
     </button>
