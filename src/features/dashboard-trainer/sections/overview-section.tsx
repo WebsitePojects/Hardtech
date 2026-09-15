@@ -23,7 +23,9 @@ export function OverviewSection({
         <DashboardStatCard icon={Star} value={overview.evaluationCount} label="Evaluations" />
       </DashboardStatGrid>
 
-      <UpcomingSessionsCard sessions={overview.upcomingSessions} />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)]">
+        <UpcomingSessionsCard sessions={overview.upcomingSessions} className="min-w-0 lg:col-span-2" />
+      </div>
     </div>
   );
 }

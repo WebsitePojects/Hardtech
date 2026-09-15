@@ -23,7 +23,9 @@ export function ModulesSection({ modules, batches }: { modules: TrainerModuleIte
         <CardHeader>
           <CardTitle>Upload New Module</CardTitle>
         </CardHeader>
-        <CardContent><ModulePublishForm batches={batches} /></CardContent>
+        <CardContent>
+          <ModulePublishForm batches={batches} />
+        </CardContent>
       </Card>
 
       {modules.length === 0 ? (
@@ -36,18 +38,18 @@ export function ModulesSection({ modules, batches }: { modules: TrainerModuleIte
         <Card>
           <CardContent className="divide-y divide-glass-border">
             {modules.map((module) => (
-              <div key={module.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <div key={module.id} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary" aria-hidden>
                   <FileText className="size-4" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-foreground">{module.title}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm font-semibold break-words text-foreground sm:truncate">{module.title}</p>
+                  <p className="break-words text-xs text-muted-foreground">
                     Unit {module.unitNumber} · {MODULE_FILE_TYPE_LABEL[module.fileType]} · {formatFileSize(module.fileSizeBytes)} ·{" "}
                     {formatDisplayDate(module.createdAt)}
                   </p>
                 </div>
-                <Badge variant="outline">{MODULE_FILE_TYPE_LABEL[module.fileType]}</Badge>
+                <Badge variant="outline" className="w-fit shrink-0">{MODULE_FILE_TYPE_LABEL[module.fileType]}</Badge>
               </div>
             ))}
           </CardContent>

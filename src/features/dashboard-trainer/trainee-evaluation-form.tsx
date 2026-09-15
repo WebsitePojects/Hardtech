@@ -123,8 +123,8 @@ export function EvaluationFormCard({ trainee }: { trainee: TrainerTraineeRosterI
             {initials(trainee.name)}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-heading text-base font-semibold text-foreground">{trainee.name}</p>
-            <p className="truncate text-sm text-muted-foreground">{trainee.email}</p>
+            <p className="font-heading text-base font-semibold break-words text-foreground">{trainee.name}</p>
+            <p className="break-all text-sm text-muted-foreground">{trainee.email}</p>
           </div>
         </div>
 
@@ -136,8 +136,8 @@ export function EvaluationFormCard({ trainee }: { trainee: TrainerTraineeRosterI
           <Progress value={savedProgressPercent} />
         </div>
 
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="min-w-24 flex-1 space-y-1 text-xs text-muted-foreground" htmlFor={`progress-${trainee.enrollmentId}`}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <label className="min-w-0 flex-1 space-y-1 text-xs text-muted-foreground" htmlFor={`progress-${trainee.enrollmentId}`}>
             Update progress
             <Input
               id={`progress-${trainee.enrollmentId}`}
@@ -147,16 +147,18 @@ export function EvaluationFormCard({ trainee }: { trainee: TrainerTraineeRosterI
               value={progressPercent}
               onChange={(event) => setProgressPercent(Number(event.target.value))}
               disabled={isProgressPending || isCompletionPending || isCompleted}
+              className="min-h-11"
             />
           </label>
-          <Button type="button" size="sm" disabled={isProgressPending || isCompletionPending || isCompleted} onClick={() => void handleProgressSave()}>
+          <Button type="button" size="sm" disabled={isProgressPending || isCompletionPending || isCompleted} aria-busy={isProgressPending} onClick={() => void handleProgressSave()} className="min-h-11 w-full sm:w-auto">
             {isProgressPending ? "Saving…" : "Save progress"}
           </Button>
         </div>
         <Button
           type="button"
-          className="w-full"
+          className="min-h-11 w-full"
           disabled={isProgressPending || isCompletionPending || isCompleted || savedProgressPercent !== 100}
+          aria-busy={isCompletionPending}
           onClick={() => void handleCompletion()}
         >
           {isCompleted ? "Training completed" : isCompletionPending ? "Completing…" : "Mark training complete"}
@@ -177,14 +179,14 @@ export function EvaluationFormCard({ trainee }: { trainee: TrainerTraineeRosterI
         </div>
 
         {trainee.isTrained && !isOpen ? (
-          <Button type="button" variant="destructive" className="w-full" disabled>
+          <Button type="button" variant="destructive" className="min-h-11 w-full" disabled>
             <Star className="size-4" aria-hidden /> Undo Evaluation
           </Button>
         ) : (
           <Button
             type="button"
             variant={isOpen ? "outline" : "outline"}
-            className={cn("w-full", !isOpen && "border-primary/40 text-primary hover:text-primary")}
+            className={cn("min-h-11 w-full", !isOpen && "border-primary/40 text-primary hover:text-primary")}
             onClick={() => setIsOpen((value) => !value)}
             disabled={isSubmitting}
           >
@@ -194,7 +196,7 @@ export function EvaluationFormCard({ trainee }: { trainee: TrainerTraineeRosterI
 
         {isOpen ? (
           <div className="space-y-3">
-            <div className="h-8 rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm text-foreground">
+            <div className="flex min-h-11 items-center rounded-lg border border-input bg-transparent px-3 text-sm text-foreground">
               Diagnostics
             </div>
             <Select
@@ -212,7 +214,7 @@ export function EvaluationFormCard({ trainee }: { trainee: TrainerTraineeRosterI
               }}
               disabled={isSubmitting}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="min-h-11 w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -231,7 +233,7 @@ export function EvaluationFormCard({ trainee }: { trainee: TrainerTraineeRosterI
               disabled={isSubmitting}
             />
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <Button type="button" className="w-full" disabled={isSubmitting} onClick={() => void handleSubmit()}>
+            <Button type="button" className="min-h-11 w-full" disabled={isSubmitting} aria-busy={isSubmitting} onClick={() => void handleSubmit()}>
               {isSubmitting ? "Submitting..." : "Submit Evaluation"}
             </Button>
           </div>

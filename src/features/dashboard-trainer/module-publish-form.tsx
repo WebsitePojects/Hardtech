@@ -97,28 +97,28 @@ export function ModulePublishForm({ batches }: { batches: TrainerBatchOption[] }
 
   return (
     <div className="space-y-3">
-      <Input placeholder="Title..." value={title} onChange={(event) => setTitle(event.target.value)} disabled={isPending} />
-      <div className="grid grid-cols-2 gap-3">
-        <select className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground" value={fileType} onChange={(event) => setFileType(event.target.value as ModuleFileType)} disabled={isPending}>
+      <Input placeholder="Title..." value={title} onChange={(event) => setTitle(event.target.value)} disabled={isPending} className="min-h-11" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <select className="min-h-11 rounded-lg border border-input bg-transparent px-3 text-sm text-foreground" value={fileType} onChange={(event) => setFileType(event.target.value as ModuleFileType)} disabled={isPending}>
           <option value="PDF">PDF</option>
           <option value="MP4">MP4</option>
           <option value="DOCX">DOCX</option>
         </select>
-        <Input type="number" min="1" value={unitNumber} onChange={(event) => setUnitNumber(event.target.value)} disabled={isPending} aria-label="Unit number" />
+        <Input type="number" min="1" value={unitNumber} onChange={(event) => setUnitNumber(event.target.value)} disabled={isPending} aria-label="Unit number" className="min-h-11" />
       </div>
-      <select className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground" value={batchId} onChange={(event) => setBatchId(event.target.value)} disabled={isPending}>
+      <select className="min-h-11 w-full rounded-lg border border-input bg-transparent px-3 text-sm text-foreground" value={batchId} onChange={(event) => setBatchId(event.target.value)} disabled={isPending}>
         <option value="">Choose batch</option>
         {batches.map((batch) => <option key={batch.id} value={batch.id}>{batch.programName} · Batch {batch.label}</option>)}
       </select>
       <div className="space-y-1.5">
         <Label htmlFor={inputId}>Module file</Label>
-        <Input id={inputId} type="file" accept={ACCEPT_BY_FILE_TYPE[fileType]} onChange={handleFileChange} disabled={isPending} />
-        {file ? <p className="text-xs text-muted-foreground">{file.name}</p> : null}
+        <Input id={inputId} type="file" accept={ACCEPT_BY_FILE_TYPE[fileType]} onChange={handleFileChange} disabled={isPending} className="min-h-11" />
+        {file ? <p className="break-all text-xs text-muted-foreground">{file.name}</p> : null}
         {progress !== null && isPending ? <p className="text-xs text-muted-foreground">Uploading {progress}%</p> : null}
       </div>
       {status ? <p className="text-xs text-muted-foreground">{status}</p> : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <Button type="button" variant="outline" disabled={isPending || !file || !title.trim() || !batchId} onClick={() => void publish()}>
+      <Button type="button" variant="outline" disabled={isPending || !file || !title.trim() || !batchId} aria-busy={isPending} onClick={() => void publish()} className="min-h-11 w-full sm:w-auto">
         {isPending ? "Publishing..." : hasUploadedFile ? "Retry Publish" : "Upload and Publish"}
       </Button>
     </div>

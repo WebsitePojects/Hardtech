@@ -86,7 +86,7 @@ export function AssignmentCreateForm({ batches }: { batches: TrainerBatchOption[
 
   return (
     <div className="space-y-4">
-      <Button type="button" onClick={() => setIsOpen((value) => !value)} disabled={isSubmitting}>
+      <Button type="button" onClick={() => setIsOpen((value) => !value)} disabled={isSubmitting} className="min-h-11 w-full sm:w-auto">
         <Plus className="size-4" aria-hidden /> {isOpen ? "Close" : "New Assignment"}
       </Button>
 
@@ -103,7 +103,7 @@ export function AssignmentCreateForm({ batches }: { batches: TrainerBatchOption[
                 value={batchId}
                 onChange={(event) => setBatchId(event.target.value)}
                 disabled={isSubmitting || batches.length === 0}
-                className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm text-foreground disabled:opacity-50"
+                className="min-h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground disabled:opacity-50"
               >
                 {batches.length === 0 ? <option value="">No assigned batches</option> : null}
                 {batches.map((batch) => <option key={batch.id} value={batch.id}>{batch.label} · {batch.programName}</option>)}
@@ -114,6 +114,7 @@ export function AssignmentCreateForm({ batches }: { batches: TrainerBatchOption[
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Title - e.g. Unit 3 Lab Report"
               disabled={isSubmitting}
+              className="min-h-11"
             />
             <Textarea
               value={instructions}
@@ -129,6 +130,7 @@ export function AssignmentCreateForm({ batches }: { batches: TrainerBatchOption[
                   value={dueDate}
                   onChange={(event) => setDueDate(event.target.value)}
                   disabled={isSubmitting}
+                  className="min-h-11"
                 />
               </div>
               <div className="space-y-1.5">
@@ -138,12 +140,13 @@ export function AssignmentCreateForm({ batches }: { batches: TrainerBatchOption[
                   value={dueTime}
                   onChange={(event) => setDueTime(event.target.value)}
                   disabled={isSubmitting}
+                  className="min-h-11"
                 />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Allowed submission types</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {SUBMISSION_TYPE_OPTIONS.map((option) => {
                   const selected = allowedSubmissionTypes.includes(option.value);
                   return (
@@ -154,7 +157,7 @@ export function AssignmentCreateForm({ batches }: { batches: TrainerBatchOption[
                       disabled={isSubmitting}
                       aria-pressed={selected}
                       className={cn(
-                        "h-8 rounded-full border px-2 text-xs font-medium transition-colors disabled:opacity-50",
+                        "min-h-11 rounded-full border px-3 text-xs font-medium transition-colors disabled:opacity-50",
                         selected
                           ? "border-primary/40 bg-primary/15 text-primary"
                           : "border-border text-muted-foreground hover:bg-muted",
@@ -169,7 +172,7 @@ export function AssignmentCreateForm({ batches }: { batches: TrainerBatchOption[
             {helperText ? <p className="text-sm text-muted-foreground">{helperText}</p> : null}
             {batches.length === 0 ? <p className="text-sm text-muted-foreground">You need an assigned batch before publishing.</p> : null}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <Button type="button" className="w-full" disabled={!canPublish} onClick={() => void handlePublish()}>
+            <Button type="button" className="min-h-11 w-full" disabled={!canPublish} aria-busy={isSubmitting} onClick={() => void handlePublish()}>
               {isSubmitting ? "Publishing..." : "Publish Assignment"}
             </Button>
           </CardContent>

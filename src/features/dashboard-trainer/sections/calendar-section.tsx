@@ -131,19 +131,20 @@ export function CalendarSection({ sessions, batches }: { sessions: TrainerCalend
       />
 
       <Card>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+        <CardContent className="space-y-4 overflow-hidden">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center justify-between gap-2 sm:justify-start">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 aria-label="Previous month"
                 onClick={() => setVisibleMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+                className="min-h-11 min-w-11"
               >
                 <ChevronLeft className="size-4" />
               </Button>
-              <p className="w-36 text-center font-heading text-sm font-semibold text-foreground">
+              <p className="min-w-0 flex-1 text-center font-heading text-sm font-semibold text-foreground sm:w-36 sm:flex-none">
                 {visibleMonth.toLocaleString("en-US", { month: "long", year: "numeric" })}
               </p>
               <Button
@@ -152,55 +153,60 @@ export function CalendarSection({ sessions, batches }: { sessions: TrainerCalend
                 size="icon"
                 aria-label="Next month"
                 onClick={() => setVisibleMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1))}
+                className="min-h-11 min-w-11"
               >
                 <ChevronRight className="size-4" />
               </Button>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={goToToday}>
+            <Button type="button" variant="outline" size="sm" onClick={goToToday} className="min-h-11 w-full sm:w-auto">
               Today (PH)
             </Button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
-            {WEEKDAY_LABELS.map((label) => (
-              <div key={label}>{label}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {days.map((day) => {
-              const key = dateKey(day);
-              const inMonth = day.getMonth() === visibleMonth.getMonth();
-              const isToday = isSameDay(day, today);
-              const isSelected = isSameDay(day, selectedDay);
-              const hasSessions = sessions.some((session) => session.sessionDate === key);
+          <div className="overflow-x-auto pb-1">
+            <div className="min-w-[20rem]">
+              <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
+                {WEEKDAY_LABELS.map((label) => (
+                  <div key={label}>{label}</div>
+                ))}
+              </div>
+              <div className="mt-1 grid grid-cols-7 gap-1">
+                {days.map((day) => {
+                  const key = dateKey(day);
+                  const inMonth = day.getMonth() === visibleMonth.getMonth();
+                  const isToday = isSameDay(day, today);
+                  const isSelected = isSameDay(day, selectedDay);
+                  const hasSessions = sessions.some((session) => session.sessionDate === key);
 
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => {
-                    setSelectedDay(day);
-                    openDraft(key);
-                  }}
-                  aria-pressed={isSelected}
-                  className={cn(
-                    "group relative flex aspect-square items-center justify-center rounded-lg text-sm transition-colors",
-                    inMonth ? "text-foreground" : "text-muted-foreground/40",
-                    isSelected
-                      ? "bg-primary font-semibold text-primary-foreground"
-                      : isToday
-                        ? "bg-primary/15 font-semibold text-primary"
-                        : "hover:bg-glass-hover",
-                  )}
-                >
-                  {day.getDate()}
-                  {hasSessions && !isSelected ? (
-                    <span className="absolute bottom-1 size-1 rounded-full bg-primary" aria-hidden />
-                  ) : null}
-                  <Plus className="absolute right-1 bottom-1 size-3 opacity-0 group-hover:opacity-100" aria-hidden />
-                </button>
-              );
-            })}
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDay(day);
+                        openDraft(key);
+                      }}
+                      aria-pressed={isSelected}
+                      className={cn(
+                        "group relative flex min-h-11 items-center justify-center rounded-lg text-sm transition-colors",
+                        inMonth ? "text-foreground" : "text-muted-foreground/40",
+                        isSelected
+                          ? "bg-primary font-semibold text-primary-foreground"
+                          : isToday
+                            ? "bg-primary/15 font-semibold text-primary"
+                            : "hover:bg-glass-hover",
+                      )}
+                    >
+                      {day.getDate()}
+                      {hasSessions && !isSelected ? (
+                        <span className="absolute bottom-1 size-1 rounded-full bg-primary" aria-hidden />
+                      ) : null}
+                      <Plus className="absolute right-1 bottom-1 size-3 opacity-0 group-hover:opacity-100" aria-hidden />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -208,43 +214,43 @@ export function CalendarSection({ sessions, batches }: { sessions: TrainerCalend
       {draftDate ? (
         <Card>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="font-heading text-base font-semibold text-foreground">New Session</h3>
                 <p className="text-sm font-medium text-primary">{draftDate}</p>
               </div>
-              <Button type="button" variant="ghost" size="icon" aria-label="Close" onClick={() => setDraftDate(null)}>
+              <Button type="button" variant="ghost" size="icon" aria-label="Close" onClick={() => setDraftDate(null)} className="min-h-11 min-w-11">
                 <X className="size-4" />
               </Button>
             </div>
             <input
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+              className="min-h-11 w-full rounded-lg border border-input bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground"
               placeholder="Session title..."
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               disabled={isPublishing}
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <input
                 type="time"
-                className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground"
+                className="min-h-11 rounded-lg border border-input bg-transparent px-3 text-sm text-foreground"
                 value={startTime}
                 onChange={(event) => setStartTime(event.target.value)}
                 disabled={isPublishing}
               />
-              <select className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground" value={sessionType} onChange={(event) => setSessionType(event.target.value as SessionType)} disabled={isPublishing}>
+              <select className="min-h-11 rounded-lg border border-input bg-transparent px-3 text-sm text-foreground" value={sessionType} onChange={(event) => setSessionType(event.target.value as SessionType)} disabled={isPublishing}>
                 <option value="LECTURE">Lecture</option>
                 <option value="HANDS_ON">Hands-on</option>
                 <option value="WORKSHOP">Workshop</option>
                 <option value="ASSESSMENT">Assessment</option>
               </select>
             </div>
-            <select className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground" value={batchId} onChange={(event) => setBatchId(event.target.value)} disabled={isPublishing}>
+            <select className="min-h-11 w-full rounded-lg border border-input bg-transparent px-3 text-sm text-foreground" value={batchId} onChange={(event) => setBatchId(event.target.value)} disabled={isPublishing}>
               <option value="">Choose batch</option>
               {batches.map((batch) => <option key={batch.id} value={batch.id}>{batch.programName} · Batch {batch.label}</option>)}
             </select>
             <input
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground"
+              className="min-h-11 w-full rounded-lg border border-input bg-transparent px-3 text-sm text-foreground"
               placeholder="Location (optional)"
               value={location}
               onChange={(event) => setLocation(event.target.value)}
@@ -252,7 +258,7 @@ export function CalendarSection({ sessions, batches }: { sessions: TrainerCalend
             />
             <p className="text-sm text-muted-foreground">Times and dates are Philippine Standard Time. Published sessions are visible to active trainees in the selected batch.</p>
             {publishError ? <p className="text-sm text-destructive">{publishError}</p> : null}
-            <Button type="button" className="w-full" disabled={isPublishing || !title.trim() || !batchId} onClick={() => void publishSession()}>
+            <Button type="button" className="min-h-11 w-full" disabled={isPublishing || !title.trim() || !batchId} aria-busy={isPublishing} onClick={() => void publishSession()}>
               {isPublishing ? "Publishing..." : "Publish Session"}
             </Button>
           </CardContent>
@@ -266,13 +272,13 @@ export function CalendarSection({ sessions, batches }: { sessions: TrainerCalend
             <p className="py-4 text-center text-sm text-muted-foreground">No sessions scheduled this month.</p>
           ) : (
             sessionsThisMonth.map((session) => (
-              <div key={session.id} className="flex items-center gap-4 rounded-lg border border-glass-border p-3">
-                <div className="w-20 shrink-0 text-right">
+              <div key={session.id} className="flex flex-col gap-3 rounded-lg border border-glass-border p-3 sm:flex-row sm:items-center sm:gap-4">
+                <div className="shrink-0 sm:w-20 sm:text-right">
                   <p className="font-heading text-sm font-semibold text-primary">{session.startTime}</p>
                   <p className="text-xs text-muted-foreground">{session.sessionDate}</p>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">{session.title}</p>
+                  <p className="text-sm font-medium break-words text-foreground sm:truncate">{session.title}</p>
                   {session.location ? <p className="text-xs text-muted-foreground">{session.location}</p> : null}
                 </div>
                 <SessionTypeBadge sessionType={session.sessionType} />

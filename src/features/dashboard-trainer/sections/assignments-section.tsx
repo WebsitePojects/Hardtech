@@ -33,12 +33,12 @@ export function AssignmentsSection({ assignments, batches }: { assignments: Trai
           {assignments.map((assignment) => (
             <Card key={assignment.id}>
               <CardContent className="space-y-2">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="font-heading text-sm font-semibold text-foreground">{assignment.title}</p>
-                    <p className="text-sm text-muted-foreground">{assignment.instructions}</p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-heading text-sm font-semibold break-words text-foreground">{assignment.title}</p>
+                    <p className="break-words text-sm text-muted-foreground">{assignment.instructions}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="shrink-0 text-xs text-muted-foreground sm:text-right">
                     Due {formatDateOnly(assignment.dueDate)} · {assignment.dueTime}
                   </p>
                 </div>
