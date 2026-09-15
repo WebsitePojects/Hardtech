@@ -60,7 +60,7 @@ export function MyDashboardSection({ displayName, overview }: MyDashboardSection
 
       {isGraduate ? (
         <Card className="border border-brand-blue/30 bg-brand-blue/5">
-          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
               <span
                 className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-blue/15 text-brand-blue"
@@ -78,56 +78,62 @@ export function MyDashboardSection({ displayName, overview }: MyDashboardSection
                 </p>
               </div>
             </div>
-            <Button asChild>
+            <Button asChild className="min-h-11 w-full sm:w-auto">
               <Link href="/programs">Browse Programs</Link>
             </Button>
           </CardContent>
         </Card>
       ) : null}
 
-      {program ? (
-        <Card>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <Badge variant="outline" className="border-primary/40 text-primary tracking-wide uppercase">
-                Active Program
-              </Badge>
-              <Badge variant="outline" className="border-primary/40 text-primary">
-                ✓ {isGraduate ? "Graduate" : "Active Trainee"}
-              </Badge>
-            </div>
-            <h3 className="font-heading text-xl font-semibold text-foreground">{program.programName}</h3>
-            <p className="text-sm text-muted-foreground">
-              {program.trainerName ? `Trainer: ${program.trainerName}` : null}
-              {program.trainerName && program.batchLabel ? " · " : null}
-              {program.batchLabel}
-            </p>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Program Progress</span>
-                <span className="font-semibold text-foreground">{program.progressPercent}%</span>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(19rem,0.9fr)]">
+        {program ? (
+          <Card className="min-w-0">
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Badge variant="outline" className="border-primary/40 text-primary tracking-wide uppercase">
+                  Active Program
+                </Badge>
+                <Badge variant="outline" className="border-primary/40 text-primary">
+                  ✓ {isGraduate ? "Graduate" : "Active Trainee"}
+                </Badge>
               </div>
-              <Progress value={program.progressPercent} />
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No active program yet.
-          </CardContent>
-        </Card>
-      )}
+              <div className="min-w-0">
+                <h3 className="font-heading text-lg leading-tight font-semibold break-words text-foreground sm:text-xl">
+                  {program.programName}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {program.trainerName ? `Trainer: ${program.trainerName}` : null}
+                  {program.trainerName && program.batchLabel ? " · " : null}
+                  {program.batchLabel}
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">Program Progress</span>
+                  <span className="font-semibold text-foreground">{program.progressPercent}%</span>
+                </div>
+                <Progress value={program.progressPercent} />
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="py-10 text-center text-sm text-muted-foreground">
+              No active program yet.
+            </CardContent>
+          </Card>
+        )}
 
-      {isGraduate ? (
-        <Card>
-          <CardContent className="py-6 text-center text-sm text-muted-foreground">
-            You&apos;ve completed training. No active class sessions are assigned to you.
-          </CardContent>
-        </Card>
-      ) : (
-        <UpcomingSessionsCard sessions={overview.upcomingSessions} />
-      )}
+        {isGraduate ? (
+          <Card>
+            <CardContent className="py-6 text-center text-sm text-muted-foreground">
+              You&apos;ve completed training. No active class sessions are assigned to you.
+            </CardContent>
+          </Card>
+        ) : (
+          <UpcomingSessionsCard sessions={overview.upcomingSessions} className="min-w-0" />
+        )}
+      </div>
     </div>
   );
 }

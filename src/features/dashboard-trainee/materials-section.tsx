@@ -45,7 +45,7 @@ export function MaterialsSection({ materials }: MaterialsSectionProps) {
             const Icon = isVideo ? Video : FileText;
             return (
               <Card key={material.id}>
-                <CardContent className="space-y-4">
+                <CardContent className="flex h-full flex-col space-y-4">
                   <div className="flex items-start justify-between gap-3">
                     <span
                       className={cn(
@@ -58,14 +58,14 @@ export function MaterialsSection({ materials }: MaterialsSectionProps) {
                     </span>
                     <Badge variant="outline">{MATERIAL_FILE_TYPE_LABEL[material.fileType]}</Badge>
                   </div>
-                  <div>
-                    <p className="font-heading text-sm font-semibold text-foreground">{material.title}</p>
+                  <div className="min-w-0">
+                    <p className="font-heading text-sm font-semibold break-words text-foreground">{material.title}</p>
                     <p className="text-sm text-muted-foreground">
                       Unit {material.unitNumber} · {formatFileSize(material.fileSizeBytes)}
                     </p>
                   </div>
                   {material.delivery.state === "READY" ? (
-                    <Button asChild type="button" variant="outline" className="w-full">
+                    <Button asChild type="button" variant="outline" className="mt-auto min-h-11 w-full">
                       <a href={material.delivery.url} target="_blank" rel="noreferrer">
                         <Download className="size-4" aria-hidden /> Download
                       </a>

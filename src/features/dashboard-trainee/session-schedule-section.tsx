@@ -81,19 +81,20 @@ export function SessionScheduleSection({ sessions }: SessionScheduleSectionProps
       />
 
       <Card>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+        <CardContent className="space-y-4 overflow-hidden">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center justify-between gap-2 sm:justify-start">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 aria-label="Previous month"
                 onClick={() => setVisibleMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+                className="min-h-11 min-w-11"
               >
                 <ChevronLeft className="size-4" />
               </Button>
-              <p className="w-36 text-center font-heading text-sm font-semibold text-foreground">
+              <p className="min-w-0 flex-1 text-center font-heading text-sm font-semibold text-foreground sm:w-36 sm:flex-none">
                 {visibleMonth.toLocaleString("en-US", { month: "long", year: "numeric" })}
               </p>
               <Button
@@ -102,50 +103,55 @@ export function SessionScheduleSection({ sessions }: SessionScheduleSectionProps
                 size="icon"
                 aria-label="Next month"
                 onClick={() => setVisibleMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+                className="min-h-11 min-w-11"
               >
                 <ChevronRight className="size-4" />
               </Button>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={goToToday}>
+            <Button type="button" variant="outline" size="sm" onClick={goToToday} className="min-h-11 w-full sm:w-auto">
               Today (PH)
             </Button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
-            {WEEKDAY_LABELS.map((label) => (
-              <div key={label}>{label}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {days.map((day) => {
-              const inMonth = day.getMonth() === visibleMonth.getMonth();
-              const isToday = isSameDay(day, today);
-              const isSelected = isSameDay(day, selectedDay);
-              const hasSessions = sessionsOnDay(day).length > 0;
+          <div className="overflow-x-auto pb-1">
+            <div className="min-w-[20rem]">
+              <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
+                {WEEKDAY_LABELS.map((label) => (
+                  <div key={label}>{label}</div>
+                ))}
+              </div>
+              <div className="mt-1 grid grid-cols-7 gap-1">
+                {days.map((day) => {
+                  const inMonth = day.getMonth() === visibleMonth.getMonth();
+                  const isToday = isSameDay(day, today);
+                  const isSelected = isSameDay(day, selectedDay);
+                  const hasSessions = sessionsOnDay(day).length > 0;
 
-              return (
-                <button
-                  key={day.toISOString()}
-                  type="button"
-                  onClick={() => setSelectedDay(day)}
-                  aria-pressed={isSelected}
-                  className={cn(
-                    "relative flex aspect-square items-center justify-center rounded-lg text-sm transition-colors",
-                    inMonth ? "text-foreground" : "text-muted-foreground/40",
-                    isSelected
-                      ? "bg-primary font-semibold text-primary-foreground"
-                      : isToday
-                        ? "bg-primary/15 font-semibold text-primary"
-                        : "hover:bg-glass-hover"
-                  )}
-                >
-                  {day.getDate()}
-                  {hasSessions && !isSelected ? (
-                    <span className="absolute bottom-1 size-1 rounded-full bg-primary" aria-hidden />
-                  ) : null}
-                </button>
-              );
-            })}
+                  return (
+                    <button
+                      key={day.toISOString()}
+                      type="button"
+                      onClick={() => setSelectedDay(day)}
+                      aria-pressed={isSelected}
+                      className={cn(
+                        "relative flex min-h-11 items-center justify-center rounded-lg text-sm transition-colors",
+                        inMonth ? "text-foreground" : "text-muted-foreground/40",
+                        isSelected
+                          ? "bg-primary font-semibold text-primary-foreground"
+                          : isToday
+                            ? "bg-primary/15 font-semibold text-primary"
+                            : "hover:bg-glass-hover"
+                      )}
+                    >
+                      {day.getDate()}
+                      {hasSessions && !isSelected ? (
+                        <span className="absolute bottom-1 size-1 rounded-full bg-primary" aria-hidden />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -167,13 +173,13 @@ export function SessionScheduleSection({ sessions }: SessionScheduleSectionProps
               {selectedSessions.map((session) => (
                 <div
                   key={session.id}
-                  className="flex items-center gap-4 rounded-lg border border-glass-border p-3"
+                  className="flex flex-col gap-3 rounded-lg border border-glass-border p-3 sm:flex-row sm:items-center sm:gap-4"
                 >
-                  <p className="w-20 shrink-0 text-right font-heading text-sm font-semibold text-primary">
+                  <p className="shrink-0 font-heading text-sm font-semibold text-primary sm:w-20 sm:text-right">
                     {session.startTime}
                   </p>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">{session.title}</p>
+                    <p className="text-sm font-medium break-words text-foreground sm:truncate">{session.title}</p>
                     {session.location ? (
                       <p className="text-xs text-muted-foreground">{session.location}</p>
                     ) : null}

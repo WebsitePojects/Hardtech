@@ -81,12 +81,12 @@ export function AssignmentSubmissionForm({ assignment }: AssignmentSubmissionFor
 
   return (
     <div className="space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <p className="font-heading text-sm font-semibold text-foreground">{assignment.title}</p>
           <p className="text-sm text-muted-foreground">{assignment.instructions}</p>
         </div>
-        <p className="shrink-0 text-xs text-muted-foreground">
+        <p className="shrink-0 text-xs text-muted-foreground sm:text-right">
           Due {assignment.dueDate} · {assignment.dueTime}
         </p>
       </div>
@@ -107,14 +107,21 @@ export function AssignmentSubmissionForm({ assignment }: AssignmentSubmissionFor
           accept={acceptedTypes.join(",")}
           onChange={handleFileChange}
           disabled={isSubmitting}
+          className="min-h-11"
         />
-        {file ? <p className="text-xs text-muted-foreground">{file.name}</p> : null}
+        {file ? <p className="break-all text-xs text-muted-foreground">{file.name}</p> : null}
         {progress !== null && isSubmitting ? <p className="text-xs text-muted-foreground">Uploading {progress}%</p> : null}
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <Button type="button" disabled={isSubmitting || !file} onClick={() => void handleSubmit()}>
+      <Button
+        type="button"
+        disabled={isSubmitting || !file}
+        aria-busy={isSubmitting}
+        onClick={() => void handleSubmit()}
+        className="min-h-11 w-full sm:w-auto"
+      >
         {isSubmitting ? "Submitting..." : "Submit Assignment"}
       </Button>
     </div>

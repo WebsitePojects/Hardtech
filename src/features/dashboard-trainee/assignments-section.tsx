@@ -38,8 +38,8 @@ export function AssignmentsSection({ assignments }: AssignmentsSectionProps) {
           {assignments.map((assignment) => (
             <Card key={assignment.id}>
               <CardContent className="space-y-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <p className="font-heading text-sm font-semibold text-foreground">{assignment.title}</p>
                     <p className="text-sm text-muted-foreground">{assignment.instructions}</p>
                   </div>
@@ -55,7 +55,7 @@ export function AssignmentsSection({ assignments }: AssignmentsSectionProps) {
                     {assignment.submission.delivery.state === "READY" ? (
                       <a
                         href={assignment.submission.delivery.url}
-                        className="text-primary hover:underline"
+                        className="inline-flex min-h-11 items-center text-primary hover:underline"
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -68,7 +68,7 @@ export function AssignmentsSection({ assignments }: AssignmentsSectionProps) {
                     ) : assignment.submission.delivery.url ? (
                       <a
                         href={assignment.submission.delivery.url}
-                        className="break-all text-primary hover:underline"
+                        className="inline-flex min-h-11 items-center break-all text-primary hover:underline"
                         target="_blank"
                         rel="noreferrer"
                       >

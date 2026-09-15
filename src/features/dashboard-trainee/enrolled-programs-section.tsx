@@ -44,15 +44,17 @@ export function EnrolledProgramsSection({ overview }: EnrolledProgramsSectionPro
       ) : (
         <Card>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <Badge variant="outline" className="border-primary/40 text-primary tracking-wide uppercase">
                 Enrolled
               </Badge>
               <Badge variant="outline">{isGraduate ? "Graduate" : "Active"}</Badge>
             </div>
 
-            <div>
-              <h3 className="font-heading text-xl font-semibold text-foreground">{program.programName}</h3>
+            <div className="min-w-0">
+              <h3 className="font-heading text-lg leading-tight font-semibold break-words text-foreground sm:text-xl">
+                {program.programName}
+              </h3>
               <p className="text-sm text-muted-foreground">
                 {program.trainerName ? `Trainer: ${program.trainerName}` : null}
                 {program.trainerName && program.batchLabel ? " · " : null}
@@ -68,7 +70,7 @@ export function EnrolledProgramsSection({ overview }: EnrolledProgramsSectionPro
               <Progress value={program.progressPercent} />
             </div>
 
-            <div className="grid grid-cols-3 gap-3 border-t border-glass-border pt-4">
+            <div className="grid grid-cols-1 gap-3 border-t border-glass-border pt-4 sm:grid-cols-3">
               <div>
                 <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Start</p>
                 <p className="text-sm font-medium text-foreground">{formatStartDate(program.startDate)}</p>
