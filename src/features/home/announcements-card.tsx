@@ -9,10 +9,10 @@ export type Announcement = { id: string; title: string; body: string; type: stri
 
 type AnnouncementsCardProps = {
   announcements: Announcement[];
-  // "mobile": in-flow teaser rendered first inside the hero's content column,
-  // visible below 2xl. "floating": the fixed right-rail card, visible at 2xl
-  // and up only. hero.tsx mounts one of each so exactly one is ever visible —
-  // see the breakpoint note below for why 2xl is the split point.
+  // "mobile": floating hero teaser visible below 2xl. hero.tsx reserves
+  // vertical room for it with responsive padding so it reads like an overlay
+  // without covering the headline. "floating": the fixed right-rail card,
+  // visible at 2xl and up only.
   variant: "mobile" | "floating";
 };
 
@@ -22,10 +22,10 @@ export function AnnouncementsCard({ announcements, variant }: AnnouncementsCardP
   const lastScrollY = useRef(0);
 
   useEffect(() => {
-    // Scroll-hide is a floating-rail behaviour only: that card sits fixed
-    // over page content, so it retreats on scroll-down to stop obscuring
-    // whatever the user is reading. The mobile variant is in normal document
-    // flow — it can never obscure anything — so it has nothing to hide from.
+    // Scroll-hide is a desktop right-rail behaviour only: that card sits
+    // fixed over page content, so it retreats on scroll-down to stop
+    // obscuring whatever the user is reading. The mobile variant is confined
+    // to the hero box, and hero.tsx reserves room for it above the copy.
     if (variant !== "floating") return;
 
     const onScroll = () => {
@@ -57,24 +57,22 @@ export function AnnouncementsCard({ announcements, variant }: AnnouncementsCardP
   const mediaUrl = announcement.mediaUrl ?? "/images/home/announcement-june-2026-batch.jpg";
 
   if (variant === "mobile") {
-    // Compact in-flow teaser. No prev/next controls: at this card height
-    // (~92px total — p-4 padding plus the 56px thumbnail) there is no room
+    // Compact floating teaser. No prev/next controls: at this card height
+    // there is no room
     // for a second interactive row that still clears the 44px touch-target
     // minimum without inflating the card past the "teaser, not the
     // announcement" budget. Rotation is carried by the existing auto-advance
-    // timer instead, and the whole row is one tap target through to the full
+    // timer instead, and the whole card is one tap target through to the full
     // announcement.
     return (
       <Link
         href={`/announcements/${announcement.id}`}
-        // hero-fade-slide is the same load-choreography utility the badge/
-        // headline/CTAs use (globals.css "hero load choreography" block):
+        // hero-fade-slide is the same load-choreography utility the headline/
+        // CTAs use (globals.css "hero load choreography" block):
         // base state is fully visible, motion is additive under
         // prefers-reduced-motion:no-preference, and it self-disables below
-        // 640px so true phones never wait on it. --reveal-delay 0.05s places
-        // this ahead of the badge's 0.1s since it is now the first element
-        // in the column.
-        className="hero-fade-slide 2xl:hidden flex w-full items-center gap-3 rounded-2xl border border-primary/40 bg-background/80 p-4 text-left shadow-glow-sm backdrop-blur-md transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none"
+        // 640px so true phones never wait on it.
+        className="hero-fade-slide absolute top-[5.25rem] right-3 left-3 z-20 flex min-h-20 items-center gap-3 rounded-2xl border border-primary/40 bg-background/90 p-3 text-left shadow-glow-sm backdrop-blur-md transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary motion-reduce:transition-none min-[390px]:right-4 min-[390px]:left-4 min-[390px]:p-4 md:right-6 md:left-auto md:w-[22rem] lg:top-[5.75rem] 2xl:hidden"
         style={{ "--reveal-delay": "0.05s" } as React.CSSProperties}
         aria-label={`Read announcement: ${announcement.title}`}
       >

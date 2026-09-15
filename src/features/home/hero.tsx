@@ -67,7 +67,7 @@ export async function HomeHero() {
         element in this column insets from the viewport edge, so there is
         nothing left to clear but ordinary edge-to-text breathing room.
       */}
-      <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-4 px-4 pb-8 text-center sm:gap-6 sm:px-6 sm:pb-16 lg:max-w-5xl lg:gap-7 lg:pb-24">
+      <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-4 px-4 pt-28 pb-8 text-center min-[390px]:pt-32 sm:gap-6 sm:px-6 sm:pb-16 md:pt-28 lg:max-w-5xl lg:gap-7 lg:pt-24 lg:pb-24 2xl:pt-0">
         {/*
           vgldesign hero load choreography (globals.css, "hero load
           choreography" block): fires once on mount, on its own timeline —
@@ -82,17 +82,7 @@ export async function HomeHero() {
           instead of leaving a 0.05s->0.3s hole. Pure CSS — no "use client"
           needed, this stays a Server Component.
         */}
-        {/*
-          In-flow mobile/tablet/laptop teaser: first item in this column, so
-          it reserves its own space above the headline instead of floating
-          over it. Only `announcements` (plain serialized data) crosses the
-          Server->Client boundary — never a function — per the /forum
-          incident in the lessons log. Hidden at 2xl, where the floating
-          right-rail variant below takes over; see announcements-card.tsx for
-          why 2xl is the split.
-        */}
-        <AnnouncementsCard announcements={announcements} variant="mobile" />
-        <h1 className="text-4xl font-bold leading-[1.08] text-balance sm:text-5xl lg:text-7xl">
+        <h1 className="text-balance text-[2.35rem] font-bold leading-[1.08] min-[390px]:text-[2.6rem] md:text-5xl lg:text-7xl">
           <span className="hero-reveal-line block">
             <span style={{ "--reveal-delay": "0.2s" } as React.CSSProperties}>Build Your Future</span>
           </span>
@@ -145,23 +135,24 @@ export async function HomeHero() {
             className="pointer-events-none absolute -inset-x-8 -inset-y-6 -z-10 rounded-xl bg-background"
           />
           <p
-            className="hero-fade-slide max-w-2xl text-lg leading-relaxed text-muted-foreground lg:text-xl"
+            className="hero-fade-slide max-w-2xl text-base leading-relaxed text-muted-foreground min-[390px]:text-lg lg:text-xl"
             style={{ "--reveal-delay": "0.6s" } as React.CSSProperties}
           >
             Choose your program, then train hands-on in Computer Hardware Servicing or Cellphone Repair with instructor-led support.
           </p>
         </div>
         <div
-          className="hero-fade-slide flex flex-col gap-3 sm:flex-row"
+          className="hero-fade-slide flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row"
           style={{ "--reveal-delay": "0.8s" } as React.CSSProperties}
         >
-          <Button asChild size="lg"><Link href="/enroll">Enroll Now<ArrowRight /></Link></Button>
-          <Button asChild size="lg" variant="outline"><Link href="/programs">Explore Programs<ChevronRight /></Link></Button>
+          <Button asChild size="lg" className="min-h-11 w-full sm:w-auto"><Link href="/enroll">Enroll Now<ArrowRight /></Link></Button>
+          <Button asChild size="lg" variant="outline" className="min-h-11 w-full sm:w-auto"><Link href="/programs">Explore Programs<ChevronRight /></Link></Button>
         </div>
         <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-2 text-sm text-muted-foreground">
           {TRUST_ITEMS.map((item) => <li key={item.label} className="flex items-center gap-1.5"><CircleCheckBig className={`size-4 ${item.colorClass}`} />{item.label}</li>)}
         </ul>
       </div>
+      <AnnouncementsCard announcements={announcements} variant="mobile" />
       <AnnouncementsCard announcements={announcements} variant="floating" />
     </section>
   );

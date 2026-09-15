@@ -69,13 +69,13 @@ export function AboutHero() {
        * opacity/brightness filter of its own. */}
       <div className="hero-glow hero-glow-about hero-photo-navscrim pointer-events-none absolute inset-x-0 top-0 -z-10 h-[32rem]" />
 
-      <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:py-28">
+      <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-20 min-[390px]:gap-10 sm:px-6 md:py-24 lg:grid-cols-2 lg:items-center lg:py-28">
         <ScrollReveal>
           <Badge variant="outline" className="border-primary/40 text-primary">
             ABOUT HARDTECH
           </Badge>
 
-          <h1 className="mt-4 text-4xl font-bold leading-[1.08] text-balance sm:text-5xl lg:text-6xl">
+          <h1 className="mt-4 text-balance text-[2.35rem] font-bold leading-[1.08] min-[390px]:text-[2.6rem] md:text-5xl lg:text-6xl">
             Shaping the Next Generation of{" "}
             <span className="text-primary">Tech Experts</span>
           </h1>
@@ -86,20 +86,20 @@ export function AboutHero() {
               and across, so the paragraph was landing on raw image detail.
               Same substitution on the other two photo heroes (contact,
               programs). Any text placed over photography here needs this. */}
-          <p className="mt-4 max-w-xl text-lg leading-relaxed text-foreground/85 lg:text-xl">
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-foreground/85 min-[390px]:text-lg lg:text-xl">
             HardTech IT Corporation is a leading provider of IT training and
             services. We specialize in delivering high-quality education and
             support to individuals and businesses.
           </p>
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg">
+          <div className="mt-6 flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row">
+            <Button asChild size="lg" className="min-h-11 w-full sm:w-auto">
               <Link href="/programs">
                 View Programs
                 <ArrowRight />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline">
+            <Button asChild size="lg" variant="outline" className="min-h-11 w-full sm:w-auto">
               <Link href="/contact">
                 Contact Us
                 <ChevronRight />
@@ -108,14 +108,14 @@ export function AboutHero() {
           </div>
         </ScrollReveal>
 
-        <ScrollReveal delayMs={80} className="grid grid-cols-2 gap-4">
+        <ScrollReveal delayMs={80} className="grid grid-cols-2 gap-3 min-[390px]:gap-4">
           {STATS.map((stat) => (
             <Card key={stat.label} className="transition-[border-color,box-shadow,transform] motion-reduce:transition-none lg:hover:-translate-y-1 lg:hover:border-primary/40 lg:hover:shadow-glow-sm">
               <CardContent className="flex flex-col gap-1">
-                <p className="text-3xl font-bold text-primary sm:text-4xl">
+                <p className="text-2xl font-bold text-primary min-[390px]:text-3xl md:text-4xl">
                   {stat.value}
                 </p>
-                <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                <p className="text-[0.7rem] font-semibold tracking-wide break-words text-muted-foreground uppercase min-[390px]:text-xs">
                   {stat.label}
                 </p>
               </CardContent>

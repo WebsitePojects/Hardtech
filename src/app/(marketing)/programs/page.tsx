@@ -36,7 +36,7 @@ export default async function ProgramsPage() {
        * `relative overflow-hidden` is new on this element for that reason;
        * nothing else about the section's box (padding, therefore height)
        * changes, so this is not a layout shift. */}
-      <section className="relative overflow-hidden px-4 pt-24 pb-12 sm:pt-28">
+      <section className="relative overflow-hidden px-4 pt-24 pb-12 sm:pt-28 md:pb-14">
         <div
           aria-hidden
           className="hero-photo-fade pointer-events-none absolute inset-x-0 top-0 -z-20 h-[26rem]"
@@ -55,20 +55,20 @@ export default async function ProgramsPage() {
           <Badge variant="outline" className="border-primary/40 text-primary">
             &#9670; Training Programs
           </Badge>
-          <h1 className="font-heading text-4xl font-bold text-foreground sm:text-5xl">
+          <h1 className="font-heading text-[2.35rem] font-bold leading-[1.08] text-balance text-foreground min-[390px]:text-[2.6rem] md:text-5xl">
             Our Core <span className="text-primary">Programs</span>
           </h1>
           {/* foreground/85 over photography — see the note in
               src/features/about/hero.tsx; the muted token loses contrast on
               an image ground. */}
-          <p className="text-lg text-foreground/85">
+          <p className="text-base leading-relaxed text-foreground/85 min-[390px]:text-lg">
             Practical, industry-aligned training programs designed to build real skills and
             launch your technology career — no prior credentials required.
           </p>
           {/* foreground/80 rather than muted: this row sits low in the photo
               band where the scrim has thinned, over the brightest part of
               gallery-13. Muted was unreadable there. */}
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-2 text-sm text-foreground/80">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-2 text-sm text-foreground/80 min-[390px]:gap-x-6">
             {TRUST_ROW.map(({ icon: Icon, label }) => (
               <span key={label} className="flex items-center gap-1.5">
                 <Icon className="size-4 text-primary" aria-hidden />

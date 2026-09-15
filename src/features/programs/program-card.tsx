@@ -105,7 +105,7 @@ export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProp
       </div>
 
       <div className="space-y-1.5">
-        <h3 className="font-heading text-2xl font-semibold text-foreground">
+        <h3 className="font-heading text-xl font-semibold leading-tight text-balance text-foreground min-[390px]:text-2xl">
           {program.name}
         </h3>
         {program.subtitle ? (
@@ -117,7 +117,7 @@ export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProp
         {program.description}
       </p>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-2">
         <InfoTile icon={Clock} label="Duration" value={program.durationLabel} />
         <InfoTile icon={Calendar} label="Schedule" value={program.scheduleLabel} />
         <InfoTile icon={Zap} label="Level" value={program.levelLabel} />
@@ -163,13 +163,13 @@ export function ProgramCard({ program, trainerName, imageSide }: ProgramCardProp
       ) : null}
 
       <div className="flex flex-col gap-2 pt-1 sm:flex-row">
-        <Button asChild className="sm:flex-1">
+        <Button asChild className="min-h-11 sm:flex-1">
           <Link href="/enroll">
             Enroll Now
             <span aria-hidden>&rarr;</span>
           </Link>
         </Button>
-        <Button asChild variant="outline" className="sm:flex-1">
+        <Button asChild variant="outline" className="min-h-11 sm:flex-1">
           <Link href="/contact">Inquire</Link>
         </Button>
       </div>
