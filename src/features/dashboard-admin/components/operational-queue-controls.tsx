@@ -74,11 +74,11 @@ export function OperationalQueueFilters({
 
   return (
     <div className="space-y-3 rounded-lg border border-border p-3">
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" variant={values.view === "queue" ? "default" : "outline"} onClick={() => replace({ view: "queue", status: "ALL" })}>
+      <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+        <Button type="button" size="sm" className="min-h-11 sm:min-h-0" variant={values.view === "queue" ? "default" : "outline"} onClick={() => replace({ view: "queue", status: "ALL" })}>
           Action queue
         </Button>
-        <Button type="button" size="sm" variant={values.view === "history" ? "default" : "outline"} onClick={() => replace({ view: "history", status: "ALL" })}>
+        <Button type="button" size="sm" className="min-h-11 sm:min-h-0" variant={values.view === "history" ? "default" : "outline"} onClick={() => replace({ view: "history", status: "ALL" })}>
           Review history
         </Button>
       </div>
@@ -134,7 +134,7 @@ export function OperationalQueuePagination({
     router.replace(`/dashboard/admin?${params.toString()}`);
   }
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-sm">
+    <div className="flex flex-col items-center justify-between gap-3 border-t border-border pt-4 text-sm sm:flex-row">
       <span className="text-muted-foreground">Showing {first}-{last} of {total}</span>
       <div className="flex items-center gap-2">
         <Button type="button" variant="outline" size="icon" className="size-11" aria-label="Previous page" disabled={page <= 1} onClick={() => go(page - 1)}><ChevronLeft className="size-4" /></Button>

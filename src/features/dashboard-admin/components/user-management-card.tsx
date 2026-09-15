@@ -68,12 +68,12 @@ export function UserManagementCard({ user }: { user: UserManagementItem }) {
           <AvatarFallback className="bg-primary/15 text-primary">{user.initials}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-foreground">{user.name}</p>
-          <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+          <p className="break-words font-medium text-foreground">{user.name}</p>
+          <p className="break-all text-sm text-muted-foreground">{user.email}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <FieldLabel htmlFor={roleFieldId}>Role</FieldLabel>
           <Select value={user.role} onValueChange={handleRoleChange} disabled={anyPending}>

@@ -102,10 +102,10 @@ export async function OverviewSection() {
                 <ProgramMixDonutChart data={programMixSlices} />
                 <ul className="space-y-2">
                   {stats.programMix.map((row, index) => (
-                    <li key={row.programId} className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2 text-foreground">
+                    <li key={row.programId} className="flex items-start justify-between gap-3 text-sm">
+                      <span className="flex min-w-0 items-start gap-2 break-words text-foreground">
                         <span
-                          className={`size-2.5 shrink-0 rounded-full ${PROGRAM_MIX_TONES[index % PROGRAM_MIX_TONES.length].dotClassName}`}
+                          className={`mt-1 size-2.5 shrink-0 rounded-full ${PROGRAM_MIX_TONES[index % PROGRAM_MIX_TONES.length].dotClassName}`}
                           aria-hidden
                         />
                         {row.programName}
@@ -163,12 +163,12 @@ function QuickLinkCard({
   subtext: string;
 }) {
   return (
-    <DashboardSectionButton section={section} className="block w-full text-left">
+    <DashboardSectionButton section={section} className="block min-h-11 w-full text-left">
       <Card className="gap-2 p-4 transition-colors hover:bg-glass-hover">
         <Icon className="size-5 shrink-0 text-primary" aria-hidden />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground">{heading}</p>
-          <p className="truncate text-xs text-muted-foreground">{subtext}</p>
+          <p className="break-words text-sm font-semibold text-foreground">{heading}</p>
+          <p className="break-words text-xs text-muted-foreground">{subtext}</p>
         </div>
       </Card>
     </DashboardSectionButton>

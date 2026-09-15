@@ -67,12 +67,12 @@ export function EnrollmentReviewCard({ item }: { item: EnrollmentReviewItem }) {
 
   return (
     <Card className="gap-3 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-foreground">
-            {item.traineeName} <span className="text-muted-foreground">· {item.enrollmentRef}</span>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-sm font-semibold text-foreground">
+            {item.traineeName} <span className="text-muted-foreground"> · {item.enrollmentRef}</span>
           </p>
-          <p className="text-sm text-muted-foreground">{item.programName}</p>
+          <p className="break-words text-sm text-muted-foreground">{item.programName}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Wallet className="size-3.5" aria-hidden />
@@ -96,7 +96,7 @@ export function EnrollmentReviewCard({ item }: { item: EnrollmentReviewItem }) {
               <button
                 type="button"
                 onClick={() => setReceiptOpen(true)}
-                className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="mt-1.5 inline-flex min-h-11 items-center gap-1.5 text-left text-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-h-0"
               >
                 <ImageIcon className="size-3.5" aria-hidden />
                 View uploaded receipt
@@ -116,7 +116,7 @@ export function EnrollmentReviewCard({ item }: { item: EnrollmentReviewItem }) {
           ) : null}
         </div>
 
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-start gap-2 sm:items-end">
           <Badge
             variant="outline"
             className={
@@ -130,10 +130,11 @@ export function EnrollmentReviewCard({ item }: { item: EnrollmentReviewItem }) {
             {resolved ?? "pending"}
           </Badge>
           {resolved === null ? (
-            <div className="flex gap-2">
+            <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto">
               <Button
                 type="button"
                 size="sm"
+                className="min-h-11 sm:min-h-0"
                 disabled={anyPending}
                 onClick={handleApprove}
               >
@@ -144,6 +145,7 @@ export function EnrollmentReviewCard({ item }: { item: EnrollmentReviewItem }) {
                 type="button"
                 variant="destructive"
                 size="sm"
+                className="min-h-11 sm:min-h-0"
                 disabled={anyPending}
                 onClick={handleReject}
               >
